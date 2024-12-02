@@ -1,6 +1,7 @@
 ---
 - name: Tarea para recolectar uptime BIA
-  hosts: BIA
+  #hosts: BIA
+  hosts: 10.181.0.155
   become: false
   gather_facts: true
 
