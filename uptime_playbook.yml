@@ -1,0 +1,20 @@
+---
+- hosts: BIA
+  become: false
+  gather_facts: true
+
+  vars:
+
+    csv_path: '/ansible/Salidas-Ansible/Salida_Uptime/Salida_Uptime_BIA/'
+    csv_filename: 'BIA_UPTIME.csv'
+
+  tasks:
+
+  - name: Write uptime into CSV
+    delegate_to: localhost # aka Control Node
+    lineinfile:
+      dest: "{{ csv_path }}/{{ csv_filename }}"
+      line: "{{ inventory_hostname }},{{ ansible_hostname }},{{ (ansible_facts.uptime_seconds / 86400) | int }}"
+      create: true
+      state: present
+    loop: "{{ ansible_play_hosts }}"
