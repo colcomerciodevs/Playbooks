@@ -5,20 +5,23 @@
   gather_facts: true
 
   vars:
-    csv_path: '/ansible/Salidas-Ansible/Salida_Uptime/Salida_Uptime_BIA/'
-    csv_filename: 'BIA_UPTIME.csv'
+    temp_file: /tmp/uptime_{{ inventory_hostname }}.txt
+    local_path: '/ansible/Salidas-Ansible/Salida_Uptime/Salida_Uptime_BIA'
 
   tasks:
-    - name: Create CSV directory if it doesn't exist
-      delegate_to: localhost
-      ansible.builtin.file:
-        path: "{{ csv_path }}"
-        state: directory
+    - name: Generate uptime data on the host
+      copy:
+        dest: "{{ temp_file }}"
+        content: "{{ inventory_hostname }},{{ ansible_hostname }},{{ (ansible_facts.uptime_seconds / 86400) | int }}"
 
-    - name: Write uptime into CSV
+    - name: Fetch uptime data to local path
       delegate_to: localhost
-      ansible.builtin.lineinfile:
-        dest: "{{ csv_path }}/{{ csv_filename }}"
-        line: "{{ inventory_hostname }},{{ ansible_hostname }},{{ (ansible_facts.uptime_seconds / 86400) | int }}"
-        create: true
-        state: present
+      fetch:
+        src: "{{ temp_file }}"
+        dest: "{{ local_path }}/"
+        flat: yes
+
+    - name: Remove temporary file from remote host
+      file:
+        path: "{{ temp_file }}"
+        state: absent
