@@ -1,5 +1,6 @@
 ---
-- hosts: BIA
+- name: Tarea para recolectar uptime BIA
+  hosts: BIA
   become: false
   gather_facts: true
 
