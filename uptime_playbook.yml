@@ -5,12 +5,13 @@
   gather_facts: true
 
   vars:
-    csv_path: '/runner/project'
+    awx_host: '10.181.8.209'  # IP del servidor donde está implementado AW
+    csv_path: '/Salidas-Ansible/Salida_Uptime/'
     csv_filename: 'BIA_UPTIME.csv'
 
   tasks:
     - name: Write uptime into CSV
-      delegate_to: localhost
+      delegate_to: "{{ awx_host }}"
       lineinfile:
         dest: "{{ csv_path }}/{{ csv_filename }}"
         line: "{{ inventory_hostname }},{{ ansible_hostname }},{{ (ansible_facts.uptime_seconds / 86400) | int }}"
