@@ -6,7 +6,7 @@
 
   vars:
     awx_host: '10.181.8.209'  # IP del servidor donde está implementado AW
-    csv_path: '/Salidas-Ansible/Salida_Uptime/'
+    csv_path: '/Salidas-Ansible/Salida_Uptime'
     csv_filename: 'BIA_UPTIME.csv'
 
   tasks:
