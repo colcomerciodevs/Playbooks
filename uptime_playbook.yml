@@ -9,19 +9,22 @@
     csv_filename: 'BIA_UPTIME.csv'
 
   tasks:
-    - name: Crear el directorio si no existe
+    - name: Crear el directorio si no existe (en el contenedor de AWX)
+      delegate_to: localhost
       file:
         path: "{{ csv_path }}"
         state: directory
         mode: '0755'
 
-    - name: Crear el archivo CSV si no existe
+    - name: Crear el archivo CSV si no existe (en el contenedor de AWX)
+      delegate_to: localhost
       file:
         path: "{{ csv_path }}/{{ csv_filename }}"
         state: touch
         mode: '0644'
 
-    - name: Escribir encabezado si el archivo está vacío
+    - name: Escribir encabezado si el archivo está vacío (en el contenedor de AWX)
+      delegate_to: localhost
       block:
         - name: Verificar si el archivo está vacío
           stat:
@@ -35,9 +38,11 @@
             state: present
           when: csv_stat.stat.size == 0
 
-    - name: Escribir datos de uptime en el archivo CSV
+    - name: Escribir datos de uptime en el archivo CSV (en el contenedor de AWX)
+      delegate_to: localhost
       lineinfile:
         path: "{{ csv_path }}/{{ csv_filename }}"
         line: "{{ inventory_hostname }},{{ ansible_hostname }},{{ (ansible_facts.uptime_seconds / 86400) | int }}"
         state: present
+
 
