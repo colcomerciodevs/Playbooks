@@ -5,15 +5,16 @@
   gather_facts: true
 
   vars:
-    csv_path: '/tmp/'
+    csv_path: '/tmp'
     csv_filename: 'BIA_UPTIME.csv'
 
   tasks:
-    - name: Write uptime into CSV
-      delegate_to: localhost
-      lineinfile:
-        dest: "{{ csv_path }}/{{ csv_filename }}"
+    - name: Write uptime into CSV on localhost
+      local_action:
+        module: lineinfile
+        path: "{{ csv_path }}/{{ csv_filename }}"
         line: "{{ inventory_hostname }},{{ ansible_hostname }},{{ (ansible_facts.uptime_seconds / 86400) | int }}"
         create: true
         state: present
-      loop: "{{ ansible_play_hosts }}"
+      run_once: true
+
