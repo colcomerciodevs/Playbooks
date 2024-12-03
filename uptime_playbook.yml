@@ -5,7 +5,7 @@
   gather_facts: true
 
   vars:
-    csv_path: '/Salidas-Ansible/Salida_Uptime/'
+    csv_path: '/tmp/'
     csv_filename: 'BIA_UPTIME.csv'
 
   tasks:
