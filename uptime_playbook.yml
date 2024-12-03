@@ -5,20 +5,15 @@
   gather_facts: true
 
   vars:
-    temp_csv_path: '/runner/project'  # Ruta en el entorno de ejecución
-    persist_csv_path: '/var/lib/awx/projects'  # Ruta persistente en awx-task
+    csv_path: '/runner/project'
     csv_filename: 'BIA_UPTIME.csv'
 
   tasks:
-    - name: Crear archivo temporal en el entorno de ejecución
+    - name: Write uptime into CSV
+      delegate_to: localhost
       lineinfile:
-        path: "{{ temp_csv_path }}/{{ csv_filename }}"
+        dest: "{{ csv_path }}/{{ csv_filename }}"
         line: "{{ inventory_hostname }},{{ ansible_hostname }},{{ (ansible_facts.uptime_seconds / 86400) | int }}"
         create: true
         state: present
-
-    - name: Mover archivo al volumen persistente en awx-task
-      delegate_to: localhost
-      command:
-        cmd: mv "{{ temp_csv_path }}/{{ csv_filename }}" "{{ persist_csv_path }}/{{ csv_filename }}"
-
+      loop: "{{ ansible_play_hosts }}"
