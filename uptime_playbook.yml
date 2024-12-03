@@ -5,35 +5,15 @@
   gather_facts: true
 
   vars:
-    csv_path: '/var/lib/awx/projects'
+    csv_path: '/var/lib/awx/projects/'
     csv_filename: 'BIA_UPTIME.csv'
 
   tasks:
-    - name: Crear archivo CSV si no existe
-      delegate_to: localhost
-      file:
-        path: "{{ csv_path }}/{{ csv_filename }}"
-        state: touch
-
-    - name: Escribir encabezado en el archivo CSV si está vacío
-      delegate_to: localhost
-      block:
-        - name: Verificar si el archivo está vacío
-          stat:
-            path: "{{ csv_path }}/{{ csv_filename }}"
-          register: csv_stat
-
-        - name: Escribir encabezado en el archivo CSV
-          lineinfile:
-            path: "{{ csv_path }}/{{ csv_filename }}"
-            line: "Servidor,Hostname,Uptime (días)"
-            state: present
-          when: csv_stat.stat.size == 0
-
-    - name: Agregar información de uptime al CSV
+    - name: Write uptime into CSV
       delegate_to: localhost
       lineinfile:
-        path: "{{ csv_path }}/{{ csv_filename }}"
+        dest: "{{ csv_path }}/{{ csv_filename }}"
         line: "{{ inventory_hostname }},{{ ansible_hostname }},{{ (ansible_facts.uptime_seconds / 86400) | int }}"
+        create: true
         state: present
-
+      loop: "{{ ansible_play_hosts }}"
