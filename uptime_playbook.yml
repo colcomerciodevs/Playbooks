@@ -9,13 +9,6 @@
     csv_filename: 'BIA_UPTIME.csv'
 
   tasks:
-    - name: Ensure CSV directory exists on localhost
-      delegate_to: localhost
-      file:
-        path: "{{ csv_path }}"
-        state: directory
-        mode: '0755'
-
     - name: Write uptime into CSV
       delegate_to: localhost
       lineinfile:
