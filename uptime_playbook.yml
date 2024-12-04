@@ -7,7 +7,7 @@
   
     vars:
       temp_path: '/tmp'
-      csv_path: '/Salidas-Ansible/Salida_Uptime/'
+      csv_path: '/tmp'
       csv_filename: 'BIA.csv'
   
     tasks:
