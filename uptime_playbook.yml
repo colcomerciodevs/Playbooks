@@ -1,20 +1,35 @@
 ---
-- name: Tarea para recolectar uptime BIA
-  hosts: 10.181.0.155
-  become: false
-  gather_facts: true
-
-  vars:
-    awx_host: '10.181.8.209'  # IP del servidor donde está implementado AW
-    csv_path: '/Salidas-Ansible/Salida_Uptime'
-    csv_filename: 'BIA_UPTIME.csv'
-
-  tasks:
-    - name: Write uptime into CSV
-      delegate_to: "{{ awx_host }}"
+  - name: Tarea para recolectar uptime BIA
+    hosts: 10.181.0.155
+    become: false
+    gather_facts: true
+  
+    vars:
+      temp_path: '/tmp'
+      csv_path: '/var/lib/awx/projects/'
+      csv_filename: 'BIA.csv'
+  
+    tasks:
+  
+    - name: Write uptime into temporary CSV
       lineinfile:
-        dest: "{{ csv_path }}/{{ csv_filename }}"
+        dest: "{{ temp_path }}/{{ csv_filename }}"
         line: "{{ inventory_hostname }},{{ ansible_hostname }},{{ (ansible_facts.uptime_seconds / 86400) | int }}"
         create: true
         state: present
       loop: "{{ ansible_play_hosts }}"
+    
+    - name: Fetch the CSV file to the control node
+      fetch:
+        src: "{{ temp_path }}/{{ csv_filename }}"
+        dest: "{{ csv_path }}/"
+        flat: yes
+  
+    - name: Ensure CSV exists in persistent storage
+      delegate_to: localhost
+      copy:
+        src: "{{ csv_path }}/{{ csv_filename }}"
+        dest: "{{ csv_path }}/{{ csv_filename }}"
+        remote_src: true
+  
+  
