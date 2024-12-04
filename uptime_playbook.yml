@@ -1,36 +1,24 @@
 ---
   - name: Tarea para recolectar uptime BIA
     hosts: 10.181.0.155
-    become: true
-    become_user: root
+    become: false
     gather_facts: true
-  
+
     vars:
-      temp_path: '/tmp'
-      csv_path: '/tmp'
+
+      csv_path: '/data/work/'
       csv_filename: 'BIA.csv'
-  
+
     tasks:
-  
-    - name: Write uptime into temporary CSV
+
+    - name: Write uptime into CSV
+      delegate_to: localhost # aka Control Node
       lineinfile:
-        dest: "{{ temp_path }}/{{ csv_filename }}"
+        dest: "{{ csv_path }}/{{ csv_filename }}"
         line: "{{ inventory_hostname }},{{ ansible_hostname }},{{ (ansible_facts.uptime_seconds / 86400) | int }}"
         create: true
         state: present
       loop: "{{ ansible_play_hosts }}"
-    
-    - name: Fetch the CSV file to the control node
-      fetch:
-        src: "{{ temp_path }}/{{ csv_filename }}"
-        dest: "{{ csv_path }}/"
-        flat: yes
-  
-    - name: Ensure CSV exists in persistent storage
-      delegate_to: localhost
-      copy:
-        src: "{{ csv_path }}/{{ csv_filename }}"
-        dest: "{{ csv_path }}/{{ csv_filename }}"
-        remote_src: true
+
   
   
