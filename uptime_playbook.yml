@@ -1,7 +1,8 @@
 ---
   - name: Tarea para recolectar uptime BIA
     hosts: 10.181.0.155
-    become: false
+    become: true
+    become_user: root
     gather_facts: true
   
     vars:
