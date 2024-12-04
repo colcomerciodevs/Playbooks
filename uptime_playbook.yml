@@ -6,7 +6,7 @@
   
     vars:
       temp_path: '/tmp'
-      csv_path: '/var/lib/awx/projects/'
+      csv_path: '/Salidas-Ansible/Salida_Uptime/'
       csv_filename: 'BIA.csv'
   
     tasks:
