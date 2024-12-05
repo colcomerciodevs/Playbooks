@@ -1,0 +1,15 @@
+---
+- name: Extraer información de Slab y guardarla en un archivo
+  hosts: 192.168.97.41
+  become: false
+  tasks:
+    - name: Ejecutar comando para obtener información de Slab
+      ansible.builtin.shell: |
+        dcli -g dbs_group -l root cat /proc/meminfo | grep Slab
+      register: slab_info
+
+    - name: Guardar la información de Slab en un archivo
+      ansible.builtin.copy:
+        content: "{{ slab_info.stdout }}"
+        dest: /data/work/Cluster_CKPR/Slab_exadata.txt
+        mode: '0644'
