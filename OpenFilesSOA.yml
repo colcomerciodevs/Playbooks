@@ -2,7 +2,7 @@
 - name: Obtener el conteo de archivos abiertos por el usuario mqm
   hosts: 10.181.4.22, 10.181.4.23
   vars:
-    output_dir: "/data/work/SOA_OpenFiles/"
+    output_dir: "/data/work/"
 
   tasks:
     - name: Ejecutar lsof en los servidores remotos y guardar el resultado
@@ -10,6 +10,7 @@
       register: lsof_output
 
     - name: Guardar salida en archivo
+      delegate_to: localhost # aka Control Node
       ansible.builtin.copy:
         content: "{{ lsof_output.stdout }}"
         dest: "{{ output_dir }}{{ inventory_hostname }}_Openfiles.txt"
