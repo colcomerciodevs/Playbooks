@@ -1,0 +1,22 @@
+---
+- name: Obtener el conteo de archivos abiertos por el usuario mqm
+  hosts: all
+  vars:
+    output_dir: "/app/scripts/openfileSOA/"
+    servers:
+      - { name: "SOA02", ip: "10.181.4.22" }
+      - { name: "SOA03", ip: "10.181.4.23" }
+
+  tasks:
+    - name: Ejecutar lsof en los servidores remotos y guardar el resultado
+      ansible.builtin.command:
+        cmd: "lsof -u mqm | wc -l"
+      delegate_to: "{{ item.ip }}"
+      register: lsof_output
+      with_items: "{{ servers }}"
+
+    - name: Guardar salida en archivo
+      ansible.builtin.copy:
+        content: "{{ lsof_output.results[item.loop.index0].stdout }}"
+        dest: "{{ output_dir }}{{ item.name }}_Openfiles.txt"
+      with_items: "{{ servers }}"
