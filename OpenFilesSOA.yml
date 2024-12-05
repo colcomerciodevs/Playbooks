@@ -1,6 +1,6 @@
 ---
 - name: Obtener el conteo de archivos abiertos por el usuario mqm
-  hosts: all
+  hosts: 10.181.4.22, 10.181.4.23
   vars:
     output_dir: "/app/scripts/openfileSOA/"
     servers:
