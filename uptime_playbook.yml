@@ -6,7 +6,7 @@
 
     vars:
 
-      csv_path: '/data/work/'
+      csv_path: '/data/work/Salida_Uptime'
       csv_filename: 'BIA.csv'
 
     tasks:
