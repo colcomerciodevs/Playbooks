@@ -1,0 +1,14 @@
+---
+- name: Playbook de prueba para tux con sudo
+  hosts: all
+  become: yes
+  become_user: tux  # Escala de privilegios como tux
+  tasks:
+    - name: Verificar el usuario actual (escalado con sudo)
+      ansible.builtin.command:
+        cmd: whoami
+      register: whoami_output
+
+    - name: Mostrar el usuario escalado
+      ansible.builtin.debug:
+        msg: "El usuario actual escalado es: {{ whoami_output.stdout }}"
