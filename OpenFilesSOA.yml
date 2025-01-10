@@ -6,12 +6,15 @@
 
   tasks:
     - name: Ejecutar lsof en los servidores remotos y guardar el resultado
-      ansible.builtin.shell: "lsof -u mqm | wc -l"
+      ansible.builtin.shell: |
+        set -o pipefail
+        lsof -u mqm | wc -l
       register: lsof_output
+      changed_when: false
 
     - name: Guardar salida en archivo
       delegate_to: localhost # aka Control Node
       ansible.builtin.copy:
         content: "{{ lsof_output.stdout }}"
         dest: "{{ output_dir }}{{ ansible_hostname }}_Openfiles.txt"
-
+        mode: "0644"  # Permisos explícitos

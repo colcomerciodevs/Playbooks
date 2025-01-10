@@ -1,24 +1,22 @@
 ---
-  - name: Tarea para recolectar uptime BIA
-    hosts: BIA
-    become: false
-    gather_facts: true
+- name: Tarea para recolectar uptime BIA
+  hosts: BIA
+  become: false
+  gather_facts: true
 
-    vars:
+  vars:
 
-      csv_path: '/data/work/Salida_Uptime'
-      csv_filename: 'BIA.csv'
+    csv_path: '/data/work/Salida_Uptime'
+    csv_filename: 'BIA.csv'
 
-    tasks:
+  tasks:
 
     - name: Write uptime into CSV
       delegate_to: localhost # aka Control Node
-      lineinfile:
+      ansible.builtin.lineinfile:
         dest: "{{ csv_path }}/{{ csv_filename }}"
         line: "{{ inventory_hostname }},{{ ansible_hostname }},{{ (ansible_facts.uptime_seconds / 86400) | int }}"
         create: true
         state: present
       loop: "{{ ansible_play_hosts }}"
-
-  
-  
+      # noqa: ansible-lint: risky-file-permissions
