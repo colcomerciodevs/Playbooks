@@ -2,7 +2,7 @@
 - name: Playbook de prueba para tux con sudo
   hosts: 10.181.6.38
   become: true
-  become_user: hola  # Escala de privilegios como tux
+  become_user: tux  # Escala de privilegios como tux
   tasks:
     - name: Verificar el usuario actual (escalado con sudo)
       ansible.builtin.command:
