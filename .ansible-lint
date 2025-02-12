@@ -1,0 +1,16 @@
+---
+skip_list:
+  - schema
+  - role-name
+  - risky-shell-pipe
+  - experimental
+  - var-naming[no-role-prefix]
+  - var-spacing
+  - name[play]
+  - name[casing]
+  - name[template]
+  - yaml[trailing-spaces]
+  - yaml[new-line-at-end-of-file]
+  - yaml[empty-lines]
+  - yaml[line-length]
+  - key-order[task]
