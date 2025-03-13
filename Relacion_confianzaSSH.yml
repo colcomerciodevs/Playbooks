@@ -4,6 +4,14 @@
   become: true
 
   tasks:
+    ## Deshabilitar Defaults requiretty en sudoers si está presente
+    - name: Deshabilitar Defaults requiretty en sudoers
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers
+        regexp: '^Defaults\s+requiretty'
+        line: '# Defaults requiretty'
+        state: present
+        validate: visudo -cf %s
 
     ## Crear Usuarios de Ansible
     - name: Crear usuarios Ansible (iacolcoauto y ansible_test)
