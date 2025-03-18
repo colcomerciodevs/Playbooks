@@ -1,0 +1,367 @@
+
+## Organizado 2024 #####
+
+##################################### INICIO - GRUPOS PRINCIPALES ##########################################
+
+
+#######Servidores Pago por Uso PPU - Generales ########
+
+[PPU]
+ALKANADBBOGDIS ansible_host=10.181.4.115
+APBOGDISCRMCOLC ansible_host=10.181.5.29 
+APBOGDISILMT01 ansible_host=10.181.11.153
+APBOGDISMANTIS ansible_host=10.181.5.68
+APBOGDISMANTISTEST ansible_host=10.181.11.151 
+APLINETIDIBOG01 ansible_host=10.181.3.217
+APORACLEIDMAN01 ansible_host=10.181.3.77 ansible_user=ansible_test
+APORACLEIDMAN02 ansible_host=10.181.3.203 ansible_user=ansible_test
+APPDESPADOCK_PRD ansible_host=10.181.5.64
+APPDESPADOCKQA ansible_host=10.181.11.32
+ARCHIVINGBOGDIS_JDA ansible_host=10.181.3.169
+BATMAN ansible_host=10.181.3.25 ansible_user=admin
+BATMAN_NEW ansible_host=10.181.5.224 ansible_user=admin
+CCONNSINERGIA ansible_host=10.181.3.155
+CLOUDCONTROL02 ansible_host=10.181.4.245
+CORBEMOVIL_NEW ansible_host=10.181.5.213
+CRM_BD1 ansible_host=10.181.0.152 ansible_user=ansible_test
+CRM_BD1_QA ansible_host=10.181.11.155 ansible_user=ansible_test
+CRM_BD3_PRD ansible_host=10.181.4.103
+CRM_BD3_QA ansible_host=10.181.11.156
+CRM_BD4 ansible_host=10.181.5.219     
+CRM_DB_NEW ansible_host=10.181.5.214
+CRM_FILE ansible_host=10.181.3.36
+CRM01_K8S ansible_host=10.181.3.105
+CRM02_K8S ansible_host=10.181.11.16
+CRM03_K8S ansible_host=10.181.3.46
+CRM04_K8S ansible_host=10.181.4.11
+CRM05_K8S ansible_host=10.181.4.16
+DBDESPACHOS03 ansible_host=10.181.4.244
+DBDLX2009 ansible_host=10.181.5.60
+DBFACAUTBOGDIS01 ansible_host=10.181.3.218
+DBORACLEIDMAN02 ansible_host=10.181.3.79
+DBORACLEIDMANTEST ansible_host=10.181.11.95
+DBREDCONTBOGDIS ansible_host=10.181.5.70
+DESPACHOS03 ansible_host=10.181.3.106
+DEV_TOBIN ansible_host=10.181.11.106
+ESRSBOGDIS ansible_host=10.181.3.50
+gspsmsinergia ansible_host=10.181.3.156
+JASPERSOFT_1 ansible_host=10.181.3.61
+#JASPERSOFTPRU ansible_host=10.181.11.67
+JASPER_NEW ansible_host=10.181.11.241 ansible_user=ansible_test 
+#LPBOGDIS01 ansible_host=10.181.3.102    ### CONECTA AVECES
+MARCSINERGIA ansible_host=10.181.11.78
+MERCADERISTAS ansible_host=10.181.3.144
+#MERCADERISTASAPP_QA ansible_host=10.181.11.165   ### NO CONECTA SSH 
+#MERCADERISTASDB_QA ansible_host=10.181.11.166   ### NO CONECTA SSH 
+MICROCRMBOGDIS2 ansible_host=10.181.5.126
+MICROCRMBOGDISTEST ansible_host=10.181.11.150
+MICROSERVICIOS02 ansible_host=10.181.11.145
+MICROSERVICIOS04_1 ansible_host=10.181.3.183
+MICROSERVICIOS05 ansible_host=10.181.3.28
+#MICROSERVICIOS06 ansible_host=10.181.3.68
+MICROSERVICIOS07 ansible_host=10.181.4.13 
+MICROSERVICIOS08_DRP_070722 ansible_host=10.181.4.14
+MICROSERVICIOS09 ansible_host=10.181.4.15
+MICROSERVTEST10 ansible_host=10.181.11.112
+MON_ZABBIX ansible_host=10.181.5.210
+MOVILTRACK ansible_host=10.181.3.109
+MOVILTRACKDB ansible_host=10.181.11.135
+#MOVILTRCK02 ansible_host=10.181.11.134
+MOVILVENTAS ansible_host=10.181.0.21
+NETWORKER04 ansible_host=10.181.3.104
+NOTIBACKUP-PRD ansible_host=10.181.5.80
+NTPBOGDIS-PRD ansible_host=10.181.0.155
+POSHISTORICOS ansible_host=10.181.0.112
+POSHISTORICOS_1 ansible_host=10.181.11.240
+POSHISTORICOS_2 ansible_host=10.181.0.111
+#PRE_TOBIN ansible_host=10.181.11.107
+PSEBOGDIS01 ansible_host=10.181.4.106
+#REP_MOVILVENTAS ansible_host=10.181.11.66
+s4sinergiades ansible_host=10.181.3.147
+s4sinergiaprd ansible_host=10.181.3.145
+s4sinergiaqas ansible_host=10.181.3.146
+SICCONTROLAUTO ansible_host=10.181.4.17
+SOA_HISTORICOS ansible_host=10.181.5.185
+SOA02LNX ansible_host=10.181.4.22
+SOA03LNX ansible_host=10.181.4.23
+#SOAQALNX01 ansible_host=10.181.11.19
+#SOAQALNX02 ansible_host=10.181.11.28
+SOCNESUSMNGRITSS ansible_host=10.181.4.113
+SOCNESUSPROITSS ansible_host=10.181.4.112
+SOCSCITSS ansible_host=10.181.4.114
+solsinergiasap ansible_host=10.181.3.148
+#SRMBOGDIS02 ansible_host=10.181.6.38
+#STORAGENODE01 ansible_host=10.181.3.164
+#STORAGENODE02 ansible_host=10.181.3.163
+TEST_MONGO_NODO1 ansible_host=10.181.11.41
+TEST_MONGO_NODO1_CLON ansible_host=10.181.5.204
+TEST_MONGO_NODO2 ansible_host=10.181.11.42
+TEST_MONGO_NODO2_CLON ansible_host=10.181.5.205  
+TEST_MONGO_NODO3 ansible_host=10.181.11.43
+TEST_MONGO_NODO3_CLON ansible_host=10.181.5.206
+TESTAPLINETBOGDIS01 ansible_host=10.181.11.79
+TESTDOCKBOGDIS ansible_host=10.181.11.76
+#TEST_MOVILVENTAS ansible_host=10.181.11.100
+TESTMERCADERISTAS ansible_host=10.181.11.111
+TESTMOVILTRACK ansible_host=10.181.11.20
+#TESTORACLEIDMAN ansible_host=10.181.11.91
+Tests4sinergiaval ansible_host=10.181.11.200
+#TESTWMSAPPBOGDIS01_N3 ansible_host=10.181.11.83
+#TESTWMSAPPBOGDIS01_N4 ansible_host=10.181.11.84
+#WMS_TEST_APP ansible_host=10.181.11.117
+#WMS_TEST_DB02 ansible_host=10.181.11.116
+#WMS_TEST03_APP ansible_host=10.181.11.119
+WMS_TEST05_APP ansible_host=10.181.11.101
+#WMSAPPBOGDIS_NODO2 ansible_host=10.199.3.41
+#WMSAPPBOGDIS01_DEV ansible_host=10.181.11.74
+WMSAPPBOGDIS01_N1 ansible_host=10.181.3.65
+WMSAPPBOGDIS01_N2 ansible_host=10.181.4.101
+WMSAPPBOGDIS01_N3 ansible_host=10.181.4.211
+WMSAPPBOGDIS01_N4 ansible_host=10.181.3.84
+#WMSAPPBOGDIS01_Nodo_1 ansible_host=10.199.3.14
+WMSAPPBOGDIS02 ansible_host=10.181.3.168
+#WMSAPPBOGDIS02_DEV ansible_host=10.181.4.181
+#WMSDBBOGDIS01_DEV ansible_host=10.181.11.72
+
+
+######### Servidores Pago por Uso PPU - Geopos  #########
+[PPU_SRVGEO]
+#GEOPDVLLANTAS ansible_host=10.181.3.133
+ADMINTEMP_LINUX ansible_host=10.181.11.70
+AKOMERCAN ansible_host=10.181.5.28
+APBOGDISTEBOR ansible_host=10.181.4.239
+APBOGDISTEMEV ansible_host=10.181.5.237
+ALKA1-DRP-CLON ansible_host=10.181.5.183
+FOMED-DRP-CLON ansible_host=10.181.5.184
+GEOPOS_APM ansible_host=10.181.11.92
+GEOPOS_AUTPRU ansible_host=10.181.11.93
+GEOPOS_BACKFAC ansible_host=10.181.11.31
+GEOPOS_BACKFAC_1 ansible_host=10.181.5.188
+GEOPOS_CONTLOCAL02 ansible_host=10.181.11.129
+GEOPOSALG01 ansible_host=10.181.4.88
+GEOPOSALKAU ansible_host=10.181.5.69
+GEOPOSBKALKOMPR ansible_host=10.181.5.72
+GEOPOSDIBAR ansible_host=10.181.3.220
+GEOPOSDICLA ansible_host=10.181.4.237
+GEOPOSDILIN ansible_host=10.181.4.235
+GEOPOSDISCL ansible_host=10.181.4.86
+GEOPOSDISMD ansible_host=10.181.4.84
+GEOPOSKALEX ansible_host=10.181.5.120
+GEOPOSREPMD ansible_host=10.181.4.83
+GEOPROMONGODB_02 ansible_host=10.181.4.248
+TEBOS_GEOPOS ansible_host=10.181.5.194 
+TEDAFBOGDIS-QA ansible_host=10.181.5.181
+TEMEC_GEOPOS ansible_host=10.181.5.212
+TEMPL_GEOPOS ansible_host=10.181.5.211
+TEST_CENTRAL ansible_host=10.181.11.102
+TEST_GEO_CELULAS ansible_host=10.181.11.167
+TEST_GEO_CENTRAL_SUSE12 ansible_host=10.181.4.4
+TEST_GEO_CENTRAL_SUSE15 ansible_host=10.181.5.193
+TESTGEODBCENTRAL ansible_host=10.181.11.97
+TEST_ORACLE3 ansible_host=10.181.11.98
+TEST_GEO_KTINT ansible_host=10.181.11.49
+TEST_GEOLABLOCAL ansible_host=10.181.11.24
+TESTFOTONQA ansible_host=10.181.11.130
+TESTGEOBOGDIS01 ansible_host=10.181.11.146
+TESTGEOBOGDIS02 ansible_host=10.181.11.147
+TESTGEOBOGDIS03 ansible_host=10.181.11.148
+TESTGEOBOGDIS04 ansible_host=10.181.11.149
+TESTGEOPROMONGODB ansible_host=10.181.11.1
+TESTGEOPROMONGODB_CLON ansible_host=10.181.5.203
+
+########Servidores Infra 2.0  ###########
+
+[INFRA2_0]
+SOABOGDIS01 ansible_host=10.181.34.60 ansible_user=tux 
+SOABOGDIS02 ansible_host=10.181.34.61 ansible_user=tux
+TESTSOABOGDIS01 ansible_host=10.181.34.62 ansible_user=tux
+TESTSOABOGDIS02 ansible_host=10.181.34.63 ansible_user=tux
+DBFACREBOGDIS01 ansible_host=10.181.34.6 
+GEOPROMONGODB03 ansible_host=10.181.32.3
+MONDBMICROBOGDIS01 ansible_host=10.181.34.10
+MONDBMICROBOGDIS02 ansible_host=10.181.34.9
+MONGO-PRD-N1 ansible_host=10.181.34.3
+MONGO-PRD-N2 ansible_host=10.181.34.4
+MONGO-PRD-N3 ansible_host=10.181.34.5
+OPENSHIFT-BASTION ansible_host=10.181.40.10
+OPENSHIFT-NFS ansible_host=10.181.40.11
+
+ 
+######## Servidores Exadata  - Virtuales ########
+[EXADATA_VRT]
+alkexadbadm01vm1 ansible_host=192.168.97.41
+alkexadbadm02vm1 ansible_host=192.168.97.42
+alkexadbadm03vm1 ansible_host=192.168.97.43
+alkexadbadm04vm1 ansible_host=192.168.97.44
+alkexadbadm01vm2 ansible_host=192.168.97.45
+alkexadbadm02vm2 ansible_host=192.168.97.46
+alkexadbadm01vm3 ansible_host=192.168.97.49
+alkexadbadm02vm3 ansible_host=192.168.97.50
+alkexadbadm01vm4 ansible_host=192.168.97.53
+alkexadbadm02vm4 ansible_host=192.168.97.54
+alkexadbadm01vm5 ansible_host=192.168.97.57
+alkexadbadm02vm5 ansible_host=192.168.97.58
+alkexadbadm03vm5 ansible_host=192.168.97.59
+alkexadbadm04vm5 ansible_host=192.168.97.60
+
+
+
+######## Servidores People - Virtuales #########
+[People_VRT]
+#batch04 ansible_host=10.181.0.79 ansible_user=admin 
+app01 ansible_host=10.181.0.76 ansible_user=admin ansible_vault_password_file=/etc/ansible/secret_solaris.yml
+app02 ansible_host=10.181.0.80 ansible_user=admin ansible_vault_password_file=/etc/ansible/secret_solaris.yml
+batch01 ansible_host=10.181.0.77 ansible_user=admin ansible_vault_password_file=/etc/ansible/secret_solaris.yml
+batch02 ansible_host=10.181.0.81 ansible_user=admin ansible_vault_password_file=/etc/ansible/secret_solaris.yml
+batch03 ansible_host=10.181.0.75 ansible_user=admin ansible_vault_password_file=/etc/ansible/secret_solaris.yml
+master01 ansible_host=10.181.0.70 ansible_user=admin ansible_vault_password_file=/etc/ansible/secret_solaris.yml
+master02 ansible_host=10.181.0.71 ansible_user=admin ansible_vault_password_file=/etc/ansible/secret_solaris.yml
+ws01 ansible_host=10.181.0.73 ansible_user=admin ansible_vault_password_file=/etc/ansible/secret_solaris.yml
+ws02 ansible_host=10.181.0.74 ansible_user=admin ansible_vault_password_file=/etc/ansible/secret_solaris.yml
+
+[People_VRT:vars]
+ansible_become=yes
+ansible_become_method=su
+ansible_become_user=root
+#ansible_become_pass=clave de root
+
+
+########Servidores Fisicos ###########
+[FSC]
+alkexadbadm01 ansible_host=192.168.97.21
+alkexadbadm02 ansible_host=192.168.97.22
+alkexadbadm03 ansible_host=192.168.97.23
+alkexadbadm04 ansible_host=192.168.97.24
+alkexadbadm05 ansible_host=192.168.97.101
+alkexadbadm06 ansible_host=192.168.97.102
+geopos-fx-n1 ansible_host=10.181.0.113
+geopos-fx-n2 ansible_host=10.181.0.117
+ManagerT8-n1 ansible_host=10.181.0.45 ansible_user=admin
+ManagerT8-n0 ansible_host=10.181.0.43 ansible_user=admin
+r740-rac-geoposn1 ansible_host=192.168.71.10
+r740-rac-geoposn2 ansible_host=192.168.71.20
+
+
+######## Servidores Marcaciones ###########
+[MARCACIONES]
+Alkosto_AKB68 ansible_host=10.191.3.1 
+Alkosto_Venecia ansible_host=10.81.6.8
+Alkosto_AK30 ansible_host=147.127.110.112 
+Alkosto_Eden ansible_host=10.110.3.100
+Alkosto_170 ansible_host=10.78.3.27
+Alkosto_Villavicencio ansible_host=172.16.3.8
+Alkosto_Pereira ansible_host=10.53.6.10 
+Alkosto_Yopal ansible_host=10.121.0.6
+Alkosto_Sincelejo ansible_host=172.16.116.5
+Alkosto_Barranquilla ansible_host=172.16.107.4
+Alkosto_Bucaramanga ansible_host=172.16.124.3
+Alkosto_Cali_Sur ansible_host=172.16.78.7
+Alkosto_Cali_Norte ansible_host=10.234.3.40
+Alkosto_Bolivar ansible_host=172.16.6.11 
+Alkosto_Pasto ansible_host=10.141.3.40 
+Alkosto_Ipiales ansible_host=10.41.6.20
+Alkosto_Ipiales_Gran_Plaza ansible_host=172.16.91.10 
+Alkosto_Tuquerres ansible_host=172.16.90.11  
+Ktronix_94_KTB94 ansible_host=10.191.3.81
+
+
+
+
+############################################# FIN - GRUPOS PRINCIPALES ###########################################################
+
+
+############################################# INICIO - GRUPOS SECUNDARIOS -INVENTARIO SELECCIONADO ###############################
+
+############## Servidores Pago por Uso PPU - Produccion - Generales #########
+[PPU_PRD]
+#JASPER_NEW ansible_host=10.181.11.241 ansible_user=tux
+#MERCADERISTAS ansible_host=10.181.3.144 ansible_user=tux
+#MOVILVENTAS ansible_host=10.181.0.21 ansible_user=tux
+#MOVILVENTAS_RC ansible_host=10.181.11.15 ansible_user=tux
+#NTPBOGDIS-PRD ansible_host=10.181.0.155 // NTP PRINCIPAL
+ALKANADBBOGDIS ansible_host=10.181.4.115
+APBOGDISCRMCOLC ansible_host=10.181.5.29
+APBOGDISILMT01 ansible_host=10.181.11.153
+APBOGDISMANTIS ansible_host=10.181.5.68
+APLINETIDIBOG01 ansible_host=10.181.3.217
+APORACLEIDMAN01 ansible_host=10.181.3.77
+APORACLEIDMAN02 ansible_host=10.181.3.203
+APPDESPADOCK_PRD ansible_host=10.181.5.64
+ARCHIVINGBOGDIS_JDA ansible_host=10.181.3.169
+BATMAN ansible_host=10.181.3.25 ansible_user=admin
+BATMAN_NEW ansible_host=10.181.5.224 ansible_user=admin
+CCONNSINERGIA ansible_host=10.181.3.155
+CLOUDCONTROL02 ansible_host=10.181.4.245
+CORBEMOVIL_NEW ansible_host=10.181.5.213
+CRM_BD1 ansible_host=10.181.0.152
+CRM_BD3_PRD ansible_host=10.181.4.103
+CRM_BD4 ansible_host=10.181.5.219    
+CRM_DB_NEW ansible_host=10.181.5.214
+CRM_FILE ansible_host=10.181.3.36
+CRM01_K8S ansible_host=10.181.3.105
+CRM02_K8S ansible_host=10.181.11.16
+CRM03_K8S ansible_host=10.181.3.46
+CRM04_K8S ansible_host=10.181.4.11
+CRM05_K8S ansible_host=10.181.4.16
+DBDESPACHOS03 ansible_host=10.181.4.244
+DBDLX2009 ansible_host=10.181.5.60
+DBFACAUTBOGDIS01 ansible_host=10.181.3.218
+DBORACLEIDMAN02 ansible_host=10.181.3.79
+DBREDCONTBOGDIS ansible_host=10.181.5.70
+DESPACHOS03 ansible_host=10.181.3.106
+ESRSBOGDIS ansible_host=10.181.3.50
+gspsmsinergia ansible_host=10.181.3.156
+JASPERSOFT_1 ansible_host=10.181.3.61
+LPBOGDIS01 ansible_host=10.181.3.102
+MARCSINERGIA ansible_host=10.181.11.78
+MICROCRMBOGDIS2 ansible_host=10.181.5.126
+MICROSERVICIOS04_1 ansible_host=10.181.3.183
+MICROSERVICIOS05 ansible_host=10.181.3.28
+MICROSERVICIOS06 ansible_host=10.181.3.68
+MICROSERVICIOS07 ansible_host=10.181.4.13 
+MICROSERVICIOS08_DRP_070722 ansible_host=10.181.4.14
+MICROSERVICIOS09 ansible_host=10.181.4.15
+MON_ZABBIX ansible_host=10.181.5.210
+MOVILTRACK ansible_host=10.181.3.109
+NETWORKER04 ansible_host=10.181.3.104
+NOTIBACKUP-PRD ansible_host=10.181.5.80
+POSHISTORICOS ansible_host=10.181.0.112
+POSHISTORICOS_2 ansible_host=10.181.0.111
+PSEBOGDIS01 ansible_host=10.181.4.106
+s4sinergiades ansible_host=10.181.3.147
+s4sinergiaprd ansible_host=10.181.3.145
+s4sinergiaqas ansible_host=10.181.3.146
+SICCONTROLAUTO ansible_host=10.181.4.17
+SOA_HISTORICOS ansible_host=10.181.5.185
+SOA02LNX ansible_host=10.181.4.22
+SOA03LNX ansible_host=10.181.4.23
+SOCNESUSMNGRITSS ansible_host=10.181.4.113
+SOCNESUSPROITSS ansible_host=10.181.4.112
+SOCSCITSS ansible_host=10.181.4.114
+solsinergiasap ansible_host=10.181.3.148
+SRMBOGDIS02 ansible_host=10.181.6.38
+STORAGENODE01 ansible_host=10.181.3.164
+STORAGENODE02 ansible_host=10.181.3.163
+WMSAPPBOGDIS_NODO2 ansible_host=10.199.3.41
+WMSAPPBOGDIS01_N1 ansible_host=10.181.3.65
+WMSAPPBOGDIS01_N2 ansible_host=10.181.4.101
+WMSAPPBOGDIS01_N3 ansible_host=10.181.4.211
+WMSAPPBOGDIS01_N4 ansible_host=10.181.3.84
+WMSAPPBOGDIS01_Nodo_1 ansible_host=10.199.3.14
+WMSAPPBOGDIS02 ansible_host=10.181.3.168
+
+
+############## Servidores Pago por Uso PPU - Produccion - Geopos  #########
+[PPU_SRVGEO_PRD]
+
+
+
+
+#########pruebas JOHN #########
+[pruebajohn]
+SRMBOGDIS02 ansible_host=10.181.6.38
+thor ansible_host=10.181.0.174
+#ADMINTEMP_LINUX ansible_host=10.181.11.70
+#ALKA1-DRP-CLON ansible_host=10.181.5.183
+
+############################################# FIN  - GRUPOS SECUNDARIOS -INVENTARIO SELECCIONADO ############################
