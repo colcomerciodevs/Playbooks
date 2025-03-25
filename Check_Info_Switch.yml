@@ -1,0 +1,13 @@
+- name: Ejecutar sfpshow en switch SAN
+  hosts: 140.127.66.41
+  gather_facts: false
+
+  tasks:
+    - name: Ejecutar sfpshow y filtrar por Port y Power
+      ansible.builtin.shell: sfpshow -all | grep -e Port -e Power
+      register: salida
+      changed_when: false
+
+    - name: Mostrar resultado
+      ansible.builtin.debug:
+        var: salida.stdout_lines
