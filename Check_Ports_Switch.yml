@@ -4,7 +4,7 @@
 
   tasks:
     - name: Ejecutar sfpshow y filtrar por Port y Power
-      ansible.builtin.shell: sfpshow -all | grep -e Port -e Power
+      ansible.builtin.raw: sfpshow -all | grep -e Port -e Power
       register: salida
       changed_when: false
 
