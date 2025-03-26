@@ -1,5 +1,5 @@
 - name: Ejecutar comandos SAN y guardar en Excel por host
-  hosts: switch-SAN
+  hosts: switch-SAN:switch-SAN2
   gather_facts: false
 
   vars:
