@@ -1,0 +1,21 @@
+- name: Verificar colecciones y módulos Python en el entorno de ejecución
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Mostrar lista de colecciones instaladas
+      ansible.builtin.command: ansible-galaxy collection list
+      register: resultado_collections
+      changed_when: false
+
+    - name: Mostrar salida de colecciones instaladas
+      ansible.builtin.debug:
+        var: resultado_collections.stdout_lines
+
+    - name: Mostrar lista de módulos Python instalados
+      ansible.builtin.command: python3 -m pip list
+      register: resultado_pip
+      changed_when: false
+
+    - name: Mostrar salida de módulos Python
+      ansible.builtin.debug:
+        var: resultado_pip.stdout_lines

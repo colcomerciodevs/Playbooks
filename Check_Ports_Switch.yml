@@ -1,13 +1,33 @@
-- name: Verificar colecciones instaladas en el entorno de ejecución
-  hosts: localhost
+- name: Ejecutar comandos SAN y guardar en Excel por host
+  hosts: 140.127.66.41, 140.127.66.42
   gather_facts: false
+ 
+  vars:
+    output_path: "/data/work/Salida_Check_Ports_Switchs"
+
   tasks:
-    - name: Mostrar lista de colecciones instaladas
-      ansible.builtin.command: ansible-galaxy collection list
-      register: resultado
+    - name: Ejecutar sfpshow
+      ansible.builtin.raw: sfpshow -all | grep -e Port -e Power
+      register: sfpshow_output
       changed_when: false
 
-    - name: Mostrar salida
-      ansible.builtin.debug:
-        var: resultado.stdout_lines
+    - name: Ejecutar porterrshow
+      ansible.builtin.raw: porterrshow
+      register: porterrshow_output
+      changed_when: false
 
+    - name: Ejecutar switchshow
+      ansible.builtin.raw: switchshow
+      register: switchshow_output
+      changed_when: false
+
+    - name: Crear archivo Excel con los 3 comandos  # noqa syntax-check[unknown-module]
+      community.general.xlsx_write:
+        path: "{{ output_path }}/{{ inventory_hostname }}_salida_san.xlsx"
+        sheets:
+          sfpshow:
+            - "{{ sfpshow_output.stdout_lines }}"
+          porterrshow:
+            - "{{ porterrshow_output.stdout_lines }}"
+          switchshow:
+            - "{{ switchshow_output.stdout_lines }}"
