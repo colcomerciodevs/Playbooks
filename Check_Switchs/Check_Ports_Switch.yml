@@ -49,5 +49,5 @@
       delegate_to: localhost
       run_once: false
       ansible.builtin.command: >
-        python3 /runner/project/generar_excel.py {{ inventory_hostname }}
+        python3 /runner/project/Check_Switchs/generar_excel.py {{ inventory_hostname }}
       changed_when: false
