@@ -1,5 +1,5 @@
 - name: Ejecutar comandos SAN y guardar en Excel por host
-  hosts: 140.127.66.41, 140.127.66.42
+  hosts: switch-SAN
   gather_facts: false
 
   vars:
