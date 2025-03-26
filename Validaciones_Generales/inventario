@@ -441,12 +441,9 @@ TEMPL_GEOPOS ansible_host=10.181.5.211 ansible_user=ansible_test
 
 
 ######### Servidores Pago por Uso PPU - Geopos  #########
-[PPU_SRVGEO]
+[PPU_SRVGEO_FILTRADO]
 GEOPDVLLANTAS ansible_host=10.181.3.133
 ADMINTEMP_LINUX ansible_host=10.181.11.70
-AKOMERCAN ansible_host=10.181.5.28
-APBOGDISTEBOR ansible_host=10.181.4.239
-APBOGDISTEMEV ansible_host=10.181.5.237
 ALKA1-DRP-CLON ansible_host=10.181.5.183
 FOMED-DRP-CLON ansible_host=10.181.5.184
 GEOPOS_APM ansible_host=10.181.11.92
@@ -456,18 +453,8 @@ GEOPOS_BACKFAC_1 ansible_host=10.181.5.188
 GEOPOS_CONTLOCAL02 ansible_host=10.181.11.129
 GEOPOSALKAU ansible_host=10.181.5.69
 GEOPOSBKALKOMPR ansible_host=10.181.5.72
-GEOPOSDIBAR ansible_host=10.181.3.220
-GEOPOSDICLA ansible_host=10.181.4.237
-GEOPOSDILIN ansible_host=10.181.4.235
-GEOPOSDISCL ansible_host=10.181.4.86
-GEOPOSDISMD ansible_host=10.181.4.84
-GEOPOSKALEX ansible_host=10.181.5.120
-GEOPOSREPMD ansible_host=10.181.4.83
 GEOPROMONGODB_02 ansible_host=10.181.4.248
-TEBOS_GEOPOS ansible_host=10.181.5.194 
 TEDAFBOGDIS-QA ansible_host=10.181.5.181
-TEMEC_GEOPOS ansible_host=10.181.5.212
-TEMPL_GEOPOS ansible_host=10.181.5.211
 TEST_CENTRAL ansible_host=10.181.11.102
 TEST_GEO_CELULAS ansible_host=10.181.11.167
 TEST_GEO_CENTRAL_SUSE12 ansible_host=10.181.4.4
@@ -482,6 +469,7 @@ TESTGEOBOGDIS03 ansible_host=10.181.11.148
 TESTGEOBOGDIS04 ansible_host=10.181.11.149
 TESTGEOPROMONGODB ansible_host=10.181.11.1
 TESTGEOPROMONGODB_CLON ansible_host=10.181.5.203
+
 
 ############################################# FIN - GRUPOS PRINCIPALES ###########################################################
 

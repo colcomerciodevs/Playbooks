@@ -21,8 +21,8 @@
       register: switchshow_output
       changed_when: false
 
-    - name: Crear archivo Excel con los 3 comandos  # noqa syntax-check[unknown-module]
-      community.general.xlsx_write:
+    - name: Crear archivo Excel con los 3 comandos
+      community.general.xlswriter:
         path: "{{ output_path }}/{{ inventory_hostname }}_salida_san.xlsx"
         sheets:
           sfpshow:
