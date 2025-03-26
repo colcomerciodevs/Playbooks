@@ -16,6 +16,8 @@
         dest: "{{ output_path }}/{{ inventory_hostname }}_sfpshow.txt"
         content: "{{ sfpshow_output.stdout }}"
         mode: '0644'
+        delegate_to: localhost
+      become: false
 
     - name: Ejecutar porterrshow
       ansible.builtin.raw: porterrshow
@@ -27,6 +29,8 @@
         dest: "{{ output_path }}/{{ inventory_hostname }}_porterrshow.txt"
         content: "{{ porterrshow_output.stdout }}"
         mode: '0644'
+        delegate_to: localhost
+      become: false
 
     - name: Ejecutar switchshow
       ansible.builtin.raw: switchshow
@@ -38,6 +42,8 @@
         dest: "{{ output_path }}/{{ inventory_hostname }}_switchshow.txt"
         content: "{{ switchshow_output.stdout }}"
         mode: '0644'
+        delegate_to: localhost
+      become: false
 
     - name: Generar Excel desde script Python
       delegate_to: localhost
