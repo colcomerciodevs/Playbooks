@@ -2,6 +2,9 @@
     "ansible.python.interpreterPath": "/usr/bin/python",
     "yaml.customTags": [
     "!vault scalar"
-  ]
+  ],
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportMissingImports": "none"
+  }
     
 }
