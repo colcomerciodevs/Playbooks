@@ -1,0 +1,47 @@
+- name: Ejecutar comandos SAN y guardar en Excel por host
+  hosts: 140.127.66.41, 140.127.66.42
+  gather_facts: false
+
+  vars:
+    output_path: "/data/work/Salida_Check_Ports_Switchs"
+
+  tasks:
+    - name: Ejecutar sfpshow
+      ansible.builtin.raw: sfpshow -all | grep -e Port -e Power
+      register: sfpshow_output
+      changed_when: false
+
+    - name: Guardar salida de sfpshow en archivo
+      ansible.builtin.copy:
+        dest: "{{ output_path }}/{{ inventory_hostname }}_sfpshow.txt"
+        content: "{{ sfpshow_output.stdout }}"
+        mode: '0644'
+
+    - name: Ejecutar porterrshow
+      ansible.builtin.raw: porterrshow
+      register: porterrshow_output
+      changed_when: false
+
+    - name: Guardar salida de porterrshow en archivo
+      ansible.builtin.copy:
+        dest: "{{ output_path }}/{{ inventory_hostname }}_porterrshow.txt"
+        content: "{{ porterrshow_output.stdout }}"
+        mode: '0644'
+
+    - name: Ejecutar switchshow
+      ansible.builtin.raw: switchshow
+      register: switchshow_output
+      changed_when: false
+
+    - name: Guardar salida de switchshow en archivo
+      ansible.builtin.copy:
+        dest: "{{ output_path }}/{{ inventory_hostname }}_switchshow.txt"
+        content: "{{ switchshow_output.stdout }}"
+        mode: '0644'
+
+    - name: Generar Excel desde script Python
+      delegate_to: localhost
+      run_once: false
+      ansible.builtin.command: >
+        python3 /data/work/generar_excel.py {{ inventory_hostname }}
+      changed_when: false
