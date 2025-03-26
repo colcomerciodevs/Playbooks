@@ -5,7 +5,7 @@ import os
 
 host = sys.argv[1]
 output_dir = "/data/work/Salida_Check_Ports_Switchs"
-file_path = os.path.join(output_dir, f"{host}_salida_san.xlsx")
+file_path = os.path.join(output_dir, f"{host}_salida.xlsx")
 
 # Crear workbook
 workbook = xlsxwriter.Workbook(file_path)
