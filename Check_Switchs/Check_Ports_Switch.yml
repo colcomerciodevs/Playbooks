@@ -3,7 +3,7 @@
   gather_facts: false
 
   vars:
-    output_path: "/data/work/Salida_Check_Ports_Switchs"
+    output_path: "/data/work/Salida_Check_Ports_Switchs/"
 
   tasks:
     - name: Ejecutar sfpshow
