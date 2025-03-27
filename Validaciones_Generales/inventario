@@ -171,7 +171,7 @@ ws02 ansible_host=10.181.0.74 ansible_user=ansible_test
 
 
 ########Servidores Fisicos ###########
-[FSC]
+[FSC_Linux]
 alkexadbadm01 ansible_host=192.168.97.21
 alkexadbadm02 ansible_host=192.168.97.22
 alkexadbadm03 ansible_host=192.168.97.23
@@ -180,11 +180,13 @@ alkexadbadm05 ansible_host=192.168.97.101
 alkexadbadm06 ansible_host=192.168.97.102
 geopos-fx-n1 ansible_host=10.181.0.113
 geopos-fx-n2 ansible_host=10.181.0.117
-ManagerT8-n1 ansible_host=10.181.0.45 ansible_user=ansible_test
-ManagerT8-n0 ansible_host=10.181.0.43 ansible_user=ansible_test
 r740-rac-geoposn1 ansible_host=192.168.71.10
 r740-rac-geoposn2 ansible_host=192.168.71.20
 
+########Servidores Fisicos ###########
+[FSC_Solaris]
+ManagerT8-n1 ansible_host=10.181.0.45 ansible_user=ansible_test
+ManagerT8-n0 ansible_host=10.181.0.43 ansible_user=ansible_test
 
 ######## Servidores Marcaciones ###########
 [MARCACIONES]
@@ -402,27 +404,41 @@ terio-n0-bk ansible_host=10.40.3.3 ansible_user=ansible_test
 #vwita-n0-bk ansible_host=10.119.3.3 ansible_user=ansible_test  
 Vwmed-bk ansible_host=10.206.3.3 ansible_user=ansible_test  
 
-
-######## Servidores Tiendas Principal Virtual PPU ####
-[GEOPOS_PPU_PPAL]
+######## Servidores Geopos PPU ###
+[GEOPOS_PPU]
 AKOMERCAN ansible_host=10.181.5.28 ansible_user=ansible_test
+ALKA1-DRP-CLON ansible_host=10.181.5.183
 ALNI5-S15SP5 ansible_host=10.181.3.178 ansible_user=ansible_test
 ALNI6-S15SP5 ansible_host=10.181.3.249 ansible_user=ansible_test
 ALNIB-S15SP5 ansible_host=10.181.5.72 ansible_user=ansible_test
 APBOGDISTEBOR ansible_host=10.181.4.239 ansible_user=ansible_test
 APBOGDISTEMEV ansible_host=10.181.5.237 ansible_user=ansible_test
 DIPOS-N0 ansible_host=10.181.5.154 ansible_user=ansible_test
+FOFON-QA1 ansible_host=10.181.11.130
+FOMED-DRP-CLON ansible_host=10.181.5.184
+GEOAPP-CENTRAL-QA ansible_host=10.181.4.4
+GEOPOS_APM ansible_host=10.181.11.92
+GEOPOS_BACKFAC ansible_host=10.181.11.31
+GEOPOS_CONTLOCAL02 ansible_host=10.181.11.129
+GEOPOSALKAU ansible_host=10.181.5.69
+GEOPROMONGODB_02 ansible_host=10.181.4.248
+POS_BACKFAC_PRD ansible_host=10.181.5.188
+SRV-AKBOL-QA ansible_host=10.181.11.70
+SRV-AKVEN-QA ansible_host=10.181.11.93
 SRV-ALINT ansible_host=10.181.4.39 ansible_user=ansible_test
 SRV-ALNIB ansible_host=10.181.3.223 ansible_user=ansible_test
+SRV-ALNIB-QA ansible_host=10.181.11.24
 SRV-DIBAR ansible_host=10.181.3.220 ansible_user=ansible_test
 SRV-DICLA ansible_host=10.181.4.237 ansible_user=ansible_test
 SRV-DILIN ansible_host=10.181.4.235 ansible_user=ansible_test
-SRV-DISCL ansible_host=10.181.4.86 ansible_user=ansible_test
 SRV-DISCO ansible_host=10.181.3.133 ansible_user=ansible_test
+SRV-DISCL ansible_host=10.181.4.86 ansible_user=ansible_test
 SRV-DISMD ansible_host=10.181.4.84 ansible_user=ansible_test
 SRV-DISML ansible_host=10.181.3.132 ansible_user=ansible_test
+SRV-DISML-QA ansible_host=10.181.11.167
 SRV-KALEX ansible_host=10.181.5.120 ansible_user=ansible_test
 SRV-KTINT ansible_host=10.181.3.124 ansible_user=ansible_test
+SRV-KTINT-QA ansible_host=10.181.11.49
 SRV-RE170 ansible_host=10.181.3.231 ansible_user=ansible_test
 SRV-RECAL ansible_host=10.181.3.232 ansible_user=ansible_test
 SRV-REFLO ansible_host=10.181.3.240 ansible_user=ansible_test
@@ -431,38 +447,15 @@ SRV-REPMD ansible_host=10.181.4.83 ansible_user=ansible_test
 SRV-RES68 ansible_host=10.181.3.233 ansible_user=ansible_test
 SRV-REVEN ansible_host=10.181.3.235 ansible_user=ansible_test
 SRV-REVIL ansible_host=10.181.3.242 ansible_user=ansible_test
-SRV-TEBAR ansible_host=10.181.4.171 ansible_user=ansible_test
 SRV-TEDAF ansible_host=10.181.4.104 ansible_user=ansible_test
+SRV-TEBAR ansible_host=10.181.4.171 ansible_user=ansible_test
+TEDAFBOGDIS-QA ansible_host=10.181.5.181
 TEBOS_GEOPOS ansible_host=10.181.5.194 ansible_user=ansible_test
 TEMEC_GEOPOS ansible_host=10.181.5.212 ansible_user=ansible_test
 TEMPL_GEOPOS ansible_host=10.181.5.211 ansible_user=ansible_test
-
-
-
-
-######### Servidores Pago por Uso PPU - Geopos  #########
-[PPU_SRVGEO_FILTRADO]
-GEOPDVLLANTAS ansible_host=10.181.3.133
-ADMINTEMP_LINUX ansible_host=10.181.11.70
-ALKA1-DRP-CLON ansible_host=10.181.5.183
-FOMED-DRP-CLON ansible_host=10.181.5.184
-GEOPOS_APM ansible_host=10.181.11.92
-GEOPOS_AUTPRU ansible_host=10.181.11.93
-GEOPOS_BACKFAC ansible_host=10.181.11.31
-GEOPOS_BACKFAC_1 ansible_host=10.181.5.188
-GEOPOS_CONTLOCAL02 ansible_host=10.181.11.129
-GEOPOSALKAU ansible_host=10.181.5.69
-GEOPOSBKALKOMPR ansible_host=10.181.5.72
-GEOPROMONGODB_02 ansible_host=10.181.4.248
-TEDAFBOGDIS-QA ansible_host=10.181.5.181
 TEST_CENTRAL ansible_host=10.181.11.102
-TEST_GEO_CELULAS ansible_host=10.181.11.167
-TEST_GEO_CENTRAL_SUSE12 ansible_host=10.181.4.4
-TESTGEODBCENTRAL ansible_host=10.181.11.97
 TEST_ORACLE3 ansible_host=10.181.11.98
-TEST_GEO_KTINT ansible_host=10.181.11.49
-TEST_GEOLABLOCAL ansible_host=10.181.11.24
-TESTFOTONQA ansible_host=10.181.11.130
+TESTGEOBDCENTRAL ansible_host=10.181.11.97
 TESTGEOBOGDIS01 ansible_host=10.181.11.146
 TESTGEOBOGDIS02 ansible_host=10.181.11.147
 TESTGEOBOGDIS03 ansible_host=10.181.11.148
@@ -470,6 +463,20 @@ TESTGEOBOGDIS04 ansible_host=10.181.11.149
 TESTGEOPROMONGODB ansible_host=10.181.11.1
 TESTGEOPROMONGODB_CLON ansible_host=10.181.5.203
 
+[SERVERS_LINUX:children]
+PPU
+INFRA2_0
+EXADATA_VRT
+FSC_Linux
+MARCACIONES
+GEOPOS_FSC_BK
+GEOPOS_FSC_PPAL
+GEOPOS_PPU
+
+
+[SERVERS_SOLARIS:children]
+People_VRT
+FSC_Solaris
 
 ############################################# FIN - GRUPOS PRINCIPALES ###########################################################
 
