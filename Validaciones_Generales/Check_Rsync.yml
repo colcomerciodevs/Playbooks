@@ -22,14 +22,17 @@
       ignore_errors: true
       changed_when: false
 
-    - name: Crear archivo JSON con resultados en Salidas_Playbooks
+    - name: Crear archivo JSON con resultados en Salidas_Playbooks (con IP y salida)
       delegate_to: localhost
       run_once: true
       ansible.builtin.copy:
         content: |
           {
           {% for host in play_hosts %}
-            "{{ host }}": "{{ hostvars[host].rsync_raw.stdout | default('rsync no disponible o timeout') }}"{{ "," if not loop.last else "" }}
+            "{{ host }}": {
+              "ip": "{{ hostvars[host].ansible_host | default(host) }}",
+              "rsync_output": "{{ hostvars[host].rsync_raw.stdout | default('rsync no disponible o timeout') }}"
+            }{{ "," if not loop.last else "" }}
           {% endfor %}
           }
         dest: "{{ salida_dir }}/rsync_versions.json"
