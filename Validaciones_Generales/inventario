@@ -49,7 +49,7 @@ gspsmsinergia ansible_host=10.181.3.156
 JASPERSOFT_1 ansible_host=10.181.3.61
 JASPERSOFTPRU ansible_host=10.181.11.67
 JASPER_NEW ansible_host=10.181.11.241 ansible_user=ansible_test 
-LPBOGDIS01 ansible_host=10.181.3.102
+#LPBOGDIS01 ansible_host=10.181.3.102
 MARCSINERGIA ansible_host=10.181.11.78
 MERCADERISTAS ansible_host=10.181.3.144
 MERCADERISTASDB_QA ansible_host=10.181.11.166
@@ -65,7 +65,6 @@ MICROSERVICIOS09 ansible_host=10.181.4.15
 MICROSERVTEST10 ansible_host=10.181.11.112
 MON_ZABBIX ansible_host=10.181.5.210
 MOVILTRACK ansible_host=10.181.3.109
-MOVILTRACKDB ansible_host=10.181.11.135
 MOVILTRCK02 ansible_host=10.181.11.134 ansible_user=tux
 MOVILVENTAS ansible_host=10.181.0.21
 NETWORKER04 ansible_host=10.181.3.104
@@ -124,8 +123,8 @@ WMSDBBOGDIS01_DEV ansible_host=10.181.11.72
 [INFRA2_0]
 SOABOGDIS01 ansible_host=10.181.34.60 ansible_user=ansible_test
 SOABOGDIS02 ansible_host=10.181.34.61 ansible_user=ansible_test
-TESTSOABOGDIS01 ansible_host=10.181.34.62 ansible_user=ansible_test
-TESTSOABOGDIS02 ansible_host=10.181.34.63 ansible_user=ansible_test
+TESTSOABOGDIS01 ansible_host=10.181.34.62 ansible_user=tux
+TESTSOABOGDIS02 ansible_host=10.181.34.63 ansible_user=tux
 DBFACREBOGDIS01 ansible_host=10.181.34.6 
 GEOPROMONGODB03 ansible_host=10.181.32.3
 MONDBMICROBOGDIS01 ansible_host=10.181.34.10
@@ -279,130 +278,131 @@ ktvil-bk ansible_host=10.151.3.3 ansible_user=ansible_test
 
 ######## Servidores Tiendas Principal Fisico ###
 [GEOPOS_FSC_PPAL]
-ak170-n0-bk ansible_host=172.16.10.3 ansible_user=ansible_test
-akb30-n0-bk ansible_host=147.127.110.3 ansible_user=ansible_test
-akb68-n0-bk ansible_host=172.16.11.3 ansible_user=ansible_test
-akbar-new-bk ansible_host=172.16.107.3 ansible_user=ansible_test
-akbol-n0-bk ansible_host=172.16.6.3 ansible_user=ansible_test
-akcal-n0-bk ansible_host=172.16.78.3 ansible_user=ansible_test
-akcan-n0-bk ansible_host=172.16.77.3 ansible_user=ansible_test
-akede-n0-bk ansible_host=172.16.134.3 ansible_user=ansible_test
-Akflo-n0-bk ansible_host=172.16.124.3 ansible_user=ansible_test
-akigp-n0-bk ansible_host=172.16.91.3 ansible_user=ansible_test
-akipi-n0-bk ansible_host=172.16.8.3 ansible_user=ansible_test
-akout-n0-bk ansible_host=147.127.110.3 ansible_user=ansible_test
-akove-new-bk ansible_host=172.16.4.3 ansible_user=ansible_test
-akpas-n0-bk ansible_host=172.16.7.3 ansible_user=ansible_test
-akper-n0-bk ansible_host=172.16.9.3 ansible_user=ansible_test
-aksin-new-bk ansible_host=172.16.116.3 ansible_user=ansible_test
-aktuq-new-bk ansible_host=172.16.90.3 ansible_user=ansible_test
-akven-n0-bk ansible_host=172.16.4.3 ansible_user=ansible_test
-akvil-n0-bk ansible_host=172.16.3.3 ansible_user=ansible_test
-Akyop-n0-bk ansible_host=10.121.0.3 ansible_user=ansible_test
-al332-n0-bk ansible_host=10.76.0.3 ansible_user=ansible_test
-al333-new-bk ansible_host=10.116.0.3 ansible_user=ansible_test
-alapa-n0-bk ansible_host=10.173.0.3 ansible_user=ansible_test
-alarm-n0-bk ansible_host=10.189.3.3 ansible_user=ansible_test
-alave-new-bk ansible_host=10.34.3.3 ansible_user=ansible_test
-alba3-new-bk ansible_host=10.140.2.3 ansible_user=ansible_test
-alba4-new-bk ansible_host=10.30.3.3 ansible_user=ansible_test
-alba5-n0-bk ansible_host=10.45.3.3 ansible_user=ansible_test
-albac-n0-bk ansible_host=10.118.0.3 ansible_user=ansible_test
-albar-n0-bk ansible_host=10.99.0.3 ansible_user=ansible_test
-albas-new-bk ansible_host=10.117.0.3 ansible_user=ansible_test
-albe2-n0-bk ansible_host=10.230.3.3 ansible_user=ansible_test
-albel-n0-bk ansible_host=10.108.3.3 ansible_user=ansible_test
-Albn2-n1-bk ansible_host=10.84.0.3 ansible_user=ansible_test
-albn3-new-bk ansible_host=10.101.3.3 ansible_user=ansible_test
-albol-new-bk ansible_host=10.137.0.3 ansible_user=ansible_test
-albu2-n0-bk ansible_host=10.125.3.3 ansible_user=ansible_test
-albuc-n0-bk ansible_host=10.178.0.3 ansible_user=ansible_test
-albuk-n0-bk ansible_host=10.73.0.3 ansible_user=ansible_test
-alca2-n0-bk ansible_host=10.114.0.3 ansible_user=ansible_test
-alca4-new-bk ansible_host=10.138.3.3 ansible_user=ansible_test
-alca5-n0-bk ansible_host=10.187.3.3 ansible_user=ansible_test
-alca6-n0-bk ansible_host=10.228.3.3 ansible_user=ansible_test
-alca7-n0-bk ansible_host=10.239.3.3 ansible_user=ansible_test
-alcal-n0-bk ansible_host=10.223.3.3 ansible_user=ansible_test
-alcen-new-bk ansible_host=10.35.2.3 ansible_user=ansible_test
-alct2-new-bk ansible_host=10.139.3.3 ansible_user=ansible_test
-Alcuc-n0-bk ansible_host=10.172.3.3 ansible_user=ansible_test
-aldie-n0-bk ansible_host=10.106.3.3 ansible_user=ansible_test
-alflo-new-bk ansible_host=10.134.3.3 ansible_user=ansible_test
-aliba-n0-bk ansible_host=10.144.3.3 ansible_user=ansible_test
-#Alk1m-n1-bk ansible_host=10.79.0.3 ansible_user=ansible_test
-alk2m-n0-bk ansible_host=10.132.0.3 ansible_user=ansible_test
-Alk33-n1-bk ansible_host=10.175.0.3 ansible_user=ansible_test
-ALK72-n0-bk ansible_host=10.83.0.3 ansible_user=ansible_test
-alka1-n0-bk ansible_host=10.206.42.3 ansible_user=ansible_test
-alkau-new-bk ansible_host=10.235.3.3 ansible_user=ansible_test
-alkun-n0-bk ansible_host=10.86.3.3 ansible_user=ansible_test
-almay-n0-bk ansible_host=10.87.3.3 ansible_user=ansible_test
-almo1-n0-bk ansible_host=10.26.3.3 ansible_user=ansible_test
-almol-n0-bk ansible_host=10.29.3.3 ansible_user=ansible_test
-alnei-n0-bk ansible_host=10.149.3.3 ansible_user=ansible_test
-alni2-70-bk ansible_host=10.148.2.3 ansible_user=ansible_test
-alniu-bk ansible_host=10.188.3.3 ansible_user=ansible_test
-alnue-n0-bk ansible_host=10.49.3.3 ansible_user=ansible_test
-alper-n0-bk ansible_host=10.112.3.3 ansible_user=ansible_test
-alpie-new-bk ansible_host=10.155.3.3 ansible_user=ansible_test
-alpol-new-bk ansible_host=10.75.0.3 ansible_user=ansible_test
-alpro-new-bk ansible_host=10.206.0.3 ansible_user=ansible_test
-alrio-n0-bk ansible_host=10.98.3.3 ansible_user=ansible_test
-alro1-new-bk ansible_host=10.157.2.3 ansible_user=ansible_test
-alro2-new-bk ansible_host=10.158.3.3 ansible_user=ansible_test
-alro3-n0-bk ansible_host=10.62.3.3 ansible_user=ansible_test
-alrus-new-bk ansible_host=10.77.0.3 ansible_user=ansible_test
-alsan-new-bk ansible_host=10.52.0.3 ansible_user=ansible_test
-alsin-new-bk ansible_host=10.25.3.3 ansible_user=ansible_test
-alsoa-new-bk ansible_host=10.142.3.3 ansible_user=ansible_test
-alsol-new-bk ansible_host=10.63.3.3 ansible_user=ansible_test
-alva2-n0-bk ansible_host=10.156.3.3 ansible_user=ansible_test
-alval-new-bk ansible_host=10.113.0.3 ansible_user=ansible_test
-alve1-new-bk ansible_host=172.16.4.3 ansible_user=ansible_test
-alven-new-bk ansible_host=10.81.0.3 ansible_user=ansible_test
-alvi2-new-bk ansible_host=10.150.0.3 ansible_user=ansible_test
-alvil-n0-bk ansible_host=10.251.3.3 ansible_user=ansible_test
-foa68-n0-bk ansible_host=10.229.3.3 ansible_user=ansible_test  
-fobar-bk ansible_host=10.133.2.3 ansible_user=ansible_test  
-fobo1-new-bk ansible_host=10.97.0.3 ansible_user=ansible_test  
-focal-new-bk ansible_host=10.126.3.3 ansible_user=ansible_test  
-focop-n0-bk ansible_host=10.242.3.3 ansible_user=ansible_test  
-fofat-new-bk ansible_host=10.56.3.3 ansible_user=ansible_test  
-fofon-n0-bk ansible_host=10.95.0.3 ansible_user=ansible_test  
-foita-new-bk ansible_host=10.119.3.3 ansible_user=ansible_test  
-fomed-new-bk ansible_host=10.206.3.3 ansible_user=ansible_test  
-fopas-n0-bk ansible_host=172.16.6.3 ansible_user=ansible_test  
-fovil-new-bk ansible_host=10.143.3.3 ansible_user=ansible_test  
-ktame-n0-bk ansible_host=10.109.0.3 ansible_user=ansible_test  
-ktark-n0-bk ansible_host=10.190.3.3 ansible_user=ansible_test  
-ktb94-n0-bk ansible_host=10.71.10.3 ansible_user=ansible_test  
-ktbar-n0-bk ansible_host=10.232.3.3 ansible_user=ansible_test  
-ktbuc-new-bk ansible_host=10.129.0.3 ansible_user=ansible_test  
-ktcal-new-bk ansible_host=10.48.3.3 ansible_user=ansible_test  
-ktchi-new-bk ansible_host=10.32.3.3 ansible_user=ansible_test  
-ktfus-n0-bk ansible_host=10.203.3.3 ansible_user=ansible_test  
-ktgir-n0-bk ansible_host=10.231.3.3 ansible_user=ansible_test  
-ktjul-n0-bk ansible_host=10.127.0.3 ansible_user=ansible_test  
-ktman-n0-bk ansible_host=10.65.3.3 ansible_user=ansible_test  
-ktmay-n0-bk ansible_host=10.104.0.3 ansible_user=ansible_test  
-ktmos-n0-bk ansible_host=10.145.3.3 ansible_user=ansible_test  
-ktnqs-n0-bk ansible_host=10.245.3.3 ansible_user=ansible_test  
-ktpob-new-bk ansible_host=10.92.0.3 ansible_user=ansible_test  
-ktsal-n0-bk ansible_host=10.91.3.3 ansible_user=ansible_test  
-ktsba-nuevo-bk ansible_host=10.89.0.3 ansible_user=ansible_test  
-ktsoa-new-bk ansible_host=10.46.3.3 ansible_user=ansible_test  
-kttes-new-bk ansible_host=10.115.0.3 ansible_user=ansible_test  
-kttit-n0-bk ansible_host=10.122.0.3 ansible_user=ansible_test  
-kttun-n0-bk ansible_host=10.90.3.3 ansible_user=ansible_test  
-ktuno-nuevo-bk ansible_host=10.147.3.3 ansible_user=ansible_test  
-ktvil-n0-bk ansible_host=10.151.3.3 ansible_user=ansible_test  
-mford-new-bk ansible_host=10.206.3.3 ansible_user=ansible_test  
-terio-n0-bk ansible_host=10.40.3.3 ansible_user=ansible_test
-#vwcal-n0-bk ansible_host=10.126.3.3 ansible_user=ansible_test
-#vwfon-bk ansible_host=10.95.3.3 ansible_user=ansible_test
-#vwita-n0-bk ansible_host=10.119.3.3 ansible_user=ansible_test  
-Vwmed-bk ansible_host=10.206.3.3 ansible_user=ansible_test  
+ak170-n0 ansible_host=172.16.10.3 ansible_user=ansible_test
+akb30-n0 ansible_host=147.127.110.11 ansible_user=ansible_test
+akb68-n0 ansible_host=172.16.11.5 ansible_user=ansible_test
+akbar-new ansible_host=172.16.107.5 ansible_user=ansible_test
+akbol-n0 ansible_host=172.16.6.12 ansible_user=ansible_test
+akcal-n0 ansible_host=172.16.78.5 ansible_user=ansible_test
+akcan-n0 ansible_host=172.16.77.5 ansible_user=ansible_test
+akede-n0 ansible_host=172.16.134.5 ansible_user=ansible_test
+Akflo-n0 ansible_host=172.16.124.5 ansible_user=ansible_test
+akigp-n0 ansible_host=172.16.91.12 ansible_user=ansible_test
+akipi-n0 ansible_host=172.16.8.12 ansible_user=ansible_test
+akout-n0 ansible_host=147.127.110.18 ansible_user=ansible_test
+akove-new ansible_host=172.16.4.10 ansible_user=ansible_test
+akpas-n0 ansible_host=172.16.7.12 ansible_user=ansible_test
+akper-n0 ansible_host=172.16.9.5 ansible_user=ansible_test
+aksin-new ansible_host=172.16.116.5 ansible_user=ansible_test
+aktuq-new ansible_host=172.16.90.12 ansible_user=ansible_test
+akven-n0 ansible_host=172.16.4.5 ansible_user=ansible_test
+akvil-n0 ansible_host=172.16.3.5 ansible_user=ansible_test
+Akyop-n0 ansible_host=10.121.0.10 ansible_user=ansible_test
+al332-n0 ansible_host=10.76.0.24 ansible_user=ansible_test
+al333-new ansible_host=10.116.0.3 ansible_user=ansible_test
+alapa-n0 ansible_host=10.173.0.20 ansible_user=ansible_test
+alarm-n0 ansible_host=10.189.3.3 ansible_user=ansible_test
+alave-new ansible_host=10.34.3.5 ansible_user=ansible_test
+alba3-new ansible_host=10.140.2.6 ansible_user=ansible_test
+alba4-new ansible_host=10.30.3.6 ansible_user=ansible_test
+alba5-n0 ansible_host=10.45.3.5 ansible_user=ansible_test
+albac-n0 ansible_host=10.118.0.24 ansible_user=ansible_test
+albar-n0 ansible_host=10.99.0.3 ansible_user=ansible_test
+albas-new ansible_host=10.117.0.11 ansible_user=ansible_test
+albe2-n0 ansible_host=10.230.3.5 ansible_user=ansible_test
+albel-n0 ansible_host=10.108.3.3 ansible_user=ansible_test
+Albn2-n1 ansible_host=10.84.0.100 ansible_user=ansible_test
+albn3-new ansible_host=10.101.3.3 ansible_user=ansible_test
+albol-new ansible_host=10.137.0.50 ansible_user=ansible_test
+albu2-n0 ansible_host=10.125.3.3 ansible_user=ansible_test
+albuc-n0 ansible_host=10.178.0.30 ansible_user=ansible_test
+albuk-n0 ansible_host=10.73.0.3 ansible_user=ansible_test
+alca2-n0 ansible_host=10.114.0.3 ansible_user=ansible_test
+alca4-new ansible_host=10.138.3.3 ansible_user=ansible_test
+alca5-n0 ansible_host=10.187.3.3 ansible_user=ansible_test
+alca6-n0 ansible_host=10.228.3.5 ansible_user=ansible_test
+alca7-n0 ansible_host=10.239.3.77 ansible_user=ansible_test
+alcal-n0 ansible_host=10.223.3.3 ansible_user=ansible_test
+alcen-new ansible_host=10.35.2.5 ansible_user=ansible_test
+alct2-new ansible_host=10.139.3.3 ansible_user=ansible_test
+Alcuc-n0 ansible_host=10.172.3.10 ansible_user=ansible_test
+aldie-n0 ansible_host=10.106.3.6 ansible_user=ansible_test
+alflo-new ansible_host=10.134.3.3 ansible_user=ansible_test
+aliba-n0 ansible_host=10.144.3.3 ansible_user=ansible_test
+#Alk1m-n1 ansible_host=10.79.0.3 ansible_user=ansible_test
+alk2m-n0 ansible_host=10.132.0.4 ansible_user=ansible_test
+Alk33-n1 ansible_host=10.175.0.27 ansible_user=ansible_test
+ALK72-n0 ansible_host=10.83.0.3 ansible_user=ansible_test
+alka1-n0 ansible_host=10.206.42.6 ansible_user=ansible_test
+alkau-new ansible_host=10.235.3.5 ansible_user=ansible_test
+alkun-n0 ansible_host=10.86.3.77 ansible_user=ansible_test
+almay-n0 ansible_host=10.87.3.3 ansible_user=ansible_test
+almo1-n0 ansible_host=10.26.3.6 ansible_user=ansible_test
+almol-n0 ansible_host=10.29.3.3 ansible_user=ansible_test
+alnei-n0 ansible_host=10.149.3.3 ansible_user=ansible_test
+#alniu ansible_host=10.188.3.5 ansible_user=ansible_test
+alnue-n0 ansible_host=10.49.3.5 ansible_user=ansible_test
+alper-n0 ansible_host=10.112.3.3 ansible_user=ansible_test
+alpie-new ansible_host=10.155.3.3 ansible_user=ansible_test
+alpol-new ansible_host=10.75.0.3 ansible_user=ansible_test
+alpro-new ansible_host=10.206.0.125 ansible_user=ansible_test
+alrio-n0 ansible_host=10.98.3.3 ansible_user=ansible_test
+alro1-new ansible_host=10.157.2.9 ansible_user=ansible_test
+alro2-new ansible_host=10.158.3.77 ansible_user=ansible_test
+alro3-n0 ansible_host=10.62.3.2 ansible_user=ansible_test
+alrus-new ansible_host=10.77.0.3 ansible_user=ansible_test
+alsan-new ansible_host=10.52.0.15 ansible_user=ansible_test
+alsin-new ansible_host=10.25.3.6 ansible_user=ansible_test
+alsoa-new ansible_host=10.142.3.7 ansible_user=ansible_test
+alsol-new ansible_host=10.63.3.5 ansible_user=ansible_test
+alva2-n0 ansible_host=10.156.3.3 ansible_user=ansible_test
+alval-new ansible_host=10.113.0.14 ansible_user=ansible_test
+alve1-new ansible_host=172.16.4.7 ansible_user=ansible_test
+alven-new ansible_host=10.81.0.106 ansible_user=ansible_test
+alvi2-new ansible_host=10.150.0.6 ansible_user=ansible_test
+alvil-n0 ansible_host=10.251.3.5 ansible_user=ansible_test
+alni2-70 ansible_host=10.148.2.9 ansible_user=ansible_test
+foa68-n0 ansible_host=10.229.3.5 ansible_user=ansible_test
+fobar ansible_host=10.133.2.5 ansible_user=ansible_test
+fobo1-new ansible_host=10.97.0.3 ansible_user=ansible_test
+focal-new ansible_host=10.126.3.7 ansible_user=ansible_test
+focop-n0 ansible_host=10.242.3.3 ansible_user=ansible_test
+fofat-new ansible_host=10.56.3.3 ansible_user=ansible_test
+fofon-n0 ansible_host=10.95.0.3 ansible_user=ansible_test
+foita-new ansible_host=10.119.3.7 ansible_user=ansible_test
+fomed-new ansible_host=10.206.3.2 ansible_user=ansible_test
+fopas-n0 ansible_host=172.16.6.25 ansible_user=ansible_test
+fovil-new ansible_host=10.143.3.77 ansible_user=ansible_test
+ktame-n0 ansible_host=10.109.0.102 ansible_user=ansible_test
+ktark-n0 ansible_host=10.190.3.3 ansible_user=ansible_test
+ktb94-n0 ansible_host=10.71.10.27 ansible_user=ansible_test
+ktbar-n0 ansible_host=10.232.3.5 ansible_user=ansible_test
+ktbuc-new ansible_host=10.129.0.8 ansible_user=ansible_test
+ktcal-new ansible_host=10.48.3.7 ansible_user=ansible_test
+ktchi-new ansible_host=10.32.3.5 ansible_user=ansible_test
+ktfus-n0 ansible_host=10.203.3.3 ansible_user=ansible_test
+ktgir-n0 ansible_host=10.231.3.5 ansible_user=ansible_test
+ktjul-n0 ansible_host=10.127.0.8 ansible_user=ansible_test
+ktman-n0 ansible_host=10.65.3.5 ansible_user=ansible_test
+ktmay-n0 ansible_host=10.104.0.100 ansible_user=ansible_test
+ktmos-n0 ansible_host=10.145.3.4 ansible_user=ansible_test
+ktnqs-n0 ansible_host=10.245.3.3 ansible_user=ansible_test
+ktpob-new ansible_host=10.92.0.24 ansible_user=ansible_test
+ktsal-n0 ansible_host=10.91.3.3 ansible_user=ansible_test
+ktsba-nuevo ansible_host=10.89.0.102 ansible_user=ansible_test
+ktsoa-new ansible_host=10.46.3.5 ansible_user=ansible_test
+kttes-new ansible_host=10.115.0.27 ansible_user=ansible_test
+kttit-n0 ansible_host=10.122.0.6 ansible_user=ansible_test
+kttun-n0 ansible_host=10.90.3.5 ansible_user=ansible_test
+ktuno-nuevo ansible_host=10.147.3.2 ansible_user=ansible_test
+ktvil-n0 ansible_host=10.151.3.5 ansible_user=ansible_test
+mford-new ansible_host=10.206.3.18 ansible_user=ansible_test
+terio-n0 ansible_host=10.40.3.5 ansible_user=ansible_test
+#vwcal-n0 ansible_host=10.126.3.8 ansible_user=ansible_test
+#vwfon ansible_host=10.95.3.4 ansible_user=ansible_test
+#vwita-n0 ansible_host=10.119.3.10 ansible_user=ansible_test
+Vwmed ansible_host=10.206.3.8 ansible_user=ansible_test
+ 
 
 ######## Servidores Geopos PPU ###
 [GEOPOS_PPU]
@@ -478,6 +478,8 @@ GEOPOS_PPU
 People_VRT
 FSC_Solaris
 
+
+
 ############################################# FIN - GRUPOS PRINCIPALES ###########################################################
 
 
@@ -506,8 +508,8 @@ CLOUDCONTROL02 ansible_host=10.181.4.245
 CORBEMOVIL_NEW ansible_host=10.181.5.213
 CRM_BD1 ansible_host=10.181.0.152
 CRM_BD3_PRD ansible_host=10.181.4.103
-CRM_BD4 ansible_host=10.181.5.219    
-CRM_DB_NEW ansible_host=10.181.5.214
+CRM_BD4 ansible_host=10.181.5.219 ansible_user=tux   
+CRM_DB_NEW ansible_host=10.181.5.214 ansible_user=tux   
 CRM_FILE ansible_host=10.181.3.36
 CRM01_K8S ansible_host=10.181.3.105
 CRM02_K8S ansible_host=10.181.11.16
@@ -523,7 +525,7 @@ DESPACHOS03 ansible_host=10.181.3.106
 ESRSBOGDIS ansible_host=10.181.3.50
 gspsmsinergia ansible_host=10.181.3.156
 JASPERSOFT_1 ansible_host=10.181.3.61
-LPBOGDIS01 ansible_host=10.181.3.102
+#LPBOGDIS01 ansible_host=10.181.3.102
 MARCSINERGIA ansible_host=10.181.11.78
 MICROCRMBOGDIS2 ansible_host=10.181.5.126
 MICROSERVICIOS04_1 ansible_host=10.181.3.183

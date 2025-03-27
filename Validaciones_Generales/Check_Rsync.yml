@@ -1,16 +1,42 @@
 ---
-- name: Verificar versión de rsync en servidores Linux
-  hosts: Servers_Linux
+- name: Verificar versión de rsync y generar reporte Excel
+  hosts: SERVERS_LINUX
   gather_facts: false
   become: true
 
+  vars:
+    salida_dir: "{{ playbook_dir }}/Salidas_Playbooks"
+
   tasks:
-    - name: Verificar si rsync está instalado # noqa command-instead-of-module
-      ansible.builtin.shell: "rsync --version | head -n1"
-      register: rsync_version
+    - name: Crear directorio de salidas (si no existe)
+      delegate_to: localhost
+      run_once: true
+      ansible.builtin.file:
+        path: "{{ salida_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Ejecutar rsync --version con timeout local
+      ansible.builtin.shell: "timeout 10 rsync --version | head -n1"
+      register: rsync_raw
       ignore_errors: true
       changed_when: false
 
-    - name: Mostrar versión de rsync
-      ansible.builtin.debug:
-        msg: "{{ inventory_hostname }} → {{ rsync_version.stdout | default('rsync no está instalado') }}"
+    - name: Crear archivo JSON con resultados en Salidas_Playbooks
+      delegate_to: localhost
+      run_once: true
+      ansible.builtin.copy:
+        content: |
+          {
+          {% for host in play_hosts %}
+            "{{ host }}": "{{ hostvars[host].rsync_raw.stdout | default('rsync no disponible o timeout') }}"{{ "," if not loop.last else "" }}
+          {% endfor %}
+          }
+        dest: "{{ salida_dir }}/rsync_versions.json"
+
+    - name: Ejecutar script Python para generar Excel en Salidas_Playbooks
+      delegate_to: localhost
+      run_once: true
+      ansible.builtin.command: python3 exportar_rsync_versiones.py
+      args:
+        chdir: "{{ playbook_dir }}"
