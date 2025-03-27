@@ -1,0 +1,16 @@
+---
+- name: Verificar versión de rsync en servidores Linux
+  hosts: Servers_Linux
+  gather_facts: false
+  become: true
+
+  tasks:
+    - name: Verificar si rsync está instalado # noqa command-instead-of-module
+      ansible.builtin.shell: "rsync --version | head -n1"
+      register: rsync_version
+      ignore_errors: true
+      changed_when: false
+
+    - name: Mostrar versión de rsync
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} → {{ rsync_version.stdout | default('rsync no está instalado') }}"
