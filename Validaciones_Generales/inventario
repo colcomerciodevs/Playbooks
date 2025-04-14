@@ -329,7 +329,6 @@ Alcuc-n0 ansible_host=10.172.3.10 ansible_user=ansible_test
 aldie-n0 ansible_host=10.106.3.6 ansible_user=ansible_test
 alflo-new ansible_host=10.134.3.3 ansible_user=ansible_test
 aliba-n0 ansible_host=10.144.3.3 ansible_user=ansible_test
-#Alk1m-n1 ansible_host=10.79.0.3 ansible_user=ansible_test
 alk2m-n0 ansible_host=10.132.0.4 ansible_user=ansible_test
 Alk33-n1 ansible_host=10.175.0.27 ansible_user=ansible_test
 ALK72-n0 ansible_host=10.83.0.3 ansible_user=ansible_test
@@ -340,7 +339,6 @@ almay-n0 ansible_host=10.87.3.3 ansible_user=ansible_test
 almo1-n0 ansible_host=10.26.3.6 ansible_user=ansible_test
 almol-n0 ansible_host=10.29.3.3 ansible_user=ansible_test
 alnei-n0 ansible_host=10.149.3.3 ansible_user=ansible_test
-#alniu ansible_host=10.188.3.5 ansible_user=ansible_test
 alnue-n0 ansible_host=10.49.3.5 ansible_user=ansible_test
 alper-n0 ansible_host=10.112.3.3 ansible_user=ansible_test
 alpie-new ansible_host=10.155.3.3 ansible_user=ansible_test
@@ -398,9 +396,6 @@ ktuno-nuevo ansible_host=10.147.3.2 ansible_user=ansible_test
 ktvil-n0 ansible_host=10.151.3.5 ansible_user=ansible_test
 mford-new ansible_host=10.206.3.18 ansible_user=ansible_test
 terio-n0 ansible_host=10.40.3.5 ansible_user=ansible_test
-#vwcal-n0 ansible_host=10.126.3.8 ansible_user=ansible_test
-#vwfon ansible_host=10.95.3.4 ansible_user=ansible_test
-#vwita-n0 ansible_host=10.119.3.10 ansible_user=ansible_test
 Vwmed ansible_host=10.206.3.8 ansible_user=ansible_test
  
 

@@ -1,0 +1,15 @@
+---
+- name: Desinstalar rsync en servidores Linux
+  hosts: 10.90.3.3
+  become: true
+  tasks:
+    - name: Verificar si rsync estánstalado
+      ansible.builtin.shell: which rsync
+      register: rsync_instalado
+      ignore_errors: true
+
+    - name: Desinstalar rsync si estánstalado
+      ansible.builtin.package:
+        name: rsync
+        state: absent
+      when: rsync_instalado.rc == 0
