@@ -1,6 +1,6 @@
 ---
 - name: Desinstalar rsync en servidores Linux
-  hosts: 10.90.3.3
+  hosts: GEOPOS_FSC_BK
   become: true
   tasks:
     - name: Verificar si rsync estánstalado
