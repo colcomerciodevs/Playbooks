@@ -1,0 +1,48 @@
+- name: Recolectar info de usuarios y exportar a Excel
+  hosts: SERVERS_WMS
+  become: true
+  gather_facts: false
+
+  vars:
+    salida_dir: "{{ playbook_dir }}/Salidas_Playbooks"
+
+  tasks:
+
+    - name: Obtener usuarios reales (UID >= 1000)
+      ansible.builtin.shell: |
+        awk -F: '$3 >= 1000 && $1 !~ /^(nobody|nfsnobody|apache|postfix|sshd|zabbix|proactiva)$/' /etc/passwd | cut -d: -f1
+      register: usuarios
+
+    - name: Recolectar datos de UID, grupos y sudo
+      ansible.builtin.shell: |
+        id {{ item }}; echo "###"; sudo -lU {{ item }} 2>/dev/null || echo "NO_SUDO"
+      loop: "{{ usuarios.stdout_lines }}"
+      register: info_usuarios
+
+    - name: Guardar info recolectada en fact para enviar al controlador
+      ansible.builtin.set_fact:
+        reporte_usuarios: "{{ info_usuarios.results | map(attribute='stdout') | list }}"
+
+    - name: Guardar JSON con IP, ambiente y permisos
+      delegate_to: localhost
+      run_once: true
+      ansible.builtin.copy:
+        content: |
+          {
+          {% for host in play_hosts %}
+            "{{ host }}": {
+              "ip": "{{ hostvars[host].ansible_host | default(host) }}",
+              "ambiente": "{{ hostvars[host].ambiente | default('no definido') }}",
+              "usuarios": {{ hostvars[host].reporte_usuarios | to_nice_json }}
+            }{{ "," if not loop.last else "" }}
+          {% endfor %}
+          }
+        dest: "{{ salida_dir }}/usuarios_permisos.json"
+
+
+    - name: Ejecutar script Python para generar Excel en Salidas_Playbooks
+      delegate_to: localhost
+      run_once: true
+      ansible.builtin.command: python3 Generar_Excel_Users.py
+      args:
+        chdir: "{{ playbook_dir }}"

@@ -573,3 +573,38 @@ thor ansible_host=10.181.0.174
 #ALKA1-DRP-CLON ansible_host=10.181.5.183
 
 ############################################# FIN  - GRUPOS SECUNDARIOS -INVENTARIO SELECCIONADO ############################
+
+[WMS_PRD]
+WMSAPPBOGDIS01_N1 ansible_host=10.181.3.65 ambiente=produccion
+WMSAPPBOGDIS01_N2 ansible_host=10.181.4.101 ambiente=produccion
+WMSAPPBOGDIS01_N3 ansible_host=10.181.4.211 ambiente=produccion
+WMSAPPBOGDIS01_N4 ansible_host=10.181.3.84 ambiente=produccion
+
+[WMS_ARCH]
+WMSAPPBOGDIS02 ansible_host=10.181.3.168 ambiente=archivado
+ARCHIVINGBOGDIS_JDA ansible_host=10.181.3.169 ambiente=archivado
+
+[WMS_DESA]
+WMSDBBOGDIS01_DEV ansible_host=10.181.11.72 ambiente=desarrollo
+WMSAPPBOGDIS01_DEV ansible_host=10.181.11.74 ambiente=desarrollo
+
+[WMS_DRP]
+WMSAPPBOGDIS01_Nodo_1 ansible_host=10.199.3.14 ambiente=DRP
+WMSAPPBOGDIS_NODO2 ansible_host=10.199.3.41 ambiente=DRP
+WMSAPPBOGDIS01_N3_DRP ansible_host=10.199.3.25 ambiente=DRP
+WMSAPPBOGDIS01_N4_DRP ansible_host=10.199.3.51 ambiente=DRP
+
+
+[WMS_PRU]
+WMS_TEST_DB02 ansible_host=10.181.11.116 ambiente=pruebas
+WMS_TEST_APP ansible_host=10.181.11.117 ambiente=pruebas
+WMS_TEST03_APP ansible_host=10.181.11.119 ambiente=pruebas
+TESTWMSAPPBOGDIS01_N3 ansible_host=10.181.11.83 ambiente=pruebas
+TESTWMSAPPBOGDIS01_N4 ansible_host=10.181.11.84 ambiente=pruebas
+
+[SERVERS_WMS:children]
+WMS_PRD
+WMS_ARCH
+WMS_DESA
+WMS_DRP
+WMS_PRU

@@ -1,6 +1,6 @@
 ---
-- name: Crear usuario sboscar en servidores Linux
-  hosts:GEOPOS_FSC_PPAL_ALKNORTE 
+- name: Crear usuario en servidores Linux
+  hosts: GEOPOS_FSC_PPAL_ALKNORTE 
   become: yes
   tasks:
     - name: Asegurarse de que el grupo 'soporte' existe
@@ -8,7 +8,7 @@
         name: soporte
         state: present
 
-    - name: Crear el usuario sboscar con descripcióhome, grupo y shell por defecto
+    - name: Crear el usuario  con descripcion, home, grupo y shell por defecto
       user:
         name: iospina
         comment: "Ivan Camilo Zapata Ospina"
@@ -19,4 +19,5 @@
         password: "{{ 'Soporte2025$' | password_hash('sha512') }}"
         update_password: on_create
 
-    - name: Forzar cambio de contrase.a al iniciar sesió     command: chage -d 0 iospina
+    - name: Forzar cambio de contraseña al iniciar sesion    
+      command: chage -d 0 iospina
