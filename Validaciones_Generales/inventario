@@ -611,6 +611,81 @@ WMS_PRU
 
 
 ##################### UPDATE S.O ##################
+[prueba3]
+alka1_n1 ansible_host=10.206.42.11
+
+[prueba2]
+akbar_new ansible_host=172.16.107.5
+akbol_n0 ansible_host=172.16.6.12
+akcal_n0 ansible_host=172.16.78.5
+akcan_n0 ansible_host=172.16.77.5
+akede_n0 ansible_host=172.16.134.5
+akflo_n0 ansible_host=172.16.124.5
+akigp_n0 ansible_host=172.16.91.12
+akipi_n0 ansible_host=172.16.8.12
+akove_new ansible_host=172.16.4.10
+akpas_n0 ansible_host=172.16.7.12
+akper_n0 ansible_host=172.16.9.5
+aksin_new ansible_host=172.16.116.5
+aktuq_new ansible_host=172.16.90.12
+akven_n0 ansible_host=172.16.4.5
+albac_n1 ansible_host=10.118.3.4
+akvil_n0 ansible_host=172.16.3.5
+akyop_n0 ansible_host=10.121.0.10
+al332_n0 ansible_host=10.76.0.24
+albuk_n0 ansible_host=10.73.0.3
+alca2_n0 ansible_host=10.114.0.3
+alca4_new ansible_host=10.138.3.3
+alcuc_n1 ansible_host=10.172.3.3
+alca5_n0 ansible_host=10.187.3.3
+alca6_n0 ansible_host=10.228.3.5
+alcen_new ansible_host=10.35.2.5
+alct2_new ansible_host=10.139.3.3
+alcuc_n0 ansible_host=10.172.3.10
+aldie_n0 ansible_host=10.106.3.6
+alflo_new ansible_host=10.134.3.3
+aliba_n0 ansible_host=10.144.3.3
+kttun_n1 ansible_host=10.90.3.3
+akflo_n1 ansible_host=172.16.124.4
+alk33_n1 ansible_host=10.175.0.27
+alk72_n0 ansible_host=10.83.0.3
+#alka1_n0 ansible_host=10.206.42.6
+alkau_new ansible_host=10.235.3.5
+alkun_n0 ansible_host=10.86.3.77
+almay_n0 ansible_host=10.87.3.3
+almo1_n0 ansible_host=10.26.3.6
+almol_n0 ansible_host=10.29.3.3
+alnei_n0 ansible_host=10.149.3.3
+alni1_n0 ansible_host=10.181.5.72
+alnue_n0 ansible_host=10.49.3.5
+alper_n0 ansible_host=10.112.3.3
+alpie_new ansible_host=10.155.3.3
+alpol_new ansible_host=10.75.0.3
+disml ansible_host=10.181.3.132
+ktark_n0 ansible_host=10.190.3.3
+ktbar_n0 ansible_host=10.232.3.5
+ktbuc_new ansible_host=10.129.0.8
+ktcal_new ansible_host=10.48.3.7
+ktchi_new ansible_host=10.32.3.5
+ktfus_n0 ansible_host=10.203.3.3
+ktgir_n0 ansible_host=10.231.3.5
+ktjul_n0 ansible_host=10.127.0.8
+ktman_n0 ansible_host=10.65.3.5
+ktmay_n0 ansible_host=10.104.0.100
+ktmos_n0 ansible_host=10.145.3.4
+ktnqs_n0 ansible_host=10.245.3.3
+ktpob_new ansible_host=10.92.0.24
+ktsal_n0 ansible_host=10.91.3.3
+ktsba_nuevo ansible_host=10.89.0.102
+ktsoa_new ansible_host=10.46.3.5
+kttes_new ansible_host=10.115.0.27
+kttit_n0 ansible_host=10.122.0.6
+kttun_n0 ansible_host=10.90.3.5
+ktuno_nuevo ansible_host=10.147.3.2
+ktvil_n0 ansible_host=10.151.3.5
+ktame_bk ansible_host=10.109.3.8
+akpas_bk ansible_host=172.16.7.15
+
 
 [SRV_GEOPOS-LOTE_14]
 akbar-new ansible_host=172.16.107.5 ansible_user=ansible_test

@@ -1,11 +1,18 @@
 ---
-- name: Tarea para Crear Relación de Confianza SSH con llaves privadas
-  hosts: LOTE11-General
+- name: Tarea para crear relación de confianza SSH con llaves públicas
+  hosts: prueba3
   become: true
 
+  vars:
+    usuarios_ansible:
+      - name: iacolcoauto
+        key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC3NzBHvokb0EmAMlqgXVgUMYBlsVVjM6e28dzqhW7ykRfjrjEx4jV+0H3I/yvPqIga/iBUmg3CKBnL9rm1+9vW7f5B2JiCH0tPAJAfLDZ7As7KHuL3TeV5VTGursQ7HgU2fWVfoqP/yzGsrCxdQizTlDd9QpB8skqjXIf9nIV+CZJqEHxy0/EHXdm/KuBZbBd+7u/3ZxVMU7zTfJMC48ZV0Et8eu5pzn3mCJjETpfULrnBIoPoJ8otcX19xfygEcuF8Iv6eqnjoRoIEcDhQZi/ayTKiTz7Ezjf1idpBois+iwGlSkLCQ4j6Y2cRYyI/b+fVPnUq+89i2si4/J2J6yt10I3heO6iWvNFi0hgloyMegZiQtnWUyLfay1s7FYtmw6HV4cvJX215j66ETURpSIeg1vFqqf6BO2DxHampjjVfBrGyKuuWXqMiKiLMrM7CVzkOoX3PevPL+rdOU85M/lhNFAY/ioblqjea1kjVYxn/7iLGvWcjbp60MMVGVAEGkn2WubLbAh2xZYS0RFG1lrpBTtb1Alu6CN4kx2zfFhLbIEAM/2WKOWSZMo7CH0ynUbzlNKkuImDuAdxIZaluHPjQ0YCYs5I4rOKFm1ixes16zk25vQnZQ2kfEI4WhAnI1D1M7GmmHbkRAFlxpReDG9JwykHuQSPzld5pqGJoQH1Q== iacolcoauto@ansibleawx"
+      - name: ansible_test
+        key: "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBPW8I6d7AAAkfrObeWMBdayjEHP9pzCfR5/KGVNkq4nBCK2Sb7dohPLsateMZfaQD0DCBI7YJDrKUw4P9ZOCXbM= root@Ansible"
+
   tasks:
-    ## Deshabilitar Defaults requiretty en sudoers si está presente
-    - name: Deshabilitar Defaults requiretty en sudoers
+
+    - name: Deshabilitar Defaults requiretty en sudoers si existe
       ansible.builtin.lineinfile:
         path: /etc/sudoers
         regexp: '^Defaults\s+requiretty'
@@ -13,48 +20,69 @@
         state: present
         validate: visudo -cf %s
 
-    ## Crear Usuarios de Ansible
-    - name: Crear usuarios Ansible (iacolcoauto y ansible_test)
+    - name: Eliminar usuario si existe
       ansible.builtin.user:
-        name: "{{ item }}"
+        name: "{{ item.name }}"
+        state: absent
+        remove: yes
+      loop: "{{ usuarios_ansible }}"
+
+    - name: Crear usuario sin contraseña (solo para autenticación SSH)
+      ansible.builtin.user:
+        name: "{{ item.name }}"
         shell: /bin/bash
         create_home: true
-      loop:
-        - iacolcoauto
-        - ansible_test
+        password_lock: true
+        update_password: on_create
+        password: '!'
+      loop: "{{ usuarios_ansible }}"
 
-    ## Permitir SUDO sin contraseña -- Requerido en Ansible
-    - name: Permitir sudo sin contraseña a usuarios Ansible
+    - name: Obtener grupo primario del usuario
+      ansible.builtin.command: "id -gn {{ item.name }}"
+      register: resultado_grupo
+      changed_when: false
+      loop: "{{ usuarios_ansible }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Establecer grupo primario como variable para cada usuario
+      ansible.builtin.set_fact:
+        "grupo_{{ item.item.name }}": "{{ item.stdout }}"
+      loop: "{{ resultado_grupo.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"
+
+    - name: Permitir sudo sin contraseña a los usuarios
       ansible.builtin.lineinfile:
-        path: "/etc/sudoers.d/{{ item }}"
-        line: "{{ item }} ALL=(ALL) NOPASSWD: ALL"
+        path: "/etc/sudoers.d/{{ item.name }}"
+        line: "{{ item.name }} ALL=(ALL) NOPASSWD: ALL"
         create: true
         owner: root
         group: root
         mode: '0440'
         validate: visudo -cf %s
-      loop:
-        - iacolcoauto
-        - ansible_test
+      loop: "{{ usuarios_ansible }}"
 
-    ## Crear directorio .ssh para usuarios Ansible
-    - name: Crear directorio .ssh para usuarios Ansible
+    - name: Crear directorio .ssh
       ansible.builtin.file:
-        path: "/home/{{ item }}/.ssh"
+        path: "/home/{{ item.name }}/.ssh"
         state: directory
-        owner: "{{ item }}"
+        owner: "{{ item.name }}"
+        group: "{{ hostvars[inventory_hostname]['grupo_' ~ item.name] }}"
         mode: '0700'
-      loop:
-        - iacolcoauto
-        - ansible_test
+      loop: "{{ usuarios_ansible }}"
 
-    ## Agregar claves públicas SSH a usuarios Ansible
-    - name: Agregar claves públicas SSH a usuarios Ansible
+    - name: Instalar llave pública en authorized_keys
       ansible.builtin.copy:
-        dest: "/home/{{ item.user }}/.ssh/authorized_keys"
+        dest: "/home/{{ item.name }}/.ssh/authorized_keys"
         content: "{{ item.key }}"
-        owner: "{{ item.user }}"
+        owner: "{{ item.name }}"
+        group: "{{ hostvars[inventory_hostname]['grupo_' ~ item.name] }}"
         mode: '0600'
-      loop:
-        - { user: "iacolcoauto", key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC3NzBHvokb0EmAMlqgXVgUMYBlsVVjM6e28dzqhW7ykRfjrjEx4jV+0H3I/yvPqIga/iBUmg3CKBnL9rm1+9vW7f5B2JiCH0tPAJAfLDZ7As7KHuL3TeV5VTGursQ7HgU2fWVfoqP/yzGsrCxdQizTlDd9QpB8skqjXIf9nIV+CZJqEHxy0/EHXdm/KuBZbBd+7u/3ZxVMU7zTfJMC48ZV0Et8eu5pzn3mCJjETpfULrnBIoPoJ8otcX19xfygEcuF8Iv6eqnjoRoIEcDhQZi/ayTKiTz7Ezjf1idpBois+iwGlSkLCQ4j6Y2cRYyI/b+fVPnUq+89i2si4/J2J6yt10I3heO6iWvNFi0hgloyMegZiQtnWUyLfay1s7FYtmw6HV4cvJX215j66ETURpSIeg1vFqqf6BO2DxHampjjVfBrGyKuuWXqMiKiLMrM7CVzkOoX3PevPL+rdOU85M/lhNFAY/ioblqjea1kjVYxn/7iLGvWcjbp60MMVGVAEGkn2WubLbAh2xZYS0RFG1lrpBTtb1Alu6CN4kx2zfFhLbIEAM/2WKOWSZMo7CH0ynUbzlNKkuImDuAdxIZaluHPjQ0YCYs5I4rOKFm1ixes16zk25vQnZQ2kfEI4WhAnI1D1M7GmmHbkRAFlxpReDG9JwykHuQSPzld5pqGJoQH1Q== iacolcoauto@ansibleawx" }
-        - { user: "ansible_test", key: "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBPW8I6d7AAAkfrObeWMBdayjEHP9pzCfR5/KGVNkq4nBCK2Sb7dohPLsateMZfaQD0DCBI7YJDrKUw4P9ZOCXbM= root@Ansible" }
+      loop: "{{ usuarios_ansible }}"
+
+    - name: Eliminar requerimiento de cambio de contraseña y expiraciones
+      ansible.builtin.command: >
+        chage -d -1 -I -1 -m 0 -M 99999 -E -1 {{ item.name }}
+      loop: "{{ usuarios_ansible }}"
+      changed_when: false
