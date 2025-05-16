@@ -1,0 +1,46 @@
+---
+- name: Generar CSV con nombre del inventario y versión completa del sistema operativo
+  hosts: prueba2
+  gather_facts: true
+  vars:
+    csv_file: "./Salidas_Playbooks/version_sistemas.csv"
+
+  tasks:
+    - name: Crear archivo CSV con encabezado (una vez)
+      copy:
+        dest: "{{ csv_file }}"
+        content: "inventory_name,os_full_version\n"
+        force: yes
+      delegate_to: localhost
+      run_once: true
+
+    - name: Leer contenido de /etc/os-release
+      slurp:
+        src: /etc/os-release
+      register: os_release_raw
+
+    - name: Separar líneas del archivo os-release
+      set_fact:
+        os_release_lines: "{{ os_release_raw.content | b64decode | regex_findall('.*') }}"
+
+    - name: Extraer PRETTY_NAME como versión completa del sistema operativo
+      set_fact:
+        os_full_version: >-
+          {{
+            (
+              os_release_lines
+              | select('match', '^PRETTY_NAME=')
+              | list
+              | first
+              | regex_replace('^PRETTY_NAME=\"?(.*?)\"?$', '\g<1>')
+            )
+            | default(ansible_distribution ~ ' ' ~ ansible_distribution_version)
+          }}
+
+    - name: Agregar línea al archivo CSV con nombre y versión
+      lineinfile:
+        path: "{{ csv_file }}"
+        line: "{{ inventory_hostname }},{{ os_full_version }}"
+        create: yes
+        insertafter: EOF
+      delegate_to: localhost
