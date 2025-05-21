@@ -1,6 +1,6 @@
 ---
 - name: Tarea para crear relación de confianza SSH con llaves públicas
-  hosts: prueba3
+  hosts: GEOPOS_PPAL
   become: true
 
   vars:
@@ -51,6 +51,14 @@
       loop: "{{ resultado_grupo.results }}"
       loop_control:
         label: "{{ item.item.name }}"
+
+    - name: Asegurar que #includedir /etc/sudoers.d está presente en /etc/sudoers
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers
+        line: '#includedir /etc/sudoers.d'
+        state: present
+        insertafter: EOF
+        validate: visudo -cf %s
 
     - name: Permitir sudo sin contraseña a los usuarios
       ansible.builtin.lineinfile:
