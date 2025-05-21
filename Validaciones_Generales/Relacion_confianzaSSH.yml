@@ -1,6 +1,6 @@
 ---
 - name: Tarea para crear relación de confianza SSH con llaves públicas
-  hosts: GEOPOS_PPAL
+  hosts: prueba7
   become: true
 
   vars:
@@ -20,12 +20,12 @@
         state: present
         validate: visudo -cf %s
 
-    - name: Eliminar usuario si existe
-      ansible.builtin.user:
-        name: "{{ item.name }}"
-        state: absent
-        remove: yes
+    - name: Incluir tareas para eliminar usuarios
+      include_tasks: eliminar_usuario.yml
       loop: "{{ usuarios_ansible }}"
+      loop_control:
+        loop_var: item
+
 
     - name: Crear usuario sin contraseña (solo para autenticación SSH)
       ansible.builtin.user:

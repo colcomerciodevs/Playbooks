@@ -209,7 +209,7 @@ Alkosto_Ipiales_Gran_Plaza ansible_host=10.154.3.47 ansible_user=ansible_test
 Alkosto_Tuquerres ansible_host=10.55.3.47 ansible_user=ansible_test
 Ktronix_94_KTB94 ansible_host=10.191.3.81
 
-######## Servidores Tiendas Backup ##
+######## Servidores Geopos Backup ##
 [GEOPOS_BK]
 almol-n2 ansible_host=10.29.3.5
 ak170-n1 ansible_host=172.16.10.6
@@ -277,7 +277,7 @@ ktuno-n1 ansible_host=10.147.3.5
 ktvil-bk ansible_host=10.151.3.3
 
 
-######## Servidores Tiendas Principal Fisico ###
+######## Servidores Geopos Principal ###
 [GEOPOS_PPAL]
 ak170-n0 ansible_host=172.16.10.3
 akb30-n0 ansible_host=147.127.110.11
@@ -322,7 +322,6 @@ alca2-n0 ansible_host=10.114.0.3
 alca4-new ansible_host=10.138.3.3
 alca5-n0 ansible_host=10.187.3.3
 alca6-n0 ansible_host=10.228.3.5
-#alca7-n0 ansible_host=10.239.3.77
 alcal-n0 ansible_host=10.223.3.3
 alcen-new ansible_host=10.35.2.5
 alct2-new ansible_host=10.139.3.3
@@ -353,9 +352,8 @@ alrus-new ansible_host=10.77.0.3
 alsan-new ansible_host=10.52.0.15
 alsin-new ansible_host=10.25.3.6
 alsoa-new ansible_host=10.142.3.7
-#alsol-new ansible_host=10.63.3.5
 alva2-n0 ansible_host=10.156.3.3
-alval-new ansible_host=10.113.0.14
+#alval-new ansible_host=10.113.0.14
 alve1-new ansible_host=172.16.4.7
 alven-new ansible_host=10.81.0.106
 alvi2-new ansible_host=10.150.0.6
@@ -399,6 +397,8 @@ mford-new ansible_host=10.206.3.18
 terio-n0 ansible_host=10.40.3.5
 Vwmed ansible_host=10.206.3.8
 
+[prueba7]
+alka1n0 ansible_host=10.206.42.6
 
 
 [SERVERS_LINUX:children]
