@@ -1,0 +1,30 @@
+#### Task Principal Relacion_confianzaSSH.yml
+- name: Obtener procesos del usuario
+  shell: "pgrep -u {{ item.name }}"
+  register: user_processes
+  failed_when: false
+  changed_when: false
+
+- name: Matar procesos del usuario si existen (excepto sshd, bash, systemd)
+  shell: |
+    for pid in $(pgrep -u {{ item.name }}); do
+      pname=$(ps -p $pid -o comm=)
+      if [[ "$pname" != "sshd" && "$pname" != "bash" && "$pname" != "systemd" ]]; then
+        kill -9 "$pid"
+      fi
+    done
+  when: user_processes.stdout != ""
+  ignore_errors: true
+  changed_when: true
+
+- name: Esperar tras matar procesos
+  pause:
+    seconds: 2
+  when: user_processes.stdout != ""
+
+- name: Eliminar usuario y su home
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    state: absent
+    remove: yes
+    force: yes

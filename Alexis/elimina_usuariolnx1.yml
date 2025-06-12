@@ -1,0 +1,20 @@
+---
+- name: Eliminar usuario iospina y su directorio home
+  hosts: [GEOPOS_FSC_PPAL_ALKNORTE]
+  become: yes # Esto asegura que el playbook se ejecute con privilegios de superusuario
+
+  tasks:
+    - name: Eliminar el usuario iospina
+      ansible.builtin.user:
+        name: iospina
+        state: absent
+        remove: yes # Esto asegura que tambiése elimine el directorio home del usuario
+
+    - name: Verificar que el directorio home de iospina ha sido eliminado (opcional)
+      ansible.builtin.stat:
+        path: /home/iospina
+      register: iospina_home_dir_status
+
+    - name: Mostrar el estado del directorio home de iospina (opcional)
+      ansible.builtin.debug:
+        msg: "El directorio /home/iospina existe: {{ iospina_home_dir_status.stat.exists }}"

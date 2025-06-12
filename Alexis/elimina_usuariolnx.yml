@@ -5,19 +5,19 @@
   tasks:
     - name: Asegurarse de que el usuario existe
       user:
-        name: "{{ nombre_usuario }}"
+        name: "{{ iospina }}"
         state: present
       register: usuario_existe
 
     - name: Eliminar el usuario
       user:
-        name: "{{ nombre_usuario }}"
+        name: "{{ iospina }}"
         state: absent
         remove: yes
       when: usuario_existe.changed
 
     - name: Eliminar el directorio home del usuario (si existe)
       file:
-        path: "/home/{{ nombre_usuario }}"
+        path: "/home/{{ iospina }}"
         state: absent
       when: usuario_existe.changed

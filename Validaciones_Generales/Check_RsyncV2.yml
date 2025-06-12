@@ -1,0 +1,94 @@
+---
+- name: Validar uso y versión de rsync
+  hosts: INFRA2_0
+  gather_facts: yes
+  become: true
+
+  vars:
+    salida_dir: "{{ playbook_dir }}/Salidas_Playbooks"
+    resultado_json: "{{ salida_dir }}/rsync_versions.json"
+
+  tasks:
+
+    - name: Crear directorio de salida local si no existe
+      local_action: file path="{{ salida_dir }}" state=directory mode=0755
+      run_once: true
+
+    - name: Verificar versión de rsync
+      shell: "rsync --version 2>/dev/null | head -n1 || echo 'no_instalado'"
+      register: rsync_output
+      changed_when: false
+
+    - name: Buscar uso en cron
+      shell: |
+        grep -r 'rsync' /etc/cron* /var/spool/cron 2>/dev/null || echo ''
+      register: cron_uso
+      changed_when: false
+      when: "'no_instalado' not in rsync_output.stdout"
+
+    - name: Buscar procesos activos con rsync
+      shell: pgrep -af rsync || echo ''
+      register: proc_uso
+      changed_when: false
+      when: "'no_instalado' not in rsync_output.stdout"
+
+    - name: Buscar scripts que usen rsync (.sh, .py, .conf, etc.)
+      shell: |
+        find /etc /usr/local /opt /home /root /app \( -name "*.sh" -o -name "*.py" -o -name "*.conf" \) \
+        -exec grep -l 'rsync ' {} \; 2>/dev/null || echo ''
+      register: script_uso
+      changed_when: false
+      when: "'no_instalado' not in rsync_output.stdout"
+
+
+    - name: Guardar información en archivo JSON local
+      local_action:
+        module: copy
+        content: |
+          {
+            "{{ inventory_hostname }}": {
+              "ip": "{{ ansible_default_ipv4.address | default('Desconocida') }}",
+              "rsync_output": "{{ rsync_output.stdout | replace('\"', '') }}",
+              "uso_detectado_en": [{% set usos = [] %}
+                {% if cron_uso.stdout != '' %}{% set _ = usos.append('\"cron\"') %}{% endif %}
+                {% if proc_uso.stdout != '' %}{% set _ = usos.append('\"proceso\"') %}{% endif %}
+                {% if script_uso.stdout != '' %}{% set _ = usos.append('\"scripts\"') %}{% endif %}
+                {{ usos | join(', ') }}
+              ],
+              "cron_output": "{{ cron_uso.stdout | replace('\n', ' | ') }}",
+              "proc_output": "{{ proc_uso.stdout | replace('\n', ' | ') }}",
+              "scripts_output": "{{ script_uso.stdout | replace('\n', ' | ') }}"
+            }
+          }
+        dest: "{{ salida_dir }}/rsync_host_{{ inventory_hostname }}.json"
+      delegate_to: localhost
+
+
+
+- name: Unificar resultados y generar Excel
+  hosts: localhost
+  gather_facts: no
+  vars:
+    salida_dir: "{{ playbook_dir }}/Salidas_Playbooks"
+    resultado_json: "{{ salida_dir }}/rsync_versions.json"
+  
+
+  tasks:
+
+    - name: Unir archivos JSON por host
+      shell: |
+        jq -s 'reduce .[] as $item ({}; . * $item)' {{ salida_dir }}/rsync_host_*.json > {{ resultado_json }}
+      args:
+        executable: /bin/bash
+
+    - name: Ejecutar script Python para generar Excel
+      command: python3 exportar_rsync_versionesV2.py
+      args:
+        chdir: "{{ playbook_dir }}"
+
+    - name: Eliminar archivos JSON temporales
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop: "{{ lookup('fileglob', salida_dir + '/rsync_host_*.json', wantlist=True) }}"
+

@@ -1,0 +1,66 @@
+- name: Auditoría y desinstalación opcional de NessusAgent
+  hosts: GEOPOS_PPAL
+  gather_facts: no
+  vars:
+    desinstalar_nessus: true
+    salida_dir: "{{ playbook_dir }}/Salidas_Playbooks"
+
+  tasks:
+
+    - name: Verificar estado inicial del NessusAgent
+      shell: timeout 10s rpm -qa | grep -i nessusagent || echo "No instalado"
+      register: nessus_estado_inicial
+      changed_when: false
+
+    - name: Desinstalar NessusAgent si está presente y permitido
+      shell: "rpm -e {{ item }}"
+      loop: "{{ nessus_estado_inicial.stdout_lines }}"
+      when:
+        - desinstalar_nessus | bool
+        - '"No instalado" not in item'
+      ignore_errors: true
+      become: true
+
+    - name: Verificar estado posterior del NessusAgent
+      shell: timeout 10s rpm -qa | grep -i nessusagent || echo "No instalado"
+      register: nessus_estado_final
+      changed_when: false
+
+    - name: Guardar resultados para el reporte (Hostname, IP, Estado inicial y final)
+      set_fact:
+        resultados_nessus: >-
+          {{
+            resultados_nessus | default([]) + [
+              {
+                'hostname': inventory_hostname,
+                'ip': hostvars[inventory_hostname].ansible_host | default('N/A'),
+                'version_nessusagent': nessus_estado_inicial.stdout if nessus_estado_inicial.stdout != '' else 'No instalado',
+                'estado': 'Instalado' if 'No instalado' not in nessus_estado_inicial.stdout else 'No instalado',
+                'estado_final': (
+                  'Desinstalado' if 'No instalado' not in nessus_estado_inicial.stdout
+                  and 'No instalado' in nessus_estado_final.stdout
+                  else 'Instalado' if 'No instalado' not in nessus_estado_final.stdout
+                  else 'N/A'
+                )
+              }
+            ]
+          }}
+
+- name: Compilar reporte y generar Excel
+  hosts: localhost
+  gather_facts: false
+  tasks:
+
+    - name: Crear archivo JSON con los resultados globales
+      copy:
+        content: "{{ hostvars | json_query(query) | to_nice_json }}"
+        dest: "{{ playbook_dir }}/Salidas_Playbooks/nessus_auditoria.json"
+      vars:
+        query: "*[].resultados_nessus[]"
+      run_once: true
+
+    - name: Ejecutar script Python para generar Excel
+      command: python3 generar_excel_nessus.py
+      args:
+        chdir: "{{ playbook_dir }}"
+      run_once: true

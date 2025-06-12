@@ -1,6 +1,6 @@
 ---
 - name: Tarea para crear relación de confianza SSH con llaves públicas
-  hosts: prueba7
+  hosts: lote_10-2
   become: true
 
   vars:
@@ -8,7 +8,9 @@
       - name: iacolcoauto
         key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC3NzBHvokb0EmAMlqgXVgUMYBlsVVjM6e28dzqhW7ykRfjrjEx4jV+0H3I/yvPqIga/iBUmg3CKBnL9rm1+9vW7f5B2JiCH0tPAJAfLDZ7As7KHuL3TeV5VTGursQ7HgU2fWVfoqP/yzGsrCxdQizTlDd9QpB8skqjXIf9nIV+CZJqEHxy0/EHXdm/KuBZbBd+7u/3ZxVMU7zTfJMC48ZV0Et8eu5pzn3mCJjETpfULrnBIoPoJ8otcX19xfygEcuF8Iv6eqnjoRoIEcDhQZi/ayTKiTz7Ezjf1idpBois+iwGlSkLCQ4j6Y2cRYyI/b+fVPnUq+89i2si4/J2J6yt10I3heO6iWvNFi0hgloyMegZiQtnWUyLfay1s7FYtmw6HV4cvJX215j66ETURpSIeg1vFqqf6BO2DxHampjjVfBrGyKuuWXqMiKiLMrM7CVzkOoX3PevPL+rdOU85M/lhNFAY/ioblqjea1kjVYxn/7iLGvWcjbp60MMVGVAEGkn2WubLbAh2xZYS0RFG1lrpBTtb1Alu6CN4kx2zfFhLbIEAM/2WKOWSZMo7CH0ynUbzlNKkuImDuAdxIZaluHPjQ0YCYs5I4rOKFm1ixes16zk25vQnZQ2kfEI4WhAnI1D1M7GmmHbkRAFlxpReDG9JwykHuQSPzld5pqGJoQH1Q== iacolcoauto@ansibleawx"
       - name: ansible_test
-        key: "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBPW8I6d7AAAkfrObeWMBdayjEHP9pzCfR5/KGVNkq4nBCK2Sb7dohPLsateMZfaQD0DCBI7YJDrKUw4P9ZOCXbM= root@Ansible"
+        key:
+          - "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBPW8I6d7AAAkfrObeWMBdayjEHP9pzCfR5/KGVNkq4nBCK2Sb7dohPLsateMZfaQD0DCBI7YJDrKUw4P9ZOCXbM= root@Ansible"
+          - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDNk/rh7Az+JERjDcOtiM4Ee9EwlKfnS8BpKOHD97l95Clm9jQB1XViHdVo+NNDOttf+yzs/wXcnUd4Q/APXUt3M0LLahDtMjJRVwj0bOimdpI5NQeqws2FlRfpbcvd0fC7P2De2QiO+0/AJd03W8MeBVGFpx3kCxpoRiImBHurUVnUAa/QogQjxbnDgCR39w9VLvsxjDqKzQzAkomHKrJVpwOHdv9nHyxzsFphEXpEVa2UuNon3yffGTeuKPZQVgaBBL+aSm3CN6iBGvScTtc8Kfybght7izQWoOJtPTunL7ltgiQAo5smO0LLEmBMRFzGnb/ovrzWRf94BxqjGNnEYZdJbAhIp+qEDqSzjbORAO904jXPInAzsKjL+zCPy2r7cuLfKoQyLtiBIPblPiwsyI1Vq5Z4NwoOMhwmthBGhylt+wKXp0+gLWz44MtfK17in+WsGgUwJ7wsochmxsiia+y5Mr9ub/VRiOgQaHvE7KULc1nqWJDH7J9JJKe+vPc= root@localhost.localdomain"
 
   tasks:
 
@@ -21,20 +23,18 @@
         validate: visudo -cf %s
 
     - name: Incluir tareas para eliminar usuarios
-      include_tasks: eliminar_usuario.yml
+      include_tasks: ./Tasks/eliminar_usuario.yml
       loop: "{{ usuarios_ansible }}"
       loop_control:
         loop_var: item
-
 
     - name: Crear usuario sin contraseña (solo para autenticación SSH)
       ansible.builtin.user:
         name: "{{ item.name }}"
         shell: /bin/bash
         create_home: true
-        password_lock: true
+        password: '*'
         update_password: on_create
-        password: '!'
       loop: "{{ usuarios_ansible }}"
 
     - name: Obtener grupo primario del usuario
@@ -83,7 +83,12 @@
     - name: Instalar llave pública en authorized_keys
       ansible.builtin.copy:
         dest: "/home/{{ item.name }}/.ssh/authorized_keys"
-        content: "{{ item.key }}"
+        content: |
+          {% if item.key is string %}
+          {{ item.key }}
+          {% else %}
+          {{ item.key | join('\n') }}
+          {% endif %}
         owner: "{{ item.name }}"
         group: "{{ hostvars[inventory_hostname]['grupo_' ~ item.name] }}"
         mode: '0600'
@@ -94,3 +99,18 @@
         chage -d -1 -I -1 -m 0 -M 99999 -E -1 {{ item.name }}
       loop: "{{ usuarios_ansible }}"
       changed_when: false
+
+    - name: Verificar si existe el grupo 'ssh_access'
+      ansible.builtin.shell: getent group ssh_access
+      register: grupo_ssh_access
+      failed_when: false
+      changed_when: false
+
+
+    - name: Incluir usuarios en el grupo 'ssh_access' si existe
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        groups: ssh_access
+        append: true
+      when: grupo_ssh_access.rc == 0
+      loop: "{{ usuarios_ansible }}"
