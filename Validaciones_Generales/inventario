@@ -6,6 +6,12 @@
 
 #######Servidores Pago por Uso PPU - Generales ########
 
+[cajas]
+akbolqa-01 ansible_host=10.185.0.57
+akvenqa-01 ansible_host=10.181.11.121
+alnibqa-01 ansible_host=10.181.11.25
+alnibqa-02 ansible_host=10.181.11.26
+
 
 [PPU]
 APBOGDISCRMCOLC ansible_host=10.181.5.29 

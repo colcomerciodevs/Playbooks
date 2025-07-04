@@ -1,0 +1,35 @@
+---
+- name: Verificar versión de OpenSSL en servidores
+  hosts: INFRA2_0
+  gather_facts: no
+  tasks:
+
+    - name: Obtener versión de OpenSSL
+      ansible.builtin.command: openssl version
+      register: openssl_version
+
+    - name: Guardar resultados en variable de host
+      set_fact:
+        openssl_resultado:
+          ip: "{{ hostvars[inventory_hostname]['ansible_host'] | default(inventory_hostname) }}"
+          version: "{{ openssl_version.stdout }}"
+      delegate_to: localhost
+
+- name: Compilar reporte y generar Excel
+  hosts: localhost
+  gather_facts: no
+  tasks:
+
+    - name: Crear JSON consolidado con resultados de OpenSSL
+      copy:
+        content: "{{ hostvars | json_query(query) | to_nice_json }}"
+        dest: "{{ playbook_dir }}/Salidas_Playbooks/openssl_consolidado.json"
+      vars:
+        query: "*[].openssl_resultado"
+      run_once: true
+
+    - name: Ejecutar script Python para generar Excel
+      ansible.builtin.command: >
+        python3 {{ playbook_dir }}/exportar_openssl_excel.py
+        {{ playbook_dir }}/Salidas_Playbooks
+      run_once: true

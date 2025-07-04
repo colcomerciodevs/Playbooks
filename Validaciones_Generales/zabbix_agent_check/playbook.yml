@@ -1,0 +1,161 @@
+- name: Verificar e instalar Zabbix Agent 2 desde repositorio HTTP local
+  hosts: all
+  become: yes
+  vars:
+    zabbix_desired_version: "7.0.10"
+    repo_base_url: "http://10.181.8.209:8080/repos/localrepo/zabbix2"
+
+  tasks:
+
+    - name: Verificar si Zabbix Agent 1 está instalado
+      shell: rpm -q zabbix-agent || echo "not_installed"
+      register: zabbix_v1_check
+      changed_when: false
+
+    - name: Obtener versión Zabbix Agent 1 si está instalado
+      set_fact:
+        zabbix_agent1_version: "{{ zabbix_v1_check.stdout | regex_search('([0-9]+\\.[0-9]+\\.[0-9]+)', '\\1') }}"
+      when: "'not_installed' not in zabbix_v1_check.stdout"
+
+    - name: Verificar si Zabbix Agent 2 está instalado
+      shell: rpm -q zabbix-agent2 || echo "not_installed"
+      register: zabbix_v2_check
+      changed_when: false
+
+    - name: Obtener versión Zabbix Agent 2 si está instalado
+      set_fact:
+        zabbix_agent2_version: "{{ zabbix_v2_check.stdout | regex_search('([0-9]+\\.[0-9]+\\.[0-9]+)', '\\1') }}"
+      when: "'not_installed' not in zabbix_v2_check.stdout"
+
+    - name: Determinar si se requiere instalar/reinstalar Agent 2
+      set_fact:
+        reinstall_required: >-
+          {{
+            'not_installed' in zabbix_v2_check.stdout
+            or 'not_installed' not in zabbix_v1_check.stdout
+            or (zabbix_agent2_version is defined and zabbix_agent2_version is version(zabbix_desired_version, '<'))
+          }}
+
+    - name: Determinar URL del repositorio según sistema
+      set_fact:
+        zabbix_repo_url: >-
+          {{
+            repo_base_url ~ '/el7/' if ansible_distribution in ['RedHat', 'CentOS', 'OracleLinux'] and ansible_distribution_major_version == '7'
+            else repo_base_url ~ '/el8/' if ansible_distribution in ['RedHat', 'CentOS', 'OracleLinux'] and ansible_distribution_major_version == '8'
+            else repo_base_url ~ '/el9/' if ansible_distribution in ['RedHat', 'OracleLinux'] and ansible_distribution_major_version == '9'
+            else repo_base_url ~ '/sles15/' if ansible_distribution == 'SLES' and ansible_distribution_major_version == '15'
+            else ''
+          }}
+
+    - name: Falla si el sistema operativo no es compatible
+      fail:
+        msg: "Sistema no soportado: {{ ansible_distribution }} {{ ansible_distribution_major_version }}"
+      when: zabbix_repo_url == ''
+
+    - name: Eliminar Zabbix Agent 1 si está presente
+      package:
+        name: zabbix-agent
+        state: absent
+      when: "'not_installed' not in zabbix_v1_check.stdout"
+
+    - name: Eliminar Zabbix Agent 2 si se requiere reinstalación
+      package:
+        name: zabbix-agent2
+        state: absent
+      when: reinstall_required and "'not_installed' not in zabbix_v2_check.stdout"
+
+    - name: Agregar repositorio Zabbix temporal (RHEL/CentOS/Oracle)
+      yum_repository:
+        name: zabbix-local
+        description: Repositorio local Zabbix Agent2
+        baseurl: "{{ zabbix_repo_url }}"
+        enabled: yes
+        gpgcheck: no
+      when: ansible_os_family == "RedHat"
+
+    - name: Agregar repositorio Zabbix temporal (SLES)
+      zypper_repository:
+        name: zabbix-local
+        description: Repositorio local Zabbix Agent2
+        auto_import_keys: yes
+        autorefresh: yes
+        enabled: yes
+        repo: "{{ zabbix_repo_url }}"
+      when: ansible_distribution == "SLES"
+
+    - name: Instalar Zabbix Agent 2 desde el repositorio
+      package:
+        name: zabbix-agent2
+        state: present
+      when: reinstall_required
+
+    - name: Configurar archivo /etc/zabbix/zabbix_agentd.conf
+      template:
+        src: files/zabbix_agentd.conf.template
+        dest: /etc/zabbix/zabbix_agentd.conf
+        mode: '0644'
+      notify: Reiniciar zabbix-agent
+      when: reinstall_required
+
+    - name: Iniciar y habilitar zabbix-agent2
+      systemd:
+        name: zabbix-agent2
+        state: started
+        enabled: yes
+
+    - name: Eliminar repositorio temporal (RHEL/CentOS/Oracle)
+      yum_repository:
+        name: zabbix-local
+        state: absent
+      when: ansible_os_family == "RedHat"
+
+    - name: Eliminar repositorio temporal (SLES)
+      zypper_repository:
+        name: zabbix-local
+        state: absent
+      when: ansible_distribution == "SLES"
+
+    - name: Verificar estado final del servicio
+      shell: systemctl is-active zabbix-agent2
+      register: final_status
+      changed_when: false
+
+    - name: Guardar resultados por host
+      set_fact:
+        resultados_zabbix: >-
+          {{
+            resultados_zabbix | default([]) + [
+              {
+                'ip': ansible_default_ipv4.address,
+                'version_zabbix_agent1': zabbix_agent1_version if zabbix_agent1_version is defined else 'No instalado',
+                'version_zabbix_agent2': zabbix_agent2_version if zabbix_agent2_version is defined else 'No instalado',
+                'nueva_version_instalada': zabbix_desired_version if reinstall_required else 'No se instaló',
+                'estado_servicio_final': final_status.stdout
+              }
+            ]
+          }}
+
+  handlers:
+    - name: Reiniciar zabbix-agent
+      systemd:
+        name: zabbix-agent2
+        state: restarted
+
+- name: Compilar reporte y generar Excel
+  hosts: localhost
+  gather_facts: false
+  tasks:
+
+    - name: Exportar JSON con resultados
+      copy:
+        content: "{{ hostvars | json_query(query) | to_nice_json }}"
+        dest: "{{ playbook_dir }}/Salidas_Playbooks/zabbix_auditoria.json"
+      vars:
+        query: "*[].resultados_zabbix[]"
+      run_once: true
+
+    - name: Ejecutar script Python para generar Excel
+      command: python3 scripts/generar_excel_zabbix.py
+      args:
+        chdir: "{{ playbook_dir }}"
+      run_once: true
