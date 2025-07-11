@@ -256,4 +256,5 @@ newmercad_app_qa ansible_host=10.181.11.111 ansible_user=tux
 #moviltrack ansible_host=10.181.3.109 ansible_user=tux
 #moviltrackqanew  ansible_host=10.181.11.103 ansible_user=tux
 [FSC_TEMP]
-terco-n0 ansible_host=10.181.5.251 ansible_user=ansible_test
+#terco-n0 ansible_host=10.181.5.251 ansible_user=ansible_test
+alk33-n0 ansible_host=10.175.3.8 ansible_user=root
