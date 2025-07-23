@@ -1,5 +1,5 @@
 - name: Verificar e instalar Zabbix Agent 2 desde repositorio HTTP local
-  hosts: all
+  hosts: cajas
   become: yes
   vars:
     zabbix_desired_version: "7.0.10"
@@ -46,6 +46,10 @@
             else repo_base_url ~ '/sles15/' if ansible_distribution == 'SLES' and ansible_distribution_major_version == '15'
             else ''
           }}
+
+    - name: Mostrar URL del repositorio resuelta
+      debug:
+        msg: "Repositorio usado: {{ zabbix_repo_url }}"
 
     - name: Falla si el sistema operativo no es compatible
       fail:

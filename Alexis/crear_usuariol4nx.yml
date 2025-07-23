@@ -1,0 +1,13 @@
+---
+- name: Crear usuario y asignar a grupo
+  hosts: [FSC_TEMP]
+  become: yes
+  tasks:
+    - name: Crear usuario GO_COLCO_ROBOT04
+      ansible.builtin.user:
+        name: GO_COLCO_ROBOT04
+        password: "{{ 'R0b0t2025' | password_hash('sha512') }}"
+        comment: "usuario para automatizacion  operacion"
+        groups: soporte
+        append: yes
+        state: present

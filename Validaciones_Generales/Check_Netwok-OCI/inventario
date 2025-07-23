@@ -1,0 +1,26 @@
+#######################################  INVENTARIO LINUX ##############################################
+
+[OCI-IN-LINUX]
+linuxnode01 ansible_host=10.181.6.38
+linuxnode02 ansible_host=147.127.110.17
+
+
+## OCI###
+[OCI-OUT-LINUX]
+linuxnode01 ansible_host=10.181.6.38
+
+#######################################  INVENTARIO WINDOWS ##############################################
+
+[OCI-IN-WINDOWS]
+windowsnode01 ansible_host=10.181.3.157
+
+
+#######################################  GRUPOS COMBINADOS CORRECTOS ###################################
+
+[OCI-IN:children]
+OCI-IN-LINUX
+OCI-IN-WINDOWS
+
+[OCI-OUT:children]
+OCI-OUT-LINUX
+OCI-OUT-WINDOWS

@@ -1,0 +1,126 @@
+---
+- name: Análisis de red en hosts Windows y Linux
+  hosts: OCI-IN
+  gather_facts: yes
+
+  # ---------------------
+  # VARIABLES GLOBALES
+  # ---------------------
+  vars:
+    archivo_ips: "{{ playbook_dir }}/archivo_ips.txt"
+    archivo_puertos: "{{ playbook_dir }}/archivo_puertos.txt"
+
+  vars_files:
+    - vault_windows.yml
+
+  # ---------------------
+  # PRE-TAREAS
+  # ---------------------
+  pre_tasks:
+
+    # Generar un timestamp único para todos los hosts (solo una vez)
+    - name: 🕒 Definir timestamp global
+      run_once: true
+      delegate_to: localhost
+      set_fact:
+        timestamp_global: "{{ lookup('pipe', 'date +%Y-%m-%d_%H%M%S') }}"
+
+    # Leer lista de IPs desde archivo
+    - name: 📄 Leer archivo de IPs
+      set_fact:
+        lista_ips: "{{ lookup('file', archivo_ips).splitlines() | reject('match', '^\\s*$') | list }}"
+
+    # Leer lista de puertos desde archivo
+    - name: 📄 Leer archivo de puertos
+      set_fact:
+        lista_puertos: "{{ lookup('file', archivo_puertos).splitlines() | reject('match', '^\\s*$') | map('int') | list }}"
+
+    # Inicializar contenido de log por host
+    - name: 📝 Inicializar log por host
+      set_fact:
+        contenido_log_total: ""
+
+  # ---------------------
+  # TAREAS PRINCIPALES
+  # ---------------------
+  tasks:
+
+    # Linux: Obtener IP, máscara y gateway
+    - name: 🌐 Obtener red en Linux
+      set_fact:
+        ip_local: "{{ ansible_default_ipv4.address }}"
+        netmask: "{{ ansible_default_ipv4.netmask }}"
+        gateway: "{{ ansible_default_ipv4.gateway }}"
+        hostname_actual: "{{ ansible_hostname }}"
+      when: ansible_os_family != 'Windows'
+
+    # Windows: Obtener IP, máscara y gateway
+    - name: 🌐 Obtener red en Windows
+      win_shell: |
+        function ConvertTo-SubnetMask {
+            param([int]$prefixLength)
+            $binary = ("1" * $prefixLength).PadRight(32, "0")
+            $bytes = ($binary.ToCharArray() -join "") -split "(.{8})" | Where-Object { $_ -ne "" }
+            return ($bytes | ForEach-Object { [convert]::ToInt32($_, 2) }) -join "."
+        }
+
+        $conf = Get-NetIPConfiguration | Where-Object { $_.IPv4Address -ne $null }
+        if ($conf) {
+          $ip = $conf.IPv4Address.IPAddress
+          $prefix = $conf.IPv4Address.PrefixLength
+          $mask = ConvertTo-SubnetMask -prefixLength $prefix
+          $gw = $conf.IPv4DefaultGateway.NextHop
+          Write-Host "$ip,$mask,$gw"
+        } else {
+          Write-Host "N/A,N/A,N/A"
+        }
+      register: salida_red_win
+      changed_when: false
+      when: ansible_os_family == 'Windows'
+
+    - name: 🔎 Parsear red en Windows
+      set_fact:
+        ip_local: "{{ (salida_red_win.stdout | trim | regex_findall('^[^,]+'))[0] | default('N/A') }}"
+        netmask: "{{ (salida_red_win.stdout | trim | regex_findall('(?<=,)[^,]+'))[0] | default('N/A') }}"
+        gateway: "{{ (salida_red_win.stdout | trim | regex_findall('[^,]+$'))[0] | default('N/A') }}"
+        hostname_actual: "{{ ansible_hostname }}"
+      when: ansible_os_family == 'Windows'
+
+    # Definir rutas de CSV y log con el timestamp global
+    - name: 📂 Definir rutas de salida
+      set_fact:
+        ruta_csv_local: "{{ playbook_dir }}/Salidas_Playbooks/reporte_red_{{ 'windows' if ansible_os_family == 'Windows' else 'linux' }}_{{ timestamp_global }}.csv"
+        ruta_log_local: "{{ playbook_dir }}/Salidas_Playbooks/reporte_red_{{ 'windows' if ansible_os_family == 'Windows' else 'linux' }}_{{ timestamp_global }}.log"
+
+    # Ejecutar análisis de ping por cada IP
+    - name: 📡 Ejecutar ping a cada IP
+      include_tasks: Tasks/ping_task.yml
+      loop: "{{ lista_ips }}"
+      loop_control:
+        loop_var: ip_ping
+
+    # Validar puertos por cada combinación IP-puerto
+    - name: 🔌 Verificar puertos TCP
+      include_tasks: Tasks/puerto_task.yml
+      loop: "{{ lista_ips | product(lista_puertos) | list }}"
+      loop_control:
+        loop_var: ip_puerto
+      vars:
+        ip_obj: "{{ ip_puerto.0 }}"
+        puerto_objetivo: "{{ ip_puerto.1 }}"
+
+    # Escribir bloque final del log por host
+    - name: 📝 Guardar log del host en archivo global
+      local_action:
+        module: blockinfile
+        path: "{{ ruta_log_local }}"
+        block: |
+          ==============================
+          🧾 LOG DEL HOST: {{ hostname_actual }}
+          📅 FECHA: {{ ansible_date_time.date }} {{ ansible_date_time.time }}
+          🌐 IP: {{ ip_local }} | GW: {{ gateway }}
+          {{ contenido_log_total }}
+          ------------------------------
+        create: yes
+        marker: "# {mark}"
+      delegate_to: localhost

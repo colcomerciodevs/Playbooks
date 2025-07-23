@@ -1,0 +1,76 @@
+# --- Validación de apertura de puertos TCP en la red ---
+
+# 🔍 Linux: Validar puerto usando redirección con /dev/tcp y timeout
+- name: 🐧 Validar puerto {{ puerto_objetivo }} en {{ ip_obj }} (Linux)
+  ansible.builtin.shell: |
+    timeout 2 bash -c "echo > /dev/tcp/{{ ip_obj }}/{{ puerto_objetivo }}"
+  register: resultado_puerto_linux
+  ignore_errors: yes
+  changed_when: false
+  when: ansible_os_family != 'Windows'
+
+# 🔍 Windows: Validar puerto con PowerShell y TcpClient
+- name: 🪟 Validar puerto {{ puerto_objetivo }} en {{ ip_obj }} (Windows)
+  win_shell: |
+    try {
+      $tcp = New-Object System.Net.Sockets.TcpClient
+      $tcp.Connect("{{ ip_obj }}", {{ puerto_objetivo }})
+      if ($tcp.Connected) {
+        $tcp.Close()
+        "Abierto"
+      } else {
+        $tcp.Close()
+        "Cerrado"
+      }
+    } catch {
+      "Cerrado"
+    }
+  register: resultado_puerto_windows
+  changed_when: false
+  ignore_errors: yes
+  when: ansible_os_family == 'Windows'
+
+# 🧠 Consolidar resultado según sistema operativo
+- name: 🧠 Consolidar resultado del puerto según SO
+  set_fact:
+    resultado_puerto: "{{ resultado_puerto_linux if ansible_os_family != 'Windows' else resultado_puerto_windows }}"
+
+# ✅ Evaluar si el puerto está abierto o cerrado
+- name: 📊 Evaluar resultado del puerto
+  set_fact:
+    estado_puerto: >-
+      {% if ansible_os_family == 'Windows' %}
+        {{ 'Abierto' if resultado_puerto.stdout is search('Abierto') else 'Cerrado' }}
+      {% else %}
+        {{ 'Abierto' if resultado_puerto.rc is defined and resultado_puerto.rc == 0 else 'Cerrado' }}
+      {% endif %}
+
+# 🧾 Construir línea de salida CSV para el resultado del puerto
+- name: 📄 Construir línea CSV de puerto
+  set_fact:
+    linea_puerto: >-
+      {{
+        hostname_actual | trim ~ ',' ~
+        ip_local | trim ~ ',' ~
+        netmask | trim ~ ',' ~
+        gateway | trim ~ ',' ~
+        'puerto' ~ ',' ~
+        ip_obj | trim ~ ',' ~
+        puerto_objetivo | string | trim ~ ',' ~
+        estado_puerto | trim
+      }}
+
+# 📥 Escribir resultado en archivo CSV consolidado
+- name: 💾 Guardar línea de puerto en CSV
+  local_action:
+    module: lineinfile
+    path: "{{ ruta_csv_local }}"
+    line: "{{ linea_puerto }}"
+    create: yes
+    insertafter: EOF
+  delegate_to: localhost
+
+# 🗒️ Agregar entrada al log acumulado del host
+- name: 📝 Agregar entrada al log por puerto
+  set_fact:
+    contenido_log_total: "{{ contenido_log_total }}\n🔌 PUERTO {{ puerto_objetivo }} en {{ ip_obj }} → {{ estado_puerto }}"

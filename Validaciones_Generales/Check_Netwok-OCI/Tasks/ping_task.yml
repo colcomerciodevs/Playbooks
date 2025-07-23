@@ -1,0 +1,65 @@
+# --- Realizar prueba de conectividad (PING) ---
+
+# 🔍 Linux: Hacer ping con el comando clásico
+- name: 🐧 Hacer ping a {{ ip_ping }} (Linux)
+  ansible.builtin.command: "ping -c 1 -W 1 {{ ip_ping }}"
+  register: resultado_ping_linux
+  ignore_errors: yes
+  changed_when: false
+  when: ansible_os_family != 'Windows'
+
+# 🔍 Windows: Usar PowerShell con Test-Connection
+- name: 🪟 Hacer ping a {{ ip_ping }} (Windows)
+  win_shell: |
+    $res = Test-Connection -ComputerName {{ ip_ping }} -Count 1 -Quiet
+    if ($res) { "EXITO" } else { "FALLO" }
+  register: resultado_ping_windows
+  ignore_errors: yes
+  changed_when: false
+  when: ansible_os_family == 'Windows'
+
+# 🧠 Consolidar resultado del ping según sistema operativo
+- name: 🧠 Consolidar resultado_ping según SO
+  set_fact:
+    resultado_ping: "{{ resultado_ping_linux if ansible_os_family != 'Windows' else resultado_ping_windows }}"
+
+# ✅ Evaluar si el ping fue exitoso
+- name: 📊 Evaluar resultado del ping (combinado)
+  set_fact:
+    estado_ping: >-
+      {% if (ansible_os_family == 'Windows' and resultado_ping.stdout is search('EXITO')) or
+             (ansible_os_family != 'Windows' and resultado_ping.rc is defined and resultado_ping.rc == 0) %}
+        Exitoso
+      {% else %}
+        Fallido
+      {% endif %}
+
+# 🧾 Construir línea CSV con los datos del ping
+- name: 📄 Construir línea de CSV para ping
+  set_fact:
+    linea_ping: >-
+      {{
+        hostname_actual | trim ~ ',' ~
+        ip_local | trim ~ ',' ~
+        netmask | trim ~ ',' ~
+        gateway | trim ~ ',' ~
+        'ping' ~ ',' ~
+        ip_ping | trim ~ ',' ~
+        'N/A' ~ ',' ~
+        estado_ping | trim
+      }}
+
+# 📥 Escribir resultado del ping en archivo CSV global
+- name: 💾 Guardar línea de ping en CSV
+  local_action:
+    module: lineinfile
+    path: "{{ ruta_csv_local }}"
+    line: "{{ linea_ping }}"
+    create: yes
+    insertafter: EOF
+  delegate_to: localhost
+
+# 🗒️ Agregar resultado del ping al log por host
+- name: 📝 Agregar entrada al log por host
+  set_fact:
+    contenido_log_total: "{{ contenido_log_total }}\n🖥️ HOST: {{ hostname_actual }} | PING a {{ ip_ping }} → {{ estado_ping }}"
