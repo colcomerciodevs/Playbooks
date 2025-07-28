@@ -1,0 +1,190 @@
+---
+- name: 🔍 Análisis de red optimizado (Linux y Windows)
+  hosts: OCI-IN
+  gather_facts: yes
+
+  vars:
+    archivo_ips: "{{ playbook_dir }}/archivo_ips.txt"         # 📄 IPs a validar
+    archivo_puertos: "{{ playbook_dir }}/archivo_puertos.txt" # 📄 Puertos a validar
+    ruta_script_linux: "~/valida_red.sh"                      # 📜 Script en host Linux
+    ruta_script_windows: "C:\\temp\\valida_red.ps1"           # 📜 Script en host Windows
+    salida_csv_linux: "~/salida_valida_red.csv"              # 📂 Archivo generado en Linux remoto
+    salida_csv_windows: "C:\\temp\\salida_valida_red.csv"     # 📂 Archivo generado en Windows remoto
+
+    # 📅 Ruta temporal local donde se almacenan los CSVs traídos por fetch
+    ruta_local_linux: "{{ playbook_dir }}/Salidas_Playbooks/tmp_linux_{{ inventory_hostname }}.csv"
+    ruta_local_windows: "{{ playbook_dir }}/Salidas_Playbooks/tmp_windows_{{ inventory_hostname }}.csv"
+
+  vars_files:
+    - vault_windows.yml  # 🔐 Vault con ansible_password
+
+  ##########################################################################
+  # PRE-TASKS
+  ##########################################################################
+  pre_tasks:
+
+    # 🕒 Definir timestamp global para reporte
+    - name: 🕒 Definir timestamp global
+      run_once: true
+      delegate_to: localhost
+      set_fact:
+        timestamp_global: "{{ lookup('pipe', 'date +%Y-%m-%d_%H%M%S') }}"
+
+    # 🪼 Agregar salto de línea final a archivo_puertos.txt si falta
+    - name: 🪼 Asegurar salto de línea final en archivo_puertos.txt
+      delegate_to: localhost
+      run_once: true
+      lineinfile:
+        path: "{{ archivo_puertos }}"
+        line: ""
+        insertafter: EOF
+        create: no
+
+    - name: 🪼 Asegurar salto de línea final en archivo_ips.txt
+      delegate_to: localhost
+      run_once: true
+      lineinfile:
+        path: "{{ archivo_ips }}"
+        line: ""
+        insertafter: EOF
+        create: no
+
+    # 🔧 Limpiar caracteres de retorno de carro (Windows CRLF → Unix LF)
+    - name: 🔧 Normalizar archivo_puertos.txt (remover '\r')
+      delegate_to: localhost
+      run_once: true
+      shell: "sed -i 's/\\r//' {{ archivo_puertos }}"
+      args:
+        executable: /bin/bash
+
+    - name: 🔧 Normalizar archivo_ips.txt (remover '\r')
+      delegate_to: localhost
+      run_once: true
+      shell: "sed -i 's/\\r//' {{ archivo_ips }}"
+      args:
+        executable: /bin/bash
+
+  ##########################################################################
+  # TAREAS PRINCIPALES
+  ##########################################################################
+  tasks:
+
+    # 📁 Copiar archivos a servidores Linux
+    - name: 📧 Copiar archivos a servidores Linux
+      when: ansible_os_family != 'Windows'
+      copy:
+        src: "{{ item }}"
+        dest: "~/"
+        mode: '0755'
+        force: true
+      loop:
+        - "{{ archivo_ips }}"
+        - "{{ archivo_puertos }}"
+        - "{{ playbook_dir }}/scripts/valida_red.sh"
+
+    # 📁 Copiar archivos a servidores Windows
+    - name: 📧 Copiar archivos a servidores Windows
+      when: ansible_os_family == 'Windows'
+      win_copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+      loop:
+        - { src: "{{ archivo_ips }}", dest: 'C:\\temp\\archivo_ips.txt' }
+        - { src: "{{ archivo_puertos }}", dest: 'C:\\temp\\archivo_puertos.txt' }
+        - { src: "{{ playbook_dir }}/scripts/valida_red.ps1", dest: 'C:\\temp\\valida_red.ps1' }
+
+    # ▶️ Ejecutar script en Linux
+    - name: ▶️ Ejecutar script Linux
+      when: ansible_os_family != 'Windows'
+      shell: "bash {{ ruta_script_linux }}"
+      args:
+        executable: /bin/bash
+
+    # ▶️ Ejecutar script en Windows
+    - name: ▶️ Ejecutar script Windows
+      when: ansible_os_family == 'Windows'
+      win_shell: powershell -ExecutionPolicy Bypass -File {{ ruta_script_windows }}
+
+    # 📅 Obtener CSV desde Linux
+    - name: 📅 Traer CSV desde host Linux
+      when: ansible_os_family != 'Windows'
+      fetch:
+        src: "{{ salida_csv_linux }}"
+        dest: "{{ ruta_local_linux }}"
+        flat: yes
+
+    # 📅 Obtener CSV desde Windows
+    - name: 📅 Traer CSV desde host Windows
+      when: ansible_os_family == 'Windows'
+      fetch:
+        src: "{{ salida_csv_windows }}"
+        dest: "{{ ruta_local_windows }}"
+        flat: yes
+
+    # ❌ Limpiar CSV remoto Linux
+    - name: ❌ Eliminar CSV remoto en host Linux
+      when: ansible_os_family != 'Windows'
+      file:
+        path: "{{ salida_csv_linux }}"
+        state: absent
+
+    # ❌ Limpiar CSV remoto Windows
+    - name: ❌ Eliminar CSV remoto en host Windows
+      when: ansible_os_family == 'Windows'
+      win_file:
+        path: "{{ salida_csv_windows }}"
+        state: absent
+
+  ##########################################################################
+  # POST-TASKS - Consolidación y ordenamiento
+  ##########################################################################
+  post_tasks:
+
+    # 🪼 Eliminar líneas vacías iniciales
+    - name: 🪼 Eliminar líneas en blanco iniciales en archivos CSV
+      run_once: true
+      delegate_to: localhost
+      shell: |
+        for archivo in {{ playbook_dir }}/Salidas_Playbooks/tmp_*.csv; do
+          sed -i '/./,$!d' "$archivo"
+        done
+      args:
+        executable: /bin/bash
+
+    # 🔧 Unir archivos Linux
+    - name: 🔧 Combinar archivos Linux
+      run_once: true
+      delegate_to: localhost
+      shell: |
+        cat {{ playbook_dir }}/Salidas_Playbooks/tmp_linux_*.csv > {{ playbook_dir }}/Salidas_Playbooks/reporte_red_linux_{{ timestamp_global }}.csv
+      args:
+        executable: /bin/bash
+
+    # 🔧 Unir archivos Windows
+    - name: 🔧 Combinar archivos Windows
+      run_once: true
+      delegate_to: localhost
+      shell: |
+        cat {{ playbook_dir }}/Salidas_Playbooks/tmp_windows_*.csv > {{ playbook_dir }}/Salidas_Playbooks/reporte_red_windows_{{ timestamp_global }}.csv
+      args:
+        executable: /bin/bash
+
+    # 🔮 Ordenar Linux por hostname
+    - name: 🔮 Ordenar reporte Linux por hostname
+      run_once: true
+      delegate_to: localhost
+      shell: |
+        archivo="{{ playbook_dir }}/Salidas_Playbooks/reporte_red_linux_{{ timestamp_global }}.csv"
+        [ -f "$archivo" ] && sort "$archivo" -o "$archivo"
+      args:
+        executable: /bin/bash
+
+    # 🔮 Ordenar Windows por hostname
+    - name: 🔮 Ordenar reporte Windows por hostname
+      run_once: true
+      delegate_to: localhost
+      shell: |
+        archivo="{{ playbook_dir }}/Salidas_Playbooks/reporte_red_windows_{{ timestamp_global }}.csv"
+        [ -f "$archivo" ] && sort "$archivo" -o "$archivo"
+      args:
+        executable: /bin/bash

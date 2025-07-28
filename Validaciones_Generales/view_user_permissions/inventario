@@ -1,0 +1,125 @@
+###### INVENTARIO VALIDACIÓN USERS LINUX ##########################
+
+############### WMS ####################
+
+[WMS_PRD]
+WMSAPPBOGDIS01_N1 ansible_host=10.181.3.65 ambiente=produccion
+WMSAPPBOGDIS01_N2 ansible_host=10.181.4.101 ambiente=produccion
+WMSAPPBOGDIS01_N3 ansible_host=10.181.4.211 ambiente=produccion
+WMSAPPBOGDIS01_N4 ansible_host=10.181.3.84 ambiente=produccion
+
+[WMS_ARCH]
+WMSAPPBOGDIS02 ansible_host=10.181.3.168 ambiente=archivado
+ARCHIVINGBOGDIS_JDA ansible_host=10.181.3.169 ambiente=archivado
+
+[WMS_DESA]
+WMSDBBOGDIS01_DEV ansible_host=10.181.11.72 ambiente=desarrollo
+WMSAPPBOGDIS01_DEV ansible_host=10.181.11.74 ambiente=desarrollo
+
+[WMS_DRP]
+WMSAPPBOGDIS01_Nodo_1 ansible_host=10.199.3.14 ambiente=DRP
+WMSAPPBOGDIS_NODO2 ansible_host=10.199.3.41 ambiente=DRP
+WMSAPPBOGDIS01_N3_DRP ansible_host=10.199.3.25 ambiente=DRP
+WMSAPPBOGDIS01_N4_DRP ansible_host=10.199.3.51 ambiente=DRP
+
+[WMS_PRU]
+WMS_TEST_DB02 ansible_host=10.181.11.116 ambiente=pruebas
+WMS_TEST_APP ansible_host=10.181.11.117 ambiente=pruebas
+WMS_TEST03_APP ansible_host=10.181.11.119 ambiente=pruebas
+TESTWMSAPPBOGDIS01_N3 ansible_host=10.181.11.83 ambiente=pruebas
+TESTWMSAPPBOGDIS01_N4 ansible_host=10.181.11.84 ambiente=pruebas
+
+[SERVERS_WMS:children]
+WMS_PRD
+WMS_ARCH
+WMS_DESA
+WMS_DRP
+WMS_PRU
+
+############### PEOPLE ####################
+
+[PEOPLE-PRD]
+BATCH01 ansible_host=10.181.0.77 ambiente=produccion
+app01 ansible_host=10.181.0.76 ambiente=produccion
+app02 ansible_host=10.181.0.80 ambiente=produccion
+batch02 ansible_host=10.181.0.81 ambiente=produccion
+batch03 ansible_host=10.181.0.75 ambiente=produccion
+batch04 ansible_host=10.181.0.79 ambiente=produccion
+master01 ansible_host=10.181.0.70 ambiente=produccion
+master02 ansible_host=10.181.0.71 ambiente=produccion
+ws01 ansible_host=10.181.0.73 ambiente=produccion
+ws02 ansible_host=10.181.0.74 ambiente=produccion
+
+[PEOPLE-PRU]
+VM-QA-APPPS-BOG-01 ansible_host=172.25.18.227 ambiente=pruebas
+VM-QA-APPPS-BOG-02 ansible_host=172.25.18.82 ambiente=pruebas
+VM-QA-APPPS-BOG-03 ansible_host=172.25.18.232 ambiente=pruebas
+VM-QA-APPPS-BOG-04 ansible_host=172.25.17.123 ambiente=pruebas
+VM-QA-APPPS-BOG-05 ansible_host=172.25.17.218 ambiente=pruebas
+VM-QA-APPPS-BOG-06 ansible_host=172.25.16.248 ambiente=pruebas
+
+[SERVERS_PEOPLE:children]
+PEOPLE-PRD
+PEOPLE-PRU
+
+############### EXADATA ####################
+
+[EXADATA_PRD]
+alkexadbadm01vm1 ansible_host=192.168.97.41 ambiente=produccion
+alkexadbadm02vm1 ansible_host=192.168.97.42 ambiente=produccion
+alkexadbadm03vm1 ansible_host=192.168.97.43 ambiente=produccion
+alkexadbadm04vm1 ansible_host=192.168.97.44 ambiente=produccion
+alkexadbadm01vm2 ansible_host=192.168.97.45 ambiente=produccion
+alkexadbadm02vm2 ansible_host=192.168.97.46 ambiente=produccion
+alkexadbadm01vm4 ansible_host=192.168.97.53 ambiente=produccion
+alkexadbadm02vm4 ansible_host=192.168.97.54 ambiente=produccion
+
+[EXADATA_PRU]
+alkexadbadm01vm5 ansible_host=192.168.97.57 ambiente=pruebas
+alkexadbadm02vm5 ansible_host=192.168.97.58 ambiente=pruebas
+alkexadbadm03vm5 ansible_host=192.168.97.59 ambiente=pruebas
+alkexadbadm04vm5 ansible_host=192.168.97.60 ambiente=pruebas
+
+[EXADATA_FSC]
+alkexadbadm01 ansible_host=192.168.97.21 ambiente=produccion
+alkexadbadm02 ansible_host=192.168.97.22 ambiente=produccion
+alkexadbadm03 ansible_host=192.168.97.23 ambiente=produccion
+alkexadbadm04 ansible_host=192.168.97.24 ambiente=produccion
+alkexadbadm05 ansible_host=192.168.97.101 ambiente=produccion
+alkexadbadm06 ansible_host=192.168.97.102 ambiente=produccion
+
+[SERVERS_EXADATA:children]
+EXADATA_PRD
+EXADATA_PRU
+EXADATA_FSC
+
+############### GEOPOS ####################
+
+[GEOPOS-PRD]
+geopos-fx-n1 ansible_host=10.181.0.113 ambiente=produccion
+geopos-fx-n2 ansible_host=10.181.0.117 ambiente=produccion
+r740-rac-geoposn1 ansible_host=192.168.71.10 ambiente=produccion
+r740-rac-geoposn2 ansible_host=192.168.71.20 ambiente=produccion
+
+############### GEOHUB ####################
+
+[GEOHUB]
+GEOPROMONGODB_02 ansible_host=10.181.4.248 ambiente=produccion
+MONGO-PRD-N1 ansible_host=10.181.34.3 ambiente=produccion
+MONGO-PRD-N2 ansible_host=10.181.34.4 ambiente=produccion
+MONGO-PRD-N3 ansible_host=10.181.34.5 ambiente=produccion
+
+############### SOA ####################
+
+[SOA]
+SOABOGDIS01 ansible_host=10.181.34.60 ansible_user=tux ambiente=produccion
+SOABOGDIS02 ansible_host=10.181.34.61 ansible_user=tux ambiente=produccion
+TESTSOABOGDIS01 ansible_host=10.181.34.62 ansible_user=tux ambiente=pruebas
+TESTSOABOGDIS02 ansible_host=10.181.34.63 ansible_user=tux ambiente=pruebas
+
+############### CORBEMOVIL ####################
+
+[CORBEMOVIL]
+MOVILVENTAS ansible_host=10.181.0.21 ambiente=produccion
+TESTCORBEMOVILBOGDIS01 ansible_host=10.181.11.10 ambiente=pruebas
+TESTCORBEMOVILBOGDIS01-Ini9803 ansible_host=10.181.11.11 ambiente=pruebas

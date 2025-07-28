@@ -1,0 +1,72 @@
+- name: Recolectar información de usuarios en Solaris 11
+  hosts: PEOPLE-PRD
+  become: true
+  gather_facts: false
+
+  vars:
+    salida_dir: "{{ playbook_dir }}/Salidas_Playbooks"
+
+  tasks:
+
+    - name: Obtener usuarios reales en Solaris (UID >= 100 y < 65534)
+      ansible.builtin.shell: |
+        awk -F: '$3 >= 100 && $3 < 65534 && $1 !~ /^(nobody|noaccess|daemon|adm|lp|sys|bin|zabbix|sshd|proactiva)$/' /etc/passwd | cut -d: -f1
+      register: usuarios_solaris
+
+    - name: Recolectar id y sudoers en Solaris (usuario y grupo, sudoers y sudoers.d)
+      ansible.builtin.shell: |
+        id {{ item }}; echo "###"
+
+        usuario="{{ item }}"
+        grupos=$(id -nG "$usuario")
+
+        # Inicializar variable
+        found=""
+
+        for grupo in $grupos; do
+          found="$found\n$(awk -v g="%$grupo" '$1 == g {print}' /etc/sudoers 2>/dev/null)"
+          for f in /etc/sudoers.d/*; do
+            [ -f "$f" ] && found="$found\n$(awk -v g="%$grupo" '$1 == g {print}' "$f" 2>/dev/null)"
+          done
+        done
+
+        found="$found\n$(awk -v u="$usuario" '$1 == u {print}' /etc/sudoers 2>/dev/null)"
+        for f in /etc/sudoers.d/*; do
+          [ -f "$f" ] && found="$found\n$(awk -v u="$usuario" '$1 == u {print}' "$f" 2>/dev/null)"
+        done
+
+        if [ -z "$found" ]; then
+          echo "NO_SUDO"
+        else
+          echo "$found"
+        fi
+      loop: "{{ usuarios_solaris.stdout_lines }}"
+      register: info_usuarios
+
+
+    - name: Guardar info recolectada en fact para envío
+      ansible.builtin.set_fact:
+        reporte_usuarios: "{{ info_usuarios.results | map(attribute='stdout') | list }}"
+
+    - name: Guardar JSON con IP, ambiente y permisos
+      delegate_to: localhost
+      run_once: true
+      ansible.builtin.copy:
+        content: |
+          {
+          {% for host in play_hosts %}
+            "{{ host }}": {
+              "ip": "{{ hostvars[host].ansible_host | default(host) }}",
+              "ambiente": "{{ hostvars[host].ambiente | default('no definido') }}",
+              "usuarios": {{ hostvars[host].reporte_usuarios | to_nice_json }}
+            }{{ "," if not loop.last else "" }}
+          {% endfor %}
+          }
+        dest: "{{ salida_dir }}/usuarios_permisos_solaris.json"
+
+    - name: Ejecutar script Python para generar Excel (Solaris)
+      delegate_to: localhost
+      run_once: true
+      ansible.builtin.command: python3 Generar_Excel_Users_Solaris.py
+      args:
+        chdir: "{{ playbook_dir }}"
