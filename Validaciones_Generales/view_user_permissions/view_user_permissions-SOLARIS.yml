@@ -1,5 +1,5 @@
-- name: Recolectar información de usuarios en Solaris 11
-  hosts: PEOPLE-PRD
+- name: Recolectar info de usuarios y exportar a Excel (Solaris)
+  hosts: SERVERS_SOLARIS
   become: true
   gather_facts: false
 
@@ -8,65 +8,65 @@
 
   tasks:
 
-    - name: Obtener usuarios reales en Solaris (UID >= 100 y < 65534)
+    # Obtener usuarios reales (UID entre 100 y 59999)
+    - name: Obtener usuarios reales
       ansible.builtin.shell: |
-        awk -F: '$3 >= 100 && $3 < 65534 && $1 !~ /^(nobody|noaccess|daemon|adm|lp|sys|bin|zabbix|sshd|proactiva)$/' /etc/passwd | cut -d: -f1
-      register: usuarios_solaris
+        awk -F: '$3 >= 100 && $3 < 60000' /etc/passwd | cut -d: -f1
+      register: usuarios
 
-    - name: Recolectar id y sudoers en Solaris (usuario y grupo, sudoers y sudoers.d)
+    # Obtener id, sudo, shell y estado de passwd -s
+    - name: Recolectar datos del usuario
       ansible.builtin.shell: |
-        id {{ item }}; echo "###"
-
-        usuario="{{ item }}"
-        grupos=$(id -nG "$usuario")
-
-        # Inicializar variable
-        found=""
-
-        for grupo in $grupos; do
-          found="$found\n$(awk -v g="%$grupo" '$1 == g {print}' /etc/sudoers 2>/dev/null)"
-          for f in /etc/sudoers.d/*; do
-            [ -f "$f" ] && found="$found\n$(awk -v g="%$grupo" '$1 == g {print}' "$f" 2>/dev/null)"
-          done
-        done
-
-        found="$found\n$(awk -v u="$usuario" '$1 == u {print}' /etc/sudoers 2>/dev/null)"
-        for f in /etc/sudoers.d/*; do
-          [ -f "$f" ] && found="$found\n$(awk -v u="$usuario" '$1 == u {print}' "$f" 2>/dev/null)"
-        done
-
-        if [ -z "$found" ]; then
-          echo "NO_SUDO"
-        else
-          echo "$found"
-        fi
-      loop: "{{ usuarios_solaris.stdout_lines }}"
+        id {{ item }}
+        echo "###"
+        sudo -lU {{ item }} 2>/dev/null || echo "NO_SUDO"
+        echo "###"
+        getent passwd {{ item }} | cut -d: -f7
+        echo "###"
+        passwd -s {{ item }} 2>/dev/null || echo "UNKNOWN_STATUS"
+      loop: "{{ usuarios.stdout_lines }}"
       register: info_usuarios
 
-
-    - name: Guardar info recolectada en fact para envío
+    # Guardar datos en reporte_usuarios
+    - name: Consolidar resultados
       ansible.builtin.set_fact:
         reporte_usuarios: "{{ info_usuarios.results | map(attribute='stdout') | list }}"
 
-    - name: Guardar JSON con IP, ambiente y permisos
+    # Calcular grupo(s) del host actual
+    - name: Calcular grupos del host
+      ansible.builtin.set_fact:
+        grupos_host: >-
+          {{
+            (groups | dict2items
+            | selectattr('value', 'contains', inventory_hostname)
+            | map(attribute='key')
+            | reject('in', ['all', 'ungrouped'])
+            | list
+            | join(', '))
+          }}
+
+    # Guardar archivo JSON estructurado
+    - name: Guardar JSON con info estructurada
       delegate_to: localhost
       run_once: true
-      ansible.builtin.copy:
+      copy:
+        dest: "{{ salida_dir }}/usuarios_permisos_SOLARIS.json"
         content: |
           {
           {% for host in play_hosts %}
             "{{ host }}": {
               "ip": "{{ hostvars[host].ansible_host | default(host) }}",
               "ambiente": "{{ hostvars[host].ambiente | default('no definido') }}",
+              "grupo": "{{ hostvars[host].grupos_host | default('') }}",
               "usuarios": {{ hostvars[host].reporte_usuarios | to_nice_json }}
-            }{{ "," if not loop.last else "" }}
+            }{% if not loop.last %},{% endif %}
           {% endfor %}
           }
-        dest: "{{ salida_dir }}/usuarios_permisos_solaris.json"
 
-    - name: Ejecutar script Python para generar Excel (Solaris)
+    # Ejecutar script Python que genera el Excel
+    - name: Ejecutar script Python para generar Excel
       delegate_to: localhost
       run_once: true
-      ansible.builtin.command: python3 Generar_Excel_Users_Solaris.py
+      command: python3 Generar_Excel_Users_Solaris.py
       args:
         chdir: "{{ playbook_dir }}"

@@ -1,5 +1,5 @@
 - name: Recolectar info de usuarios y exportar a Excel
-  hosts: SERVERS_WMS
+  hosts: SERVERS_LINUX
   become: true
   gather_facts: false
 
@@ -8,39 +8,61 @@
 
   tasks:
 
-    - name: Obtener usuarios reales (UID >= 1000)
+    # Obtener usuarios reales con UID >= 1000 y sin caracteres especiales
+    - name: Obtener usuarios válidos
       ansible.builtin.shell: |
-        awk -F: '$3 >= 1000 && $1 !~ /^(nobody|nfsnobody|apache|postfix|sshd|zabbix|proactiva)$/' /etc/passwd | cut -d: -f1
+        awk -F: '$3 >= 1000 && $1 ~ /^[a-zA-Z0-9._-]+$/ && $1 !~ /^(nobody|nfsnobody|apache|postfix|sshd|zabbix|proactiva)$/' /etc/passwd | cut -d: -f1
       register: usuarios
 
-    - name: Recolectar datos de UID, grupos y sudo
+    # Recolectar info de cada usuario: id, sudo, shell, passwd -S
+    - name: Recolectar datos de usuarios
       ansible.builtin.shell: |
-        id {{ item }}; echo "###"; sudo -lU {{ item }} 2>/dev/null || echo "NO_SUDO"
+        usuario="{{ item }}"
+        id "$usuario"
+        echo "###"
+        sudo -lU "$usuario" 2>/dev/null || echo "NO_SUDO"
+        echo "###"
+        getent passwd "$usuario" | cut -d: -f7
+        echo "###"
+        passwd -S "$usuario" 2>/dev/null || echo "UNKNOWN_STATUS"
       loop: "{{ usuarios.stdout_lines }}"
       register: info_usuarios
 
-    - name: Guardar info recolectada en fact para enviar al controlador
+    # Guardar resultados en variable por host
+    - name: Consolidar datos por host
       ansible.builtin.set_fact:
         reporte_usuarios: "{{ info_usuarios.results | map(attribute='stdout') | list }}"
 
-    - name: Guardar JSON con IP, ambiente y permisos
+    # Determinar grupo(s) del host
+    - name: Calcular grupos del host
+      ansible.builtin.set_fact:
+        grupos_host: "{{ (groups | dict2items
+                        | selectattr('value', 'contains', inventory_hostname)
+                        | map(attribute='key')
+                        | reject('in', ['all', 'ungrouped'])
+                        | list
+                        | join(', ')) }}"
+
+    # Guardar datos en JSON para el script Python
+    - name: Guardar JSON con info estructurada
       delegate_to: localhost
       run_once: true
       ansible.builtin.copy:
+        dest: "{{ salida_dir }}/usuarios_permisos.json"
         content: |
           {
           {% for host in play_hosts %}
             "{{ host }}": {
               "ip": "{{ hostvars[host].ansible_host | default(host) }}",
               "ambiente": "{{ hostvars[host].ambiente | default('no definido') }}",
+              "grupo": "{{ hostvars[host].grupos_host | default('') }}",
               "usuarios": {{ hostvars[host].reporte_usuarios | to_nice_json }}
             }{{ "," if not loop.last else "" }}
           {% endfor %}
           }
-        dest: "{{ salida_dir }}/usuarios_permisos.json"
 
-
-    - name: Ejecutar script Python para generar Excel en Salidas_Playbooks
+    # Ejecutar script Python para generar el Excel
+    - name: Ejecutar script Python para generar Excel
       delegate_to: localhost
       run_once: true
       ansible.builtin.command: python3 Generar_Excel_Users.py
