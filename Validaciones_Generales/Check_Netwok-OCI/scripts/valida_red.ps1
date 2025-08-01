@@ -34,7 +34,7 @@ Get-Content $archivo_ips | Where-Object { $_.Trim() -ne "" } | ForEach-Object {
         "Fallido"
     }
 
-    "$hostname,$ip,$mask,$gw,ping,$destino,N/A,$estado_ping" | Out-File -FilePath $archivo_salida -Append -Encoding ascii
+    "$hostname,$ip,$mask,$gw,$destino,ping,N/A,$estado_ping" | Out-File -FilePath $archivo_salida -Append -Encoding ascii
 
     # 🔁 Validar puertos
     Get-Content $archivo_puertos | Where-Object { $_.Trim() -ne "" } | ForEach-Object {
@@ -53,6 +53,6 @@ Get-Content $archivo_ips | Where-Object { $_.Trim() -ne "" } | ForEach-Object {
         } catch {
             $estado_port = "Cerrado"
         }
-        "$hostname,$ip,$mask,$gw,puerto,$destino,$puerto,$estado_port" | Out-File -FilePath $archivo_salida -Append -Encoding ascii
+        "$hostname,$ip,$mask,$gw,$destino,puerto,$puerto,$estado_port"  | Out-File -FilePath $archivo_salida -Append -Encoding ascii
     }
 }

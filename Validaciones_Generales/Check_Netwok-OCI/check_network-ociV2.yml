@@ -1,15 +1,15 @@
 ---
 - name: 🔍 Análisis de red optimizado (Linux y Windows)
-  hosts: PS_OUT
+  hosts: PS_IN_LIN
   gather_facts: yes
 
   vars:
     #archivo_ips: "{{ playbook_dir }}/archivo_ips.txt"         # 📄 IPs OUT a validar
     #archivo_puertos: "{{ playbook_dir }}/archivo_puertos.txt" # 📄 Puertos OUT a validar
-    archivo_ips: "{{ playbook_dir }}/archivo_ips_out.txt"         # 📄 IPs OUT a validar
-    archivo_puertos: "{{ playbook_dir }}/archivo_puertos_out.txt" # 📄 Puertos OUT a validar
-    #archivo_ips: "{{ playbook_dir }}/archivos_ips_in.txt"         # 📄 IPs IN a validar
-    #archivo_puertos: "{{ playbook_dir }}/archivo_puertos_in.txt" # 📄 Puertos IN a  validar
+    #archivo_ips: "{{ playbook_dir }}/archivo_ips_out.txt"         # 📄 IPs OUT a validar
+    #archivo_puertos: "{{ playbook_dir }}/archivo_puertos_out.txt" # 📄 Puertos OUT a validar
+    archivo_ips: "{{ playbook_dir }}/archivos_ips_in.txt"         # 📄 IPs IN a validar
+    archivo_puertos: "{{ playbook_dir }}/archivo_puertos_in.txt" # 📄 Puertos IN a  validar
     ruta_script_linux: "~/valida_red.sh"                      # 📜 Script en host Linux
     ruta_script_windows: "C:\\temp\\valida_red.ps1"           # 📜 Script en host Windows
     salida_csv_linux: "~/salida_valida_red.csv"              # 📂 Archivo generado en Linux remoto
