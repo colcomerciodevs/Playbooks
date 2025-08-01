@@ -1,0 +1,72 @@
+---
+- name: Crear usuarios en servidores Linux
+  hosts: [FSC_TEMP]
+  become: yes
+  tasks:
+    - name: Asegurarse de que el grupo 'soporte' existe
+      group:
+        name: soporte
+        state: present
+
+    - name: Crear los usuarios con descripcion, home, grupo y shell por defecto
+      user:
+        name: "{{ item.name }}"  # Username
+        comment: "{{ item.comment }}" ## Nombre completo del usuario
+        home: "/home/{{ item.name }}"  ## home de los usuarios
+        group: soporte
+        create_home: yes
+        shell: /bin/bash
+        password: "{{ 'Soporte2025$' | password_hash('sha512') }}" # Contrasena se asigna a los usuarios 
+        update_password: on_create
+      with_items:
+        - { name: "abuitrago", comment: "Andres Buitrago" }
+        - { name: "ctrejos", comment: "Carlos trejos" }
+        - { name: "jpaz", comment: "Jonathan  paz" }
+        - { name: "obenavidez", comment: "Oscar Benavidez" }
+        - { name: "adiaz", comment: "Alexander Diaz" }
+        - { name: "yguzman", comment: "Yuxemy Guzman" }
+        - { name: "jpinilla", comment: "Javier Pinilla" }
+        - { name: "csotomonte", comment: "Cesar Sotomonte" }
+        - { name: "aromero", comment: "Alexis Romero" }
+        - { name: "nmachado", comment: "Nestor Machado" }
+        - { name: "arodriguez", comment: "Alexander Rodriguez" }
+        - { name: "larias", comment: "Luis Felipe Arias Martinez" }
+        - { name: "parias", comment: "Pablo Andres Arias Zapata" }
+        - { name: "jramirez", comment: "Jose David Ramirez Castillo" }
+        - { name: "lescobar", comment: "Leonardo Escobar" }
+        - { name: "njaramillo", comment: "Nelson Jaramillo" }
+        - { name: "arendon", comment: "Andres Rendon" }
+        - { name: "oviloria", comment: "Orlando Viloria" }
+        - { name: "jgomez", comment: "Juan Gomez" }
+        - { name: "ramezquita", comment: "Ronaldo Amezquita" }
+        - { name: "sdgarreta", comment: "Sebasti▒n David Chaves Garreta" }
+        - { name: "nzuluaga", comment: "Neider Zuluaga Zuluaga" }
+        - { name: "rlopez", comment: "Rodolfo Lopez" }
+
+    - name: Forzar cambio de contrase.a al iniciar sesion
+      command: "chage -d 0 {{ item.name }}"
+      with_items:
+        - { name: "abuitrago", comment: "Andres Buitrago" }
+        - { name: "ctrejos", comment: "Carlos trejos" }
+        - { name: "jpaz", comment: "Jonathan  paz" }
+        - { name: "obenavidez", comment: "Oscar Benavidez" }
+        - { name: "adiaz", comment: "Alexander Diaz" }
+        - { name: "yguzman", comment: "Yuxemy Guzman" }
+        - { name: "jpinilla", comment: "Javier Pinilla" }
+        - { name: "csotomonte", comment: "Cesar Sotomonte" }
+        - { name: "aromero", comment: "Alexis Romero" }
+        - { name: "nmachado", comment: "Nestor Machado" }
+        - { name: "arodriguez", comment: "Alexander Rodriguez" }
+        - { name: "larias", comment: "Luis Felipe Arias Martinez" }
+        - { name: "parias", comment: "Pablo Andres Arias Zapata" }
+        - { name: "jramirez", comment: "Jose David Ramirez Castillo" }
+        - { name: "lescobar", comment: "Leonardo Escobar" }
+        - { name: "njaramillo", comment: "Nelson Jaramillo" }
+        - { name: "arendon", comment: "Andres Rendon" }
+        - { name: "oviloria", comment: "Orlando Viloria" }
+        - { name: "jgomez", comment: "Juan Gomez" }
+        - { name: "ramezquita", comment: "Ronaldo Amezquita" }
+        - { name: "sdgarreta", comment: "Sebasti▒n David Chaves Garreta" }
+        - { name: "nzuluaga", comment: "Neider Zuluaga Zuluaga" }
+        - { name: "rlopez", comment: "Rodolfo Lopez" }
+        

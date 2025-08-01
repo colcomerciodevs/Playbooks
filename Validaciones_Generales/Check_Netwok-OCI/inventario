@@ -1,24 +1,69 @@
 #######################################  INVENTARIO LINUX ##############################################
 
-[OCI-IN-LINUX]
-linuxnode01 ansible_host=10.181.6.38
-linuxnode02 ansible_host=147.127.110.17
+##OCI###
+[PS_OUT]
+vm-prd-appps-bog-01 ansible_host=172.25.98.226
 
-[OCI-OUT-LINUX]
-linuxnode01 ansible_host=10.181.6.38
+[prueba2]
+147.127.110.17
+10.181.6.38 ansible_user=tux
+
+[PS_IN_LIN]
+microscrm_new ansible_host=10.181.5.126
+micro_stagecrm ansible_host=10.181.5.29
+appdespadock_prd ansible_host=10.181.5.64
+Thor ansible_host=10.181.0.174
+corbemovil_prd ansible_host=10.181.0.21
+10.181.0.88  ansible_user=root ansible_password=12m1cr.sun ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+networker04 ansible_host=10.181.3.104
+jdadbarchprd ansible_host=10.181.3.169
+MICROSERVICIOS04_1 ansible_host=10.181.3.183
+crm-desa-cent7 ansible_host=10.181.3.186
+pivdrporabogdis01 ansible_host=10.181.3.82
+soabogdis01 ansible_host=10.181.34.60 ansible_user=tux
+soabogdis02 ansible_host=10.181.34.61 ansible_user=tux
+crm04_k8s ansible_host=10.181.4.11
+nesusproitss ansible_host=10.181.4.112
+microservicios7 ansible_host=10.181.4.13
+microservicios8 ansible_host=10.181.4.14
+microservicios9 ansible_host=10.181.4.15
+crm05_k8s ansible_host=10.181.4.16
+#10.181.4.22 - NO PING - SOA02LNX
+#10.181.4.23 - NO PING - SOA02LNX
+CLOUDCONTROL02 ansible_host=10.181.4.245
+openshift-cm8bn-worker-q66gg ansible_host=10.181.40.153 ansible_user=core
+openshift-cm8bn-worker-n7qpd ansible_host=10.181.40.155 ansible_user=core
+openshift-cm8bn-worker-5n5hh ansible_host=10.181.40.156 ansible_user=core
+openshift-cm8bn-worker-mqldx ansible_host=10.181.40.157 ansible_user=core
+alkexadbadm01vm4 ansible_host=192.168.97.53 
+alkexadbadm02vm4 ansible_host=192.168.97.54 
+r740-rac-geoposn1 ansible_host=192.168.71.10
+r740-rac-geoposn2 ansible_host=192.168.71.20
+appidman1 ansible_host=10.181.3.203
+appidman ansible_host=10.181.3.77
+jaspersoft ansible_host=10.181.3.61
 
 #######################################  INVENTARIO WINDOWS ##############################################
 
-[OCI-IN-WINDOWS]
-windowsnode01 ansible_host=10.181.3.157
-windowsnode02 ansible_host=10.181.4.89
+[pruebas_windows]
+10.181.4.89
+10.181.3.153
 
-#######################################  GRUPOS COMBINADOS CORRECTOS ###################################
+[PS_IN_WIN]
+10.181.3.153
+10.181.3.250
+10.181.3.62
+10.181.4.178
+10.181.4.3
+10.181.4.81
+10.181.8.10
+10.181.4.180
+10.181.5.156
+10.181.5.192
+# 10.181.7.208 - ESTACION WINDOWS
+10.181.8.190
+10.191.3.32
+10.201.0.34
+10.206.3.1
+# 192.168.26.8 - NAS
 
-[OCI-IN:children]
-OCI-IN-LINUX
-OCI-IN-WINDOWS
-
-[OCI-OUT:children]
-OCI-OUT-LINUX
-# OCI-OUT-WINDOWS   ← comentado o eliminado

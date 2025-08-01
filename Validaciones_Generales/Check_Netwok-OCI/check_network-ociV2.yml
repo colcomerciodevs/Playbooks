@@ -1,11 +1,15 @@
 ---
 - name: 🔍 Análisis de red optimizado (Linux y Windows)
-  hosts: OCI-IN
+  hosts: PS_OUT
   gather_facts: yes
 
   vars:
-    archivo_ips: "{{ playbook_dir }}/archivo_ips.txt"         # 📄 IPs a validar
-    archivo_puertos: "{{ playbook_dir }}/archivo_puertos.txt" # 📄 Puertos a validar
+    #archivo_ips: "{{ playbook_dir }}/archivo_ips.txt"         # 📄 IPs OUT a validar
+    #archivo_puertos: "{{ playbook_dir }}/archivo_puertos.txt" # 📄 Puertos OUT a validar
+    archivo_ips: "{{ playbook_dir }}/archivo_ips_out.txt"         # 📄 IPs OUT a validar
+    archivo_puertos: "{{ playbook_dir }}/archivo_puertos_out.txt" # 📄 Puertos OUT a validar
+    #archivo_ips: "{{ playbook_dir }}/archivos_ips_in.txt"         # 📄 IPs IN a validar
+    #archivo_puertos: "{{ playbook_dir }}/archivo_puertos_in.txt" # 📄 Puertos IN a  validar
     ruta_script_linux: "~/valida_red.sh"                      # 📜 Script en host Linux
     ruta_script_windows: "C:\\temp\\valida_red.ps1"           # 📜 Script en host Windows
     salida_csv_linux: "~/salida_valida_red.csv"              # 📂 Archivo generado en Linux remoto
@@ -70,20 +74,20 @@
   tasks:
 
     # 📁 Copiar archivos a servidores Linux
-    - name: 📧 Copiar archivos a servidores Linux
+    - name: 📁 Copiar archivos a servidores Linux
       when: ansible_os_family != 'Windows'
       copy:
-        src: "{{ item }}"
-        dest: "~/"
+        src: "{{ item.src }}"
+        dest: "~/{{ item.dest }}"
         mode: '0755'
         force: true
       loop:
-        - "{{ archivo_ips }}"
-        - "{{ archivo_puertos }}"
-        - "{{ playbook_dir }}/scripts/valida_red.sh"
+        - { src: "{{ archivo_ips }}", dest: "archivo_ips.txt" }
+        - { src: "{{ archivo_puertos }}", dest: "archivo_puertos.txt" }
+        - { src: "{{ playbook_dir }}/scripts/valida_red.sh", dest: "valida_red.sh" }
 
     # 📁 Copiar archivos a servidores Windows
-    - name: 📧 Copiar archivos a servidores Windows
+    - name: 📁 Copiar archivos a servidores Windows
       when: ansible_os_family == 'Windows'
       win_copy:
         src: "{{ item.src }}"
@@ -92,6 +96,7 @@
         - { src: "{{ archivo_ips }}", dest: 'C:\\temp\\archivo_ips.txt' }
         - { src: "{{ archivo_puertos }}", dest: 'C:\\temp\\archivo_puertos.txt' }
         - { src: "{{ playbook_dir }}/scripts/valida_red.ps1", dest: 'C:\\temp\\valida_red.ps1' }
+
 
     # ▶️ Ejecutar script en Linux
     - name: ▶️ Ejecutar script Linux
@@ -156,18 +161,24 @@
       run_once: true
       delegate_to: localhost
       shell: |
-        cat {{ playbook_dir }}/Salidas_Playbooks/tmp_linux_*.csv > {{ playbook_dir }}/Salidas_Playbooks/reporte_red_linux_{{ timestamp_global }}.csv
+        if ls {{ playbook_dir }}/Salidas_Playbooks/tmp_linux_*.csv >/dev/null 2>&1; then
+          cat {{ playbook_dir }}/Salidas_Playbooks/tmp_linux_*.csv > {{ playbook_dir }}/Salidas_Playbooks/reporte_red_linux_{{ timestamp_global }}.csv
+        fi
       args:
         executable: /bin/bash
+
 
     # 🔧 Unir archivos Windows
     - name: 🔧 Combinar archivos Windows
       run_once: true
       delegate_to: localhost
       shell: |
-        cat {{ playbook_dir }}/Salidas_Playbooks/tmp_windows_*.csv > {{ playbook_dir }}/Salidas_Playbooks/reporte_red_windows_{{ timestamp_global }}.csv
+        if ls {{ playbook_dir }}/Salidas_Playbooks/tmp_windows_*.csv >/dev/null 2>&1; then
+          cat {{ playbook_dir }}/Salidas_Playbooks/tmp_windows_*.csv > {{ playbook_dir }}/Salidas_Playbooks/reporte_red_windows_{{ timestamp_global }}.csv
+        fi
       args:
         executable: /bin/bash
+
 
     # 🔮 Ordenar Linux por hostname
     - name: 🔮 Ordenar reporte Linux por hostname
@@ -175,9 +186,12 @@
       delegate_to: localhost
       shell: |
         archivo="{{ playbook_dir }}/Salidas_Playbooks/reporte_red_linux_{{ timestamp_global }}.csv"
-        [ -f "$archivo" ] && sort "$archivo" -o "$archivo"
+        if [ -f "$archivo" ]; then
+          sort "$archivo" -o "$archivo"
+        fi
       args:
         executable: /bin/bash
+
 
     # 🔮 Ordenar Windows por hostname
     - name: 🔮 Ordenar reporte Windows por hostname
@@ -185,6 +199,8 @@
       delegate_to: localhost
       shell: |
         archivo="{{ playbook_dir }}/Salidas_Playbooks/reporte_red_windows_{{ timestamp_global }}.csv"
-        [ -f "$archivo" ] && sort "$archivo" -o "$archivo"
+        if [ -f "$archivo" ]; then
+          sort "$archivo" -o "$archivo"
+        fi
       args:
         executable: /bin/bash

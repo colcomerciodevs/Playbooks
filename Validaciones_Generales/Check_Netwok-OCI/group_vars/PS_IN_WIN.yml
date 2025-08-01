@@ -1,5 +1,5 @@
 ansible_connection: winrm
-ansible_user: "COLOMBIANA\\1026278709"
+ansible_user: "COLOMBIANA\\71706755"
 ansible_password: "{{ vault_winrm_password }}"
 ansible_port: 5985
 #ansible_winrm_transport: basic
