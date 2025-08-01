@@ -21,9 +21,7 @@ get_local_ip() {
 
 # Obtener datos del sistema y limpiar posibles caracteres ocultos
 hostname_actual=$(hostname | tr -d '\r\n' | xargs)
-#ip_local=$(hostname -I | awk '{print $1}' | tr -d '\r\n' | xargs)
 ip_local=$(get_local_ip)
-#gateway=$(ip route | awk '/default/ {print $3}' | tr -d '\r\n' | xargs)
 gateway=$(ip route | awk '/^default/ {print $3}' | head -n1 | tr -d '\r\n' | xargs)
 interface=$(ip route | awk '/default/ {print $5}' | head -n1 | tr -d '\r\n' | xargs)
 cidr=$(ip -o -f inet addr show dev "$interface" | awk '{print $4}' | head -n1 | tr -d '\r\n' | xargs)
