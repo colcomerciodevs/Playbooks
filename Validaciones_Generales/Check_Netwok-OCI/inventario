@@ -41,7 +41,10 @@ r740-rac-geoposn1 ansible_host=192.168.71.10
 r740-rac-geoposn2 ansible_host=192.168.71.20
 appidman1 ansible_host=10.181.3.203
 appidman ansible_host=10.181.3.77
+
+[prueba3]
 jaspersoft ansible_host=10.181.3.61
+ansible ansible_host=10.181.8.209
 
 #######################################  INVENTARIO WINDOWS ##############################################
 
