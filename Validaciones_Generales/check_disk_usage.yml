@@ -1,0 +1,60 @@
+---
+- name: Verificar uso de disco y exportar a CSV
+  hosts: SERVERS_LINUX
+  gather_facts: yes            # para obtener la IP
+  become: yes
+  vars:
+    threshold: 70             # % umbral
+    output_file: "{{ playbook_dir }}/Salidas_Playbooks/disk_usage_report.csv"
+
+  tasks:
+    - name: Limpiar reporte previo (si existe)
+      file:
+        path: "{{ output_file }}"
+        state: absent
+      delegate_to: localhost
+      run_once: true
+
+    - name: Crear archivo con encabezado
+      copy:
+        dest: "{{ output_file }}"
+        content: "host,ip,device,used_pct,mount\n"
+        mode: "0644"
+      delegate_to: localhost
+      run_once: true
+
+    - name: Obtener particiones sobre el umbral (CSV device,used_pct,mount)
+      shell: |
+        df -P | awk 'NR>1{
+          gsub("%","",$5);
+          if ($5+0 >= {{ threshold }}) printf "%s,%s,%s\n",$1,$5,$6
+        }'
+      args:
+        executable: /bin/bash
+      register: high_usage_csv
+      changed_when: false
+
+    - name: Determinar IP del host
+      set_fact:
+        host_ip: "{{ ansible_default_ipv4.address
+                     | default(ansible_all_ipv4_addresses[0] | default('N/A')) }}"
+
+    - name: Anexar líneas al CSV (una por partición)
+      lineinfile:
+        path: "{{ output_file }}"
+        line: "{{ inventory_hostname }},{{ host_ip }},{{ item.split(',')[0] }},{{ item.split(',')[1] }},{{ item.split(',')[2] }}"
+        insertafter: EOF
+        create: yes
+      loop: "{{ high_usage_csv.stdout_lines }}"
+      when: high_usage_csv.stdout | length > 0
+      delegate_to: localhost
+
+    - name: Informar resultado por host
+      debug:
+        msg: >-
+          {{ inventory_hostname }} ({{ host_ip }}):
+          {% if high_usage_csv.stdout | length > 0 -%}
+            {{ high_usage_csv.stdout_lines | join('; ') }}
+          {%- else -%}
+            sin particiones sobre {{ threshold }}%
+          {%- endif %}

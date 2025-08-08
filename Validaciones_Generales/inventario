@@ -6,12 +6,6 @@
 
 #######Servidores Pago por Uso PPU - Generales ########
 
-[cajas]
-akbolqa-01 ansible_host=10.185.0.57
-akvenqa-01 ansible_host=10.181.11.121
-alnibqa-01 ansible_host=10.181.11.25
-alnibqa-02 ansible_host=10.181.11.26
-
 
 [PPU]
 APBOGDISCRMCOLC ansible_host=10.181.5.29 
@@ -81,9 +75,9 @@ PRE_TOBIN ansible_host=10.181.11.107
 PSEBOGDIS01 ansible_host=10.181.4.106
 SICCONTROLAUTO ansible_host=10.181.4.17
 SOA_HISTORICOS ansible_host=10.181.5.185
-SOA02LNX ansible_host=10.181.4.22
-SOA03LNX ansible_host=10.181.4.23
-SOA02LNX_140524 ansible_host=10.199.3.12
+#SOA02LNX ansible_host=10.181.4.22
+#SOA03LNX ansible_host=10.181.4.23
+SOA02LNX_140524 ansible_host=10.199.3.12 ansible_user=ansible_test
 SOCNESUSMNGRITSS ansible_host=10.181.4.113
 SOCNESUSPROITSS ansible_host=10.181.4.112
 SOCSCITSS ansible_host=10.181.4.114
@@ -293,7 +287,7 @@ akede-n0 ansible_host=172.16.134.5
 Akflo-n0 ansible_host=172.16.124.5
 akigp-n0 ansible_host=172.16.91.12
 akipi-n0 ansible_host=172.16.8.12
-akout-n0 ansible_host=147.127.110.18
+#akout-n0 ansible_host=147.127.110.18
 akove-new ansible_host=172.16.4.10
 akpas-n0 ansible_host=172.16.7.12
 akper-n0 ansible_host=172.16.9.5
@@ -398,7 +392,7 @@ ktuno-nuevo ansible_host=10.147.3.2
 ktvil-n0 ansible_host=10.151.3.5
 mford-new ansible_host=10.206.3.18
 terio-n0 ansible_host=10.40.3.5
-Vwmed ansible_host=10.206.3.8
+#Vwmed ansible_host=10.206.3.8
 
 
 [SERVERS_LINUX:children]
@@ -483,12 +477,12 @@ s4sinergiaprd ansible_host=10.181.3.145
 s4sinergiaqas ansible_host=10.181.3.146
 SICCONTROLAUTO ansible_host=10.181.4.17
 SOA_HISTORICOS ansible_host=10.181.5.185
-SOA02LNX ansible_host=10.181.4.22
-SOA03LNX ansible_host=10.181.4.23
+#SOA02LNX ansible_host=10.181.4.22
+#SOA03LNX ansible_host=10.181.4.23
 SOCNESUSMNGRITSS ansible_host=10.181.4.113
 SOCNESUSPROITSS ansible_host=10.181.4.112
 SOCSCITSS ansible_host=10.181.4.114
-SRMBOGDIS02 ansible_host=10.181.6.38
+SRMBOGDIS02 ansible_host=10.181.6.38 ansible_user=tux
 STORAGENODE01 ansible_host=10.181.3.164
 STORAGENODE02 ansible_host=10.181.3.163
 WMSAPPBOGDIS_NODO2 ansible_host=10.199.3.41
