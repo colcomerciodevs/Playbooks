@@ -1,14 +1,13 @@
-# Ruta de salida junto al playbook
+# Directorio de salida (relativo al playbook)
 out_dir: "{{ playbook_dir }}/salidas_docker"
+
+# Nombre del archivo Excel
 excel_name: "docker_stats.xlsx"
 
-# Umbrales
+# Umbrales de riesgo
 cpu_risk_high: 85
 cpu_risk_medium: 70
 mem_risk_high: 90
 mem_risk_medium: 75
 pids_risk_high: 400
 pids_risk_medium: 200
-
-# No fallar si no hay contenedores
-fail_if_no_containers: false

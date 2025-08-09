@@ -1,110 +1,73 @@
 ---
-- name: Recolectar docker stats en hosts
-  hosts: all
+- name: Recolectar y exportar docker stats por host
+  hosts: docker
   gather_facts: false
+  become: true
   vars_files:
-    - "{{ playbook_dir }}/vars/docker_stats_vars.yml"   # ajusta la ruta si cambia tu estructura
+    - "{{ playbook_dir }}/vars/docker_stats_vars.yml"
 
   tasks:
-    - name: ¿Hay contenedores?
+    # 1) Obtener la lista de IDs de contenedores que están en ejecución en el host remoto
+    - name: Obtener lista de contenedores
       ansible.builtin.command: docker ps -q
       register: ps_ids
       changed_when: false
       failed_when: false
 
-    - name: Obtener docker stats (JSON)
+    # 2) Si no hay contenedores en ejecución, se salta el resto de tareas para ese host
+    - name: Saltar si no hay contenedores
+      ansible.builtin.meta: end_host
+      when: ps_ids.stdout | trim == ""
+
+    # 3) Obtener estadísticas de contenedores en formato NDJSON (un JSON por línea)
+    - name: Obtener docker stats como NDJSON
       ansible.builtin.shell: |
-        {% raw %}
-        set -eo pipefail
-        python3 - <<'PY'
-        import json, subprocess, re, sys
-        def parse_size(s):
-          m = re.match(r'^\s*([0-9.]+)\s*([KMG]?i?B)\s*$', s.strip(), re.I)
-          if not m: return 0
-          val, unit = float(m.group(1)), m.group(2).upper()
-          mults={'B':1,'KB':1000,'KIB':1024,'MB':1000**2,'MIB':1024**2,'GB':1000**3,'GIB':1024**3}
-          return int(val*mults.get(unit,1))
-        fmt="{{.Container}}|{{.Name}}|{{.CPUPerc}}|{{.MemUsage}}|{{.MemPerc}}|{{.NetIO}}|{{.BlockIO}}|{{.PIDs}}"
-        try:
-          out=subprocess.check_output(["bash","-lc",f"docker stats --no-stream --format '{fmt}'"],text=True,stderr=subprocess.STDOUT)
-        except subprocess.CalledProcessError:
-          print("[]"); sys.exit(0)
-        rows=[]
-        for line in out.strip().splitlines():
-          parts=line.split("|")
-          if len(parts)!=8: continue
-          cid,name,cpu_perc,mem_usage,mem_perc,net_io,block_io,pids=parts
-          mu=[x.strip() for x in mem_usage.split("/")]+["",""]
-          def parse_pair(p):
-            a=[x.strip() for x in p.split("/")]+["",""]
-            return parse_size(a[0]) if a[0] else 0, parse_size(a[1]) if a[1] else 0
-          def pct(x):
-            x=x.strip().rstrip('%')
-            try: return float(x)
-            except: return 0.0
-          try: pids_i=int(pids.strip())
-          except: pids_i=0
-          net_rx_b,net_tx_b=parse_pair(net_io)
-          blk_rd_b,blk_wr_b=parse_pair(block_io)
-          used_b=parse_size(mu[0]) if mu[0] else 0
-          limit_b=parse_size(mu[1]) if mu[1] else 0
-          rows.append({
-            "container_id":cid,"container_name":name,"cpu_perc":pct(cpu_perc),
-            "mem_used_bytes":used_b,"mem_limit_bytes":limit_b,"mem_perc":pct(mem_perc),
-            "net_rx_bytes":net_rx_b,"net_tx_bytes":net_tx_b,"blk_read_bytes":blk_rd_b,"blk_write_bytes":blk_wr_b,
-            "pids":pids_i
-          })
-        print(json.dumps(rows,ensure_ascii=False))
-        PY
-        {% endraw %}
-      args: { executable: /bin/bash }
-      register: docker_stats_json
+        ids="{{ ps_ids.stdout_lines | default([]) | join(' ') }}"
+        docker stats --no-stream --format '{{ '{{' }}json .{{ '}}' }}' $ids
+      args:
+        executable: /bin/bash
+      register: docker_stats_ndjson
       changed_when: false
-      failed_when: ps_ids.stdout | trim == "" and fail_if_no_containers
 
-    - name: Guardar fact con métricas
-      ansible.builtin.set_fact:
-        docker_stats_host: "{{ docker_stats_json.stdout | default('[]') | from_json }}"
+    # Justo después de "Obtener docker stats como NDJSON"
+    - name: Obtener número de vCPU del host
+      ansible.builtin.command: nproc
+      register: host_cpus
+      changed_when: false
 
-- name: Consolidar y generar Excel (controlador)
-  hosts: localhost
-  gather_facts: false
-  vars_files:
-    - "{{ playbook_dir }}/vars/docker_stats_vars.yml"
-
-  tasks:
-
-    - name: Construir JSON consolidado
-      ansible.builtin.set_fact:
-        combined: >-
-          {%- set acc = [] -%}
-          {%- for h in groups['all'] -%}
-            {%- for r in (hostvars[h].docker_stats_host | default([])) -%}
-              {%- set _ = acc.append( dict(r, **{'host': h}) ) -%}
-            {%- endfor -%}
-          {%- endfor -%}
-          {{ acc }}
-
-    - name: Escribir JSON consolidado
+    # 4) Guardar el JSON de métricas directamente en el controlador (no en el host remoto)
+    - name: Guardar JSON de métricas en el controlador
+      delegate_to: localhost
+      become: false
       ansible.builtin.copy:
-        dest: "{{ out_dir }}/docker_stats.json"
-        content: "{{ combined | to_nice_json }}"
+        dest: "{{ out_dir }}/{{ inventory_hostname }}.json"
         mode: '0644'
+        content: |
+          [
+          {% for line in docker_stats_ndjson.stdout_lines | default([]) %}
+            {{ line }}{% if not loop.last %},{% endif %}
+          {% endfor %}
+          ]
 
-
-    - name: Generar Excel
+    # 5) Ejecutar el script Python en el controlador para generar el Excel
+    - name: Generar Excel con script externo en el controlador
+      delegate_to: localhost
+      become: false
+      run_once: false
       ansible.builtin.command: >
-        python3 {{ playbook_dir }}/scrips/docker_stats_to_excel.py
-        {{ out_dir }}/docker_stats.json
-        {{ out_dir }}/{{ excel_name }}
+        python3 {{ playbook_dir }}/scripts/docker_stats_to_excel.py
+        {{ out_dir }}/{{ inventory_hostname }}.json
+        {{ out_dir }}/{{ inventory_hostname }}.xlsx
         {{ cpu_risk_high }} {{ cpu_risk_medium }}
         {{ mem_risk_high }} {{ mem_risk_medium }}
         {{ pids_risk_high }} {{ pids_risk_medium }}
+        {{ host_cpus.stdout | default('1') }}
       register: py_out
       changed_when: true
 
-    - name: Mostrar salida
+    # 6) Mostrar en pantalla la salida generada por el script Python y la ubicación del Excel
+    - name: Mostrar salida del script
       ansible.builtin.debug:
         msg: |
           {{ py_out.stdout | default('') }}
-          Excel: {{ out_dir }}/{{ excel_name }}
+          Excel: {{ out_dir }}/{{ inventory_hostname }}.xlsx

@@ -1,118 +1,224 @@
 #!/usr/bin/env python3
-import json, sys, pathlib
+# -*- coding: utf-8 -*-
+"""
+Script: docker_stats_to_excel.py
+Autor: (tu nombre o equipo)
+Descripción:
+    Convierte un archivo JSON (generado desde docker stats en NDJSON y luego empaquetado en una lista)
+    en un Excel, normalizando campos y aplicando umbrales de riesgo. 
+    Además, si el contenedor no tiene límite de CPU, calcula el porcentaje de uso normalizado
+    según la cantidad total de vCPU del host.
+
+Uso:
+    python3 docker_stats_to_excel.py <json_path> <excel_path>
+                                     <cpu_hi> <cpu_med>
+                                     <mem_hi> <mem_med>
+                                     <pids_hi> <pids_med>
+                                     <host_vcpus>
+
+Ejemplo:
+    python3 docker_stats_to_excel.py salidas_docker/host.json salidas_docker/host.xlsx 85 70 90 75 400 200 8
+"""
+
+import sys
+import json
+import re
+from pathlib import Path
 import pandas as pd
-from openpyxl import load_workbook
-from openpyxl.formatting.rule import CellIsRule
-from openpyxl.styles import PatternFill
 
-# Args:
-# 1: ruta JSON consolidado
-# 2: ruta Excel salida
-# 3..8: umbrales (cpu_hi, cpu_md, mem_hi, mem_md, pids_hi, pids_md)
-if len(sys.argv) < 3:
-    print("Uso: docker_stats_to_excel.py <json_in> <xlsx_out> [cpu_hi cpu_md mem_hi mem_md pids_hi pids_md]")
-    sys.exit(1)
+# ===========================
+# FUNCIONES AUXILIARES
+# ===========================
 
-json_path = pathlib.Path(sys.argv[1])
-xlsx_path = pathlib.Path(sys.argv[2])
+def to_float_percent(x):
+    """
+    Convierte un valor como '12.34%' o ' 12.34 % ' en un float (12.34).
+    Si no es posible convertirlo, devuelve 0.0.
+    """
+    if x is None:
+        return 0.0
+    s = str(x).strip()
+    m = re.match(r"^\s*([+-]?\d+(?:\.\d+)?)\s*%?\s*$", s)  # Extrae el número antes del símbolo %
+    return float(m.group(1)) if m else 0.0
 
-cpu_hi = int(sys.argv[3]) if len(sys.argv) > 3 else 85
-cpu_md = int(sys.argv[4]) if len(sys.argv) > 4 else 70
-mem_hi = int(sys.argv[5]) if len(sys.argv) > 5 else 90
-mem_md = int(sys.argv[6]) if len(sys.argv) > 6 else 75
-pids_hi = int(sys.argv[7]) if len(sys.argv) > 7 else 400
-pids_md = int(sys.argv[8]) if len(sys.argv) > 8 else 200
+def to_int(x):
+    """
+    Convierte un valor en entero. 
+    Si no es posible, devuelve 0.
+    """
+    try:
+        return int(str(x).strip())
+    except Exception:
+        return 0
 
-data = json.loads(json_path.read_text(encoding="utf-8"))
-
-def risk(row):
-    r = []
-    if row.get("cpu_perc",0) >= cpu_hi: r.append("CPU")
-    if row.get("mem_perc",0) >= mem_hi: r.append("MEM")
-    if row.get("pids",0) >= pids_hi: r.append("PIDs")
-    if r: return "ALTO (" + ",".join(r) + ")"
-    r = []
-    if row.get("cpu_perc",0) >= cpu_md: r.append("CPU")
-    if row.get("mem_perc",0) >= mem_md: r.append("MEM")
-    if row.get("pids",0) >= pids_md: r.append("PIDs")
-    if r: return "MEDIO (" + ",".join(r) + ")"
+def risk(value, hi, med):
+    """
+    Clasifica el valor en OK / MED / HIGH según los umbrales:
+        - HIGH: mayor o igual que 'hi'
+        - MED: mayor o igual que 'med' pero menor que 'hi'
+        - OK: por debajo de 'med'
+    """
+    try:
+        v = float(value)
+    except Exception:
+        v = 0.0
+    if v >= hi:
+        return "HIGH"
+    if v >= med:
+        return "MED"
     return "OK"
 
-# enriquecer
-for d in data:
-    d["mem_used_mb"]  = round(d.get("mem_used_bytes",0)/1024/1024, 1)
-    lim = d.get("mem_limit_bytes",0)
-    d["mem_limit_mb"] = round(lim/1024/1024, 1) if lim else None
-    d["net_rx_mb"]    = round(d.get("net_rx_bytes",0)/1024/1024, 1)
-    d["net_tx_mb"]    = round(d.get("net_tx_bytes",0)/1024/1024, 1)
-    d["blk_read_mb"]  = round(d.get("blk_read_bytes",0)/1024/1024, 1)
-    d["blk_write_mb"] = round(d.get("blk_write_bytes",0)/1024/1024, 1)
-    d["riesgo"] = risk(d)
+# ===========================
+# PROGRAMA PRINCIPAL
+# ===========================
 
-df = pd.DataFrame(data)
-if df.empty:
-    print("No hay datos para exportar.")
-    sys.exit(0)
+def main():
+    # Verificamos que tengamos los argumentos correctos (script + 9 parámetros = 10 elementos en sys.argv)
+    if len(sys.argv) != 10:
+        print(
+            "Uso: docker_stats_to_excel.py <json_path> <excel_path> "
+            "<cpu_hi> <cpu_med> <mem_hi> <mem_med> <pids_hi> <pids_med> <host_vcpus>",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
-cols = [
-  ("host","Host"),
-  ("container_name","Contenedor"),
-  ("container_id","ID"),
-  ("cpu_perc","CPU %"),
-  ("mem_perc","Mem %"),
-  ("mem_used_mb","Mem usada (MB)"),
-  ("mem_limit_mb","Límite Mem (MB)"),
-  ("pids","PIDs"),
-  ("net_rx_mb","Net RX (MB)"),
-  ("net_tx_mb","Net TX (MB)"),
-  ("blk_read_mb","Blk Read (MB)"),
-  ("blk_write_mb","Blk Write (MB)"),
-  ("riesgo","Riesgo"),
-]
-df = df[[c for c,_ in cols]]
-df.columns = [n for _,n in cols]
+    # Asignamos los argumentos a variables
+    json_path = Path(sys.argv[1])   # Ruta del archivo JSON
+    xlsx_path = Path(sys.argv[2])   # Ruta donde se guardará el Excel
 
-resumen = (df.groupby(["Host","Riesgo"])
-             .size()
-             .unstack(fill_value=0)
-             .reset_index()
-             .sort_values("Host"))
+    # Umbrales para riesgos
+    cpu_hi, cpu_med = float(sys.argv[3]), float(sys.argv[4])
+    mem_hi, mem_med = float(sys.argv[5]), float(sys.argv[6])
+    pids_hi, pids_med = int(sys.argv[7]), int(sys.argv[8])
 
-with pd.ExcelWriter(xlsx_path, engine="openpyxl") as xw:
-    df.to_excel(xw, sheet_name="Contenedores", index=False)
-    resumen.to_excel(xw, sheet_name="Resumen", index=False)
+    # Número total de vCPU del host (para normalizar el uso de CPU si no hay límite)
+    host_vcpus = max(1, int(float(sys.argv[9])))
 
-# Formato condicional simple
-wb = load_workbook(xlsx_path)
-ws = wb["Contenedores"]
-hdr = {cell.value: idx+1 for idx, cell in enumerate(ws[1])}
-col_cpu = hdr.get("CPU %"); col_mem = hdr.get("Mem %"); col_pids = hdr.get("PIDs")
+    # Cargamos el JSON (debe ser una lista de objetos)
+    try:
+        data = json.loads(json_path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        print(f"No se encuentra el archivo JSON: {json_path}", file=sys.stderr)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"JSON inválido en {json_path}: {e}", file=sys.stderr)
+        sys.exit(1)
 
-fill_red    = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
-fill_yellow = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
+    if not isinstance(data, list):
+        print("El JSON raíz debe ser un arreglo de objetos.", file=sys.stderr)
+        sys.exit(1)
 
-max_row = ws.max_row
-if col_cpu:
-    rng = f"{ws.cell(row=2, column=col_cpu).coordinate}:{ws.cell(row=max_row, column=col_cpu).coordinate}"
-    ws.conditional_formatting.add(rng, CellIsRule(operator='greaterThanOrEqual', formula=[str(cpu_hi)], fill=fill_red))
-    ws.conditional_formatting.add(rng, CellIsRule(operator='between', formula=[str(cpu_md), str(cpu_hi-0.0001)], fill=fill_yellow))
-if col_mem:
-    rng = f"{ws.cell(row=2, column=col_mem).coordinate}:{ws.cell(row=max_row, column=col_mem).coordinate}"
-    ws.conditional_formatting.add(rng, CellIsRule(operator='greaterThanOrEqual', formula=[str(mem_hi)], fill=fill_red))
-    ws.conditional_formatting.add(rng, CellIsRule(operator='between', formula=[str(mem_md), str(mem_hi-0.0001)], fill=fill_yellow))
-if col_pids:
-    rng = f"{ws.cell(row=2, column=col_pids).coordinate}:{ws.cell(row=max_row, column=col_pids).coordinate}"
-    ws.conditional_formatting.add(rng, CellIsRule(operator='greaterThanOrEqual', formula=[str(pids_hi)], fill=fill_red))
-    ws.conditional_formatting.add(rng, CellIsRule(operator='between', formula=[str(pids_md), str(pids_hi-0.0001)], fill=fill_yellow))
+    # Usamos el nombre del archivo (sin extensión) como nombre del host
+    host_name = json_path.stem
 
-# Auto-ancho básico
-for col in ws.columns:
-    max_len = 0
-    letter = col[0].column_letter
-    for cell in col:
-        val = "" if cell.value is None else str(cell.value)
-        if len(val) > max_len: max_len = len(val)
-    ws.column_dimensions[letter].width = min(max_len+2, 50)
+    # ===========================
+    # NORMALIZACIÓN DE REGISTROS
+    # ===========================
+    rows = []
+    for rec in data:
+        if not isinstance(rec, dict):
+            continue
 
-wb.save(xlsx_path)
-print(f"Generado: {xlsx_path}")
+        # Extraemos datos clave (usando varias opciones porque docker stats puede variar en los nombres de campo)
+        container_id = rec.get("ID") or rec.get("ContainerID") or rec.get("Container") or ""
+        container_name = rec.get("Name") or rec.get("ContainerName") or rec.get("Container") or ""
+
+        # Conversión de porcentajes y enteros
+        cpu_perc = to_float_percent(rec.get("CPUPerc"))
+        mem_perc = to_float_percent(rec.get("MemPerc"))
+        pids = to_int(rec.get("PIDs"))
+
+        # Campos tal como los da docker stats
+        mem_usage = rec.get("MemUsage", "")
+        net_io = rec.get("NetIO", "")
+        block_io = rec.get("BlockIO", "")
+
+        rows.append({
+            "host": host_name,
+            "container_name": container_name,
+            "container_id": container_id,
+            "cpu_perc": cpu_perc,
+            "mem_perc": mem_perc,
+            "pids": pids,
+            "mem_usage_raw": mem_usage,
+            "net_io_raw": net_io,
+            "block_io_raw": block_io,
+        })
+
+    # Creamos DataFrame con los datos recolectados
+    df = pd.DataFrame(rows)
+
+    # Si no hay datos, generamos DataFrame vacío con las columnas esperadas
+    if df.empty:
+        df = pd.DataFrame(columns=[
+            "host","container_name","container_id","cpu_perc","mem_perc","pids",
+            "mem_usage_raw","net_io_raw","block_io_raw"
+        ])
+
+    # ===========================
+    # ASEGURAR ORDEN DE COLUMNAS
+    # ===========================
+    base_cols = [
+        ("host", "Host"),
+        ("container_name", "Container"),
+        ("container_id", "ID"),
+        ("cpu_perc", "CPU %"),
+        ("mem_perc", "Mem %"),
+        ("pids", "PIDs"),
+        ("mem_usage_raw", "MemUsage"),
+        ("net_io_raw", "NetIO"),
+        ("block_io_raw", "BlockIO"),
+    ]
+
+    # Si falta alguna columna, la agregamos con valor vacío o cero
+    for c, _ in base_cols:
+        if c not in df.columns:
+            df[c] = "" if c.endswith("_raw") or c in ("host","container_name","container_id") else 0
+
+    # Reordenamos las columnas
+    df = df[[c for c,_ in base_cols]].copy()
+
+    # ===========================
+    # CALCULAR RIESGOS
+    # ===========================
+    df["CPU_Risk"] = df["cpu_perc"].apply(lambda v: risk(v, cpu_hi, cpu_med))
+    df["Mem_Risk"] = df["mem_perc"].apply(lambda v: risk(v, mem_hi, mem_med))
+    df["PIDs_Risk"] = df["pids"].apply(lambda v: risk(v, pids_hi, pids_med))
+
+    # ===========================
+    # NORMALIZACIÓN POR vCPUs DEL HOST
+    # ===========================
+    # Ejemplo: 106.74% de uso de CPU en host con 8 vCPU -> 13.34% del total de CPU físico del host
+    df["Host_vCPUs"] = host_vcpus
+    df["CPU % (vs host)"] = (df["cpu_perc"] / df["Host_vCPUs"]).round(2)
+
+    # ===========================
+    # RENOMBRAR Y ORDENAR PARA PRESENTACIÓN
+    # ===========================
+    rename_map = {src: hdr for src, hdr in base_cols}
+    df = df.rename(columns=rename_map)
+
+    final_cols = [
+        "Host","Container","ID",
+        "CPU %","CPU_Risk","CPU % (vs host)","Host_vCPUs",
+        "Mem %","Mem_Risk",
+        "PIDs","PIDs_Risk",
+        "MemUsage","NetIO","BlockIO"
+    ]
+    for c in final_cols:
+        if c not in df.columns:
+            df[c] = ""
+    df = df[final_cols]
+
+    # ===========================
+    # EXPORTAR A EXCEL
+    # ===========================
+    xlsx_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_excel(xlsx_path, index=False)
+
+    # Mensaje de salida para Ansible
+    print(f"Registros: {len(df)} | Excel: {xlsx_path}")
+
+# Punto de entrada del script
+if __name__ == "__main__":
+    main()
