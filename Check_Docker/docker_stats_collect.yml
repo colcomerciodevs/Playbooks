@@ -37,6 +37,7 @@
 
     # 4) Guardar el JSON de métricas directamente en el controlador (no en el host remoto)
     - name: Guardar JSON de métricas en el controlador
+      delegate_to: localhost
       become: false
       ansible.builtin.copy:
         dest: "{{ out_dir }}/{{ inventory_hostname }}.json"
