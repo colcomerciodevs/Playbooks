@@ -1,5 +1,5 @@
 # Directorio de salida (relativo al playbook)
-out_dir: "{{ playbook_dir }}/salidas_docker"
+out_dir: "/data/work/Salida_Docker_Collect"
 
 # Nombre del archivo Excel
 excel_name: "docker_stats.xlsx"

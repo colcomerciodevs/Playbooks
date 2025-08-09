@@ -1,6 +1,6 @@
 ---
 - name: Recolectar y exportar docker stats por host
-  hosts: docker
+  hosts: 10.181.4.11
   gather_facts: false
   become: true
   vars_files:
