@@ -37,7 +37,6 @@
 
     # 4) Guardar el JSON de métricas directamente en el controlador (no en el host remoto)
     - name: Guardar JSON de métricas en el controlador
-      delegate_to: localhost
       become: false
       ansible.builtin.copy:
         dest: "{{ out_dir }}/{{ inventory_hostname }}.json"
@@ -50,7 +49,7 @@
           ]
 
     # 5) Ejecutar el script Python en el controlador para generar el Excel
-    - name: Generar Excel con script externo en el controlador
+    - name: Ejecucion de Script python en el controlador
       delegate_to: localhost
       become: false
       run_once: false
