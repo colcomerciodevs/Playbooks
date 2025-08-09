@@ -3,7 +3,7 @@
   hosts: all
   gather_facts: false
   vars_files:
-    - ../vars/docker_stats_vars.yml   # ajusta la ruta si cambia tu estructura
+    - "{{ playbook_dir }}/vars/docker_stats_vars.yml"   # ajusta la ruta si cambia tu estructura
 
   tasks:
     - name: ¿Hay contenedores?
@@ -70,7 +70,7 @@
   hosts: localhost
   gather_facts: false
   vars_files:
-    - ../vars/docker_stats_vars.yml
+    - "{{ playbook_dir }}/vars/docker_stats_vars.yml"
 
   tasks:
 
@@ -94,7 +94,7 @@
 
     - name: Generar Excel
       ansible.builtin.command: >
-        python3 {{ out_dir }}/docker_stats_to_excel.py
+        python3 {{ playbook_dir }}/scrips/docker_stats_to_excel.py
         {{ out_dir }}/docker_stats.json
         {{ out_dir }}/{{ excel_name }}
         {{ cpu_risk_high }} {{ cpu_risk_medium }}
