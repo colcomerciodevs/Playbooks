@@ -1,0 +1,14 @@
+# Ruta de salida junto al playbook
+out_dir: "{{ playbook_dir }}/salidas_docker"
+excel_name: "docker_stats.xlsx"
+
+# Umbrales
+cpu_risk_high: 85
+cpu_risk_medium: 70
+mem_risk_high: 90
+mem_risk_medium: 75
+pids_risk_high: 400
+pids_risk_medium: 200
+
+# No fallar si no hay contenedores
+fail_if_no_containers: false

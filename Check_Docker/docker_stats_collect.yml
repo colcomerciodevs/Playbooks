@@ -1,0 +1,110 @@
+---
+- name: Recolectar docker stats en hosts
+  hosts: all
+  gather_facts: false
+  vars_files:
+    - ../vars/docker_stats_vars.yml   # ajusta la ruta si cambia tu estructura
+
+  tasks:
+    - name: ¿Hay contenedores?
+      ansible.builtin.command: docker ps -q
+      register: ps_ids
+      changed_when: false
+      failed_when: false
+
+    - name: Obtener docker stats (JSON)
+      ansible.builtin.shell: |
+        {% raw %}
+        set -eo pipefail
+        python3 - <<'PY'
+        import json, subprocess, re, sys
+        def parse_size(s):
+          m = re.match(r'^\s*([0-9.]+)\s*([KMG]?i?B)\s*$', s.strip(), re.I)
+          if not m: return 0
+          val, unit = float(m.group(1)), m.group(2).upper()
+          mults={'B':1,'KB':1000,'KIB':1024,'MB':1000**2,'MIB':1024**2,'GB':1000**3,'GIB':1024**3}
+          return int(val*mults.get(unit,1))
+        fmt="{{.Container}}|{{.Name}}|{{.CPUPerc}}|{{.MemUsage}}|{{.MemPerc}}|{{.NetIO}}|{{.BlockIO}}|{{.PIDs}}"
+        try:
+          out=subprocess.check_output(["bash","-lc",f"docker stats --no-stream --format '{fmt}'"],text=True,stderr=subprocess.STDOUT)
+        except subprocess.CalledProcessError:
+          print("[]"); sys.exit(0)
+        rows=[]
+        for line in out.strip().splitlines():
+          parts=line.split("|")
+          if len(parts)!=8: continue
+          cid,name,cpu_perc,mem_usage,mem_perc,net_io,block_io,pids=parts
+          mu=[x.strip() for x in mem_usage.split("/")]+["",""]
+          def parse_pair(p):
+            a=[x.strip() for x in p.split("/")]+["",""]
+            return parse_size(a[0]) if a[0] else 0, parse_size(a[1]) if a[1] else 0
+          def pct(x):
+            x=x.strip().rstrip('%')
+            try: return float(x)
+            except: return 0.0
+          try: pids_i=int(pids.strip())
+          except: pids_i=0
+          net_rx_b,net_tx_b=parse_pair(net_io)
+          blk_rd_b,blk_wr_b=parse_pair(block_io)
+          used_b=parse_size(mu[0]) if mu[0] else 0
+          limit_b=parse_size(mu[1]) if mu[1] else 0
+          rows.append({
+            "container_id":cid,"container_name":name,"cpu_perc":pct(cpu_perc),
+            "mem_used_bytes":used_b,"mem_limit_bytes":limit_b,"mem_perc":pct(mem_perc),
+            "net_rx_bytes":net_rx_b,"net_tx_bytes":net_tx_b,"blk_read_bytes":blk_rd_b,"blk_write_bytes":blk_wr_b,
+            "pids":pids_i
+          })
+        print(json.dumps(rows,ensure_ascii=False))
+        PY
+        {% endraw %}
+      args: { executable: /bin/bash }
+      register: docker_stats_json
+      changed_when: false
+      failed_when: ps_ids.stdout | trim == "" and fail_if_no_containers
+
+    - name: Guardar fact con métricas
+      ansible.builtin.set_fact:
+        docker_stats_host: "{{ docker_stats_json.stdout | default('[]') | from_json }}"
+
+- name: Consolidar y generar Excel (controlador)
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - ../vars/docker_stats_vars.yml
+
+  tasks:
+
+    - name: Construir JSON consolidado
+      ansible.builtin.set_fact:
+        combined: >-
+          {%- set acc = [] -%}
+          {%- for h in groups['all'] -%}
+            {%- for r in (hostvars[h].docker_stats_host | default([])) -%}
+              {%- set _ = acc.append( dict(r, **{'host': h}) ) -%}
+            {%- endfor -%}
+          {%- endfor -%}
+          {{ acc }}
+
+    - name: Escribir JSON consolidado
+      ansible.builtin.copy:
+        dest: "{{ out_dir }}/docker_stats.json"
+        content: "{{ combined | to_nice_json }}"
+        mode: '0644'
+
+
+    - name: Generar Excel
+      ansible.builtin.command: >
+        python3 {{ out_dir }}/docker_stats_to_excel.py
+        {{ out_dir }}/docker_stats.json
+        {{ out_dir }}/{{ excel_name }}
+        {{ cpu_risk_high }} {{ cpu_risk_medium }}
+        {{ mem_risk_high }} {{ mem_risk_medium }}
+        {{ pids_risk_high }} {{ pids_risk_medium }}
+      register: py_out
+      changed_when: true
+
+    - name: Mostrar salida
+      ansible.builtin.debug:
+        msg: |
+          {{ py_out.stdout | default('') }}
+          Excel: {{ out_dir }}/{{ excel_name }}
