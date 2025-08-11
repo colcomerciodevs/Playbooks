@@ -5,5 +5,5 @@
 
 #######Servidores Pago por Uso PPU - Generales ########
 
-[cajas]
-akout-n0 ansible_host=147.127.110.17
+[prueba]
+geohubnew-prod ansible_host=10.181.4.248

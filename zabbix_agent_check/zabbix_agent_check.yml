@@ -1,41 +1,46 @@
 - name: Verificar e instalar Zabbix Agent 2 desde repositorio HTTP local
-  hosts: cajas
+  hosts: prueba
   become: yes
   vars:
-    zabbix_desired_version: "7.0.10"
+    zabbix_desired_version: "7.0.16"
     repo_base_url: "http://10.181.8.209:8080/repos/localrepo/zabbix2"
 
   tasks:
 
+    # Comprueba si Zabbix Agent 1 (agentd) está instalado vía RPM
     - name: Verificar si Zabbix Agent 1 está instalado
       shell: rpm -q zabbix-agent || echo "not_installed"
       register: zabbix_v1_check
       changed_when: false
 
-    - name: Obtener versión Zabbix Agent 1 si está instalado
+    # Extrae la versión de Agent 1 como string (ej. "6.0.25") si está instalado
+    - name: Obtener versión Zabbix Agent 1 si está instalado (string, no lista)
       set_fact:
-        zabbix_agent1_version: "{{ zabbix_v1_check.stdout | regex_search('([0-9]+\\.[0-9]+\\.[0-9]+)', '\\1') }}"
+        zabbix_agent1_version: "{{ (zabbix_v1_check.stdout | regex_findall('([0-9]+\\.[0-9]+\\.[0-9]+)') | first) }}"
       when: "'not_installed' not in zabbix_v1_check.stdout"
 
-    - name: Verificar si Zabbix Agent 2 está instalado
-      shell: rpm -q zabbix-agent2 || echo "not_installed"
-      register: zabbix_v2_check
+    # Consulta versión instalada de Agent 2 devolviendo solo %{VERSION} o "not_installed"
+    - name: Verificar versión de Zabbix Agent 2
+      shell: "rpm -q --qf '%{VERSION}\n' zabbix-agent2 || echo not_installed"
+      register: zbx2_ver_q
       changed_when: false
 
-    - name: Obtener versión Zabbix Agent 2 si está instalado
+    # Normaliza la versión de Agent 2 (trim de la salida) si está instalado
+    - name: Normalizar versión Zabbix Agent 2 si está instalado
       set_fact:
-        zabbix_agent2_version: "{{ zabbix_v2_check.stdout | regex_search('([0-9]+\\.[0-9]+\\.[0-9]+)', '\\1') }}"
-      when: "'not_installed' not in zabbix_v2_check.stdout"
+        zabbix_agent2_version: "{{ (zbx2_ver_q.stdout | trim) }}"
+      when: "'not_installed' not in zbx2_ver_q.stdout"
 
+    # Define si hay que instalar/reinstalar Agent 2: si no está o si la versión difiere de la deseada
     - name: Determinar si se requiere instalar/reinstalar Agent 2
       set_fact:
         reinstall_required: >-
           {{
-            'not_installed' in zabbix_v2_check.stdout
-            or 'not_installed' not in zabbix_v1_check.stdout
-            or (zabbix_agent2_version is defined and zabbix_agent2_version is version(zabbix_desired_version, '<'))
+            'not_installed' in zbx2_ver_q.stdout
+            or (zabbix_agent2_version | default('') != zabbix_desired_version)
           }}
 
+    # Construye la URL del repo local según OS/versión mayor detectada por facts
     - name: Determinar URL del repositorio según sistema
       set_fact:
         zabbix_repo_url: >-
@@ -47,27 +52,34 @@
             else ''
           }}
 
+    # Muestra la URL final del repo para diagnóstico
     - name: Mostrar URL del repositorio resuelta
       debug:
         msg: "Repositorio usado: {{ zabbix_repo_url }}"
 
+    # Corta la ejecución si no hay mapeo de repo para el sistema operativo actual
     - name: Falla si el sistema operativo no es compatible
       fail:
         msg: "Sistema no soportado: {{ ansible_distribution }} {{ ansible_distribution_major_version }}"
       when: zabbix_repo_url == ''
 
+    # Desinstala Zabbix Agent 1 si está presente (para evitar coexistencia)
     - name: Eliminar Zabbix Agent 1 si está presente
       package:
         name: zabbix-agent
         state: absent
       when: "'not_installed' not in zabbix_v1_check.stdout"
 
+    # (Opcional “instalación limpia”) Desinstala Agent 2 si vamos a reinstalar y ya estaba instalado
     - name: Eliminar Zabbix Agent 2 si se requiere reinstalación
       package:
         name: zabbix-agent2
         state: absent
-      when: reinstall_required and "'not_installed' not in zabbix_v2_check.stdout"
+      when:
+        - reinstall_required
+        - "'not_installed' not in zbx2_ver_q.stdout"
 
+    # Crea repo temporal YUM/DNF para RHEL/CentOS/Oracle (sin GPG por ser repo local)
     - name: Agregar repositorio Zabbix temporal (RHEL/CentOS/Oracle)
       yum_repository:
         name: zabbix-local
@@ -77,6 +89,7 @@
         gpgcheck: no
       when: ansible_os_family == "RedHat"
 
+    # Crea repo temporal en SLES mediante Zypper
     - name: Agregar repositorio Zabbix temporal (SLES)
       zypper_repository:
         name: zabbix-local
@@ -87,60 +100,70 @@
         repo: "{{ zabbix_repo_url }}"
       when: ansible_distribution == "SLES"
 
+    # Instala/asegura presencia de zabbix-agent2 (versión que resuelva el repo)
     - name: Instalar Zabbix Agent 2 desde el repositorio
       package:
         name: zabbix-agent2
         state: present
       when: reinstall_required
 
-    - name: Configurar archivo /etc/zabbix/zabbix_agentd.conf
+    # Despliega el template de configuración principal del Agent 2
+    - name: Configurar /etc/zabbix/zabbix_agent2.conf
       template:
-        src: files/zabbix_agentd.conf.template
-        dest: /etc/zabbix/zabbix_agentd.conf
+        src: files/zabbix_agent2.conf.template
+        dest: /etc/zabbix/zabbix_agent2.conf
         mode: '0644'
-      notify: Reiniciar zabbix-agent
+      notify: Reiniciar zabbix-agent2
       when: reinstall_required
 
+    # Asegura que el servicio esté iniciado y habilitado al arranque
     - name: Iniciar y habilitar zabbix-agent2
       systemd:
         name: zabbix-agent2
         state: started
         enabled: yes
 
+    # Elimina el repo temporal en RHEL-family
     - name: Eliminar repositorio temporal (RHEL/CentOS/Oracle)
       yum_repository:
         name: zabbix-local
         state: absent
       when: ansible_os_family == "RedHat"
 
+    # Elimina el repo temporal en SLES
     - name: Eliminar repositorio temporal (SLES)
       zypper_repository:
         name: zabbix-local
         state: absent
       when: ansible_distribution == "SLES"
 
+    # Verifica que el servicio final esté 'active' (sin cambiar estado)
     - name: Verificar estado final del servicio
       shell: systemctl is-active zabbix-agent2
       register: final_status
       changed_when: false
 
+    # Agrega un registro por host al arreglo de resultados (usando IP del inventario)
     - name: Guardar resultados por host
       set_fact:
         resultados_zabbix: >-
           {{
             resultados_zabbix | default([]) + [
               {
-                'ip': ansible_default_ipv4.address,
+                'hostname': inventory_hostname,
+                'ip': ansible_host | default(inventory_hostname),
+                'nueva_version_instalada': zabbix_desired_version if reinstall_required else 'No se instaló',
                 'version_zabbix_agent1': zabbix_agent1_version if zabbix_agent1_version is defined else 'No instalado',
                 'version_zabbix_agent2': zabbix_agent2_version if zabbix_agent2_version is defined else 'No instalado',
-                'nueva_version_instalada': zabbix_desired_version if reinstall_required else 'No se instaló',
                 'estado_servicio_final': final_status.stdout
               }
             ]
           }}
 
+
   handlers:
-    - name: Reiniciar zabbix-agent
+    # Reinicia el servicio del Agent 2 cuando haya cambios en el template
+    - name: Reiniciar zabbix-agent2
       systemd:
         name: zabbix-agent2
         state: restarted
@@ -150,6 +173,14 @@
   gather_facts: false
   tasks:
 
+    # (Recomendado) Asegura que exista el directorio de salidas
+    - name: Asegurar directorio de salidas
+      file:
+        path: "{{ playbook_dir }}/Salidas_Playbooks"
+        state: directory
+        mode: '0755'
+
+    # Exporta a JSON los resultados agregados por host (solo una vez)
     - name: Exportar JSON con resultados
       copy:
         content: "{{ hostvars | json_query(query) | to_nice_json }}"
@@ -158,6 +189,7 @@
         query: "*[].resultados_zabbix[]"
       run_once: true
 
+    # Ejecuta el script Python que genera el Excel (una sola vez)
     - name: Ejecutar script Python para generar Excel
       command: python3 scripts/generar_excel_zabbix.py
       args:

@@ -1,4 +1,0 @@
-LogFileSize=3
-Server=3.89.172.224,127.0.0.1
-ServerActive=10.181.5.210
-Hostname={{ ansible_hostname }}

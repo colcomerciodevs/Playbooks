@@ -63,32 +63,32 @@ crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.60,p
 crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.60,puerto,39005,Cerrado
 crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.60,puerto,47632,Cerrado
 crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.60,puerto,48000,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111   ,ping,N/A,Fallido
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111   ,puerto,21,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111   ,puerto,22,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111   ,puerto,1521,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111   ,puerto,6200,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111   ,puerto,8010,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111   ,puerto,39001,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111   ,puerto,39002,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111   ,puerto,39003,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111   ,puerto,39004,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111   ,puerto,39005,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111   ,puerto,47632,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111   ,puerto,48000,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193   ,ping,N/A,Fallido
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193   ,puerto,21,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193   ,puerto,22,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193   ,puerto,1521,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193   ,puerto,6200,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193   ,puerto,8010,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193   ,puerto,39001,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193   ,puerto,39002,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193   ,puerto,39003,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193   ,puerto,39004,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193   ,puerto,39005,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193   ,puerto,47632,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193   ,puerto,48000,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111,ping,N/A,Fallido
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111,puerto,21,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111,puerto,22,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111,puerto,1521,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111,puerto,6200,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111,puerto,8010,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111,puerto,39001,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111,puerto,39002,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111,puerto,39003,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111,puerto,39004,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111,puerto,39005,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111,puerto,47632,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.111,puerto,48000,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193,ping,N/A,Fallido
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193,puerto,21,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193,puerto,22,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193,puerto,1521,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193,puerto,6200,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193,puerto,8010,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193,puerto,39001,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193,puerto,39002,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193,puerto,39003,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193,puerto,39004,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193,puerto,39005,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193,puerto,47632,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.193,puerto,48000,Cerrado
 crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.96,ping,N/A,Fallido
 crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.96,puerto,21,Cerrado
 crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.96,puerto,22,Cerrado
@@ -141,32 +141,32 @@ crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.209,
 crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.209,puerto,39005,Cerrado
 crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.209,puerto,47632,Cerrado
 crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.96.209,puerto,48000,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108   ,ping,N/A,Fallido
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108   ,puerto,21,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108   ,puerto,22,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108   ,puerto,1521,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108   ,puerto,6200,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108   ,puerto,8010,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108   ,puerto,39001,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108   ,puerto,39002,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108   ,puerto,39003,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108   ,puerto,39004,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108   ,puerto,39005,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108   ,puerto,47632,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108   ,puerto,48000,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228   ,ping,N/A,Fallido
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228   ,puerto,21,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228   ,puerto,22,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228   ,puerto,1521,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228   ,puerto,6200,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228   ,puerto,8010,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228   ,puerto,39001,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228   ,puerto,39002,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228   ,puerto,39003,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228   ,puerto,39004,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228   ,puerto,39005,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228   ,puerto,47632,Cerrado
-crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228   ,puerto,48000,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108,ping,N/A,Fallido
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108,puerto,21,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108,puerto,22,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108,puerto,1521,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108,puerto,6200,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108,puerto,8010,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108,puerto,39001,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108,puerto,39002,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108,puerto,39003,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108,puerto,39004,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108,puerto,39005,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108,puerto,47632,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.97.108,puerto,48000,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228,ping,N/A,Fallido
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228,puerto,21,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228,puerto,22,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228,puerto,1521,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228,puerto,6200,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228,puerto,8010,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228,puerto,39001,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228,puerto,39002,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228,puerto,39003,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228,puerto,39004,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228,puerto,39005,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228,puerto,47632,Cerrado
+crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.98.228,puerto,48000,Cerrado
 crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.84.81,ping,N/A,Fallido
 crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.84.81,puerto,21,Cerrado
 crm-desa-cent7.coldecom.com,10.181.3.186,255.255.240.0,10.181.0.1,172.25.84.81,puerto,22,Cerrado
