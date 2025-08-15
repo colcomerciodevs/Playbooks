@@ -187,6 +187,8 @@ mford-new ansible_host=10.206.3.18 ansible_user=ansible_test
 terio-n0 ansible_host=10.40.3.5 ansible_user=ansible_test
 Vwmed ansible_host=10.206.3.8 ansible_user=ansible_test
 [GEOPOS_FSC_PPAL_ALKNORTE]
+akede-n1 ansible_host=172.16.134.4 ansible_user=ansible_test
+akede-n0 ansible_host=172.16.134.5 ansible_user=ansible_test
 ak170-n0 ansible_host=172.16.10.3 ansible_user=ansible_test
 ak170-n1 ansible_host=172.16.10.6 ansible_user=ansible_test
 akb30-n1 ansible_host=147.127.110.112 ansible_user=ansible_test
@@ -200,7 +202,6 @@ akove-new ansible_host=172.16.4.10 ansible_user=ansible_test
 albol-new ansible_host=10.137.0.50 ansible_user=ansible_test
 APBOGDISTEBOR ansible_host=10.181.4.239 ansible_user=ansible_test
 akven-n1 ansible_host=172.16.4.4 ansible_user=ansible_test
-akven-n0 ansible_host=172.16.4.5 ansible_user=ansible_test
 SRV-AKVEN-QA ansible_host=10.181.11.93
 akove-new ansible_host=172.16.4.10 ansible_user=ansible_test
 akb68-n1 ansible_host=172.16.11.7 ansible_user=ansible_test
@@ -246,6 +247,9 @@ alve1-new ansible_host=172.16.4.7 ansible_user=ansible_test
 fobo1-new ansible_host=10.97.0.3 ansible_user=ansible_test
 foa68-n0 ansible_host=10.229.3.5 ansible_user=ansible_test
 fofat-new ansible_host=10.56.3.3 ansible_user=ansible_test
+akmos-n0 ansible_host=172.16.79.8 ansible_user=root
+akmos-n1 ansible_host=172.16.79.7 ansible_user=root
+reven    ansible_host=10.181.3.235 ansible_user=root
 
 [FSC_MOVILVENTAS]
 corbemovil_prd ansible_host=10.181.0.21 ansible_user=tux
@@ -260,7 +264,7 @@ newmercad_app_qa ansible_host=10.181.11.111 ansible_user=tux
 #alk33-n0 ansible_host=10.175.3.8 ansible_user=root
 #alace-n0 ansible_host=10.206.10.10 ansible_user=root
 #alace-n1 ansible_host=10.206.10.11 ansible_user=root
-akcal-n1 ansible_host=10.185.0.48 ansible_user=root
+alk72-n0 ansible_host=10.185.0.48 ansible_user=root
 #akmos-n0 ansible_host=172.16.79.8 ansible_user=root
 #akmos-n1 ansible_host=172.16.79.7 ansible_user=root
 #akb30-n1 ansible_host=147.127.110.112 ansible_user=ansible_test
