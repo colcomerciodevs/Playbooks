@@ -202,7 +202,7 @@ akove-new ansible_host=172.16.4.10 ansible_user=ansible_test
 albol-new ansible_host=10.137.0.50 ansible_user=ansible_test
 APBOGDISTEBOR ansible_host=10.181.4.239 ansible_user=ansible_test
 akven-n1 ansible_host=172.16.4.4 ansible_user=ansible_test
-SRV-AKVEN-QA ansible_host=10.181.11.93
+#SRV-AKVEN-QA ansible_host=10.181.11.93
 akove-new ansible_host=172.16.4.10 ansible_user=ansible_test
 akb68-n1 ansible_host=172.16.11.7 ansible_user=ansible_test
 akb68-n0 ansible_host=172.16.11.5 ansible_user=ansible_test
@@ -238,7 +238,7 @@ ktsba-nuevo ansible_host=10.89.0.102 ansible_user=ansible_test
 ktsal-n2 ansible_host=10.91.3.7 ansible_user=ansible_test
 ktsal-n0 ansible_host=10.91.3.3 ansible_user=ansible_test
 alkau-new ansible_host=10.235.3.5 ansible_user=ansible_test
-GEOPOSALKAU ansible_host=10.181.5.69
+#GEOPOSALKAU ansible_host=10.181.5.69
 alk2m-n0 ansible_host=10.132.0.4 ansible_user=ansible_test
 alsoa-new ansible_host=10.142.3.7 ansible_user=ansible_test
 ALK72-n0 ansible_host=10.83.0.3 ansible_user=ansible_test
@@ -250,6 +250,21 @@ fofat-new ansible_host=10.56.3.3 ansible_user=ansible_test
 akmos-n0 ansible_host=172.16.79.8 ansible_user=root
 akmos-n1 ansible_host=172.16.79.7 ansible_user=root
 reven    ansible_host=10.181.3.235 ansible_user=root
+Akyop-n0 ansible_host=10.121.0.10 ansible_user=ansible_test
+akede-n1 ansible_host=172.16.134.4 ansible_user=ansible_test
+akyop-n1 ansible_host=10.121.0.6 ansible_user=ansible_test
+akede-n0 ansible_host=172.16.134.5 ansible_user=ansible_test
+akvil-n1 ansible_host=172.16.3.6 ansible_user=ansible_test
+akvil-n0 ansible_host=172.16.3.5 ansible_user=ansible_test
+revil-n0 ansible_host=10.181.3.242 ansible_user=ansible_test
+ktvil-bk ansible_host=10.151.3.3 ansible_user=ansible_test
+ktvil-n0 ansible_host=10.151.3.5 ansible_user=ansible_test
+alven-new ansible_host=10.81.0.106 ansible_user=ansible_test
+alvil-n0 ansible_host=10.251.3.5 ansible_user=ansible_test
+alvi2-new ansible_host=10.150.0.6 ansible_user=ansible_test
+
+
+
 
 [FSC_MOVILVENTAS]
 corbemovil_prd ansible_host=10.181.0.21 ansible_user=tux
@@ -264,7 +279,7 @@ newmercad_app_qa ansible_host=10.181.11.111 ansible_user=tux
 #alk33-n0 ansible_host=10.175.3.8 ansible_user=root
 #alace-n0 ansible_host=10.206.10.10 ansible_user=root
 #alace-n1 ansible_host=10.206.10.11 ansible_user=root
-alk72-n0 ansible_host=10.185.0.48 ansible_user=root
+aldie-n0 ansible_host=10.185.0.48 ansible_user=root
 #akmos-n0 ansible_host=172.16.79.8 ansible_user=root
 #akmos-n1 ansible_host=172.16.79.7 ansible_user=root
 #akb30-n1 ansible_host=147.127.110.112 ansible_user=ansible_test

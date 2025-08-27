@@ -10,9 +10,9 @@
 
     - name: Crear el usuario  con descripcion, home, grupo y shell por defecto
       user:
-        name: jarevalo
-        comment: "Jairo Alexander Arevalo Salcedo"
-        home: /home/jarevalo
+        name: cvillareal
+        comment: "cristhian camilo villareal"
+        home: /home/cvillareal
         group: soporte
         create_home: yes
         shell: /bin/bash
@@ -20,4 +20,4 @@
         update_password: on_create
 
     - name: Forzar cambio de contraseña al iniciar sesion    
-      command: chage -d 0 jarevalo
+      command: chage -d 0 cvillareal

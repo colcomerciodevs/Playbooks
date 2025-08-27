@@ -117,7 +117,7 @@ winhost02,10.10.10.5,24,10.10.10.1,puerto,1.1.1.1,443,Cerrado
 🧪 CÓMO EJECUTAR EL PLAYBOOK
 -----------------------------------------------------------------------
 
-ansible-playbook check_network-oci.yml --vault-password-file /ansible/Vault/.vault_pass_windows.txt
+ansible-playbook check_network-ociV2.yml --vault-password-file /ansible/Vault/.vault_pass_windows.txt
 
 • Asegúrate que los hosts tengan claves configuradas para SSH (Linux)
 • Para Windows, el vault `vault_windows.yml` debe estar descifrado o accesible
