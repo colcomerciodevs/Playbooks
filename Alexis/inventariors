@@ -275,11 +275,12 @@ newmercad_app_qa ansible_host=10.181.11.111 ansible_user=tux
 #moviltrack ansible_host=10.181.3.109 ansible_user=tux
 #moviltrackqanew  ansible_host=10.181.11.103 ansible_user=tux
 [FSC_TEMP]
+PlantGeoOL9 ansible_host=10.181.11.58 ansible_user=tux
 #terco-n0 ansible_host=10.181.5.251 ansible_user=ansible_test
 #alk33-n0 ansible_host=10.175.3.8 ansible_user=root
 #alace-n0 ansible_host=10.206.10.10 ansible_user=root
 #alace-n1 ansible_host=10.206.10.11 ansible_user=root
-aldie-n0 ansible_host=10.185.0.48 ansible_user=root
+#aldie-n0 ansible_host=10.185.0.48 ansible_user=root
 #akmos-n0 ansible_host=172.16.79.8 ansible_user=root
 #akmos-n1 ansible_host=172.16.79.7 ansible_user=root
 #akb30-n1 ansible_host=147.127.110.112 ansible_user=ansible_test

@@ -1,6 +1,6 @@
 ---
 - name: Crear usuario en servidores Linux
-  hosts: GEOPOS_FSC_PPAL_ALKNORTE 
+  hosts: FSC_TEMP 
   become: yes
   tasks:
     - name: Asegurarse de que el grupo 'soporte' existe
@@ -10,9 +10,9 @@
 
     - name: Crear el usuario  con descripcion, home, grupo y shell por defecto
       user:
-        name: cvillareal
-        comment: "cristhian camilo villareal"
-        home: /home/cvillareal
+        name: arodriguez 
+        comment: "Alexander C Rodriguez "
+        home: /home/arodriguez
         group: soporte
         create_home: yes
         shell: /bin/bash
@@ -20,4 +20,4 @@
         update_password: on_create
 
     - name: Forzar cambio de contraseña al iniciar sesion    
-      command: chage -d 0 cvillareal
+      command: chage -d 0 arodriguez
