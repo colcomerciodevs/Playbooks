@@ -14,3 +14,5 @@ skip_list:
   - yaml[empty-lines]
   - yaml[line-length]
   - key-order[task]
+  - experimental
+
