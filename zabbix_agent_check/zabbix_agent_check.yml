@@ -1,37 +1,45 @@
+---
 - name: Verificar e instalar Zabbix Agent 2 desde repositorio HTTP local
-  hosts: prueba
+  hosts: GENERAL2
   become: yes
+
   vars:
-    zabbix_desired_version: "7.0.16"
+    # Versión exacta deseada para Agent 2
+    zabbix_desired_version: "7.0.18"
+    # URL base del repo HTTP local
     repo_base_url: "http://10.181.8.209:8080/repos/localrepo/zabbix2"
 
   tasks:
 
-    # Comprueba si Zabbix Agent 1 (agentd) está instalado vía RPM
+    # 01) Recolectar facts: necesarios para detectar OS/versión y armar la URL del repo
+    - name: Recolectar facts
+      setup:
+
+    # 02) Detectar si Zabbix Agent 1 (agentd) está instalado (no cambia estado)
     - name: Verificar si Zabbix Agent 1 está instalado
       shell: rpm -q zabbix-agent || echo "not_installed"
       register: zabbix_v1_check
       changed_when: false
 
-    # Extrae la versión de Agent 1 como string (ej. "6.0.25") si está instalado
-    - name: Obtener versión Zabbix Agent 1 si está instalado (string, no lista)
+    # 03) Extraer versión del Agent 1 si aplica (para reporte)
+    - name: Obtener versión Zabbix Agent 1 si está instalado (string)
       set_fact:
         zabbix_agent1_version: "{{ (zabbix_v1_check.stdout | regex_findall('([0-9]+\\.[0-9]+\\.[0-9]+)') | first) }}"
       when: "'not_installed' not in zabbix_v1_check.stdout"
 
-    # Consulta versión instalada de Agent 2 devolviendo solo %{VERSION} o "not_installed"
+    # 04) Consultar versión instalada de Zabbix Agent 2 (devuelve %{VERSION} o "not_installed")
     - name: Verificar versión de Zabbix Agent 2
       shell: "rpm -q --qf '%{VERSION}\n' zabbix-agent2 || echo not_installed"
       register: zbx2_ver_q
       changed_when: false
 
-    # Normaliza la versión de Agent 2 (trim de la salida) si está instalado
+    # 05) Normalizar versión de Agent 2 si está instalado (trim de la salida)
     - name: Normalizar versión Zabbix Agent 2 si está instalado
       set_fact:
         zabbix_agent2_version: "{{ (zbx2_ver_q.stdout | trim) }}"
       when: "'not_installed' not in zbx2_ver_q.stdout"
 
-    # Define si hay que instalar/reinstalar Agent 2: si no está o si la versión difiere de la deseada
+    # 06) Decidir si se requiere instalar/reinstalar Agent 2 (no está o versión distinta a la deseada)
     - name: Determinar si se requiere instalar/reinstalar Agent 2
       set_fact:
         reinstall_required: >-
@@ -40,46 +48,131 @@
             or (zabbix_agent2_version | default('') != zabbix_desired_version)
           }}
 
-    # Construye la URL del repo local según OS/versión mayor detectada por facts
+    # 07) Construir URL del repo local según distribución/versión mayor
     - name: Determinar URL del repositorio según sistema
       set_fact:
         zabbix_repo_url: >-
           {{
-            repo_base_url ~ '/el7/' if ansible_distribution in ['RedHat', 'CentOS', 'OracleLinux'] and ansible_distribution_major_version == '7'
-            else repo_base_url ~ '/el8/' if ansible_distribution in ['RedHat', 'CentOS', 'OracleLinux'] and ansible_distribution_major_version == '8'
-            else repo_base_url ~ '/el9/' if ansible_distribution in ['RedHat', 'OracleLinux'] and ansible_distribution_major_version == '9'
-            else repo_base_url ~ '/sles15/' if ansible_distribution == 'SLES' and ansible_distribution_major_version == '15'
+            repo_base_url ~ '/el7/'   if ansible_distribution in ['RedHat','CentOS','OracleLinux'] and ansible_distribution_major_version == '7'
+            else repo_base_url ~ '/el8/'   if ansible_distribution in ['RedHat','CentOS','OracleLinux'] and ansible_distribution_major_version == '8'
+            else repo_base_url ~ '/el9/'   if ansible_distribution in ['RedHat','OracleLinux'] and ansible_distribution_major_version == '9'
+            else repo_base_url ~ '/sles12/' if ansible_distribution in ['SLES','SUSE Linux Enterprise Server'] and ansible_distribution_major_version == '12'
+            else repo_base_url ~ '/sles15/' if ansible_distribution in ['SLES','SUSE Linux Enterprise Server'] and ansible_distribution_major_version == '15'
             else ''
           }}
 
-    # Muestra la URL final del repo para diagnóstico
+    # 08) Mostrar la URL resuelta (diagnóstico)
     - name: Mostrar URL del repositorio resuelta
       debug:
         msg: "Repositorio usado: {{ zabbix_repo_url }}"
 
-    # Corta la ejecución si no hay mapeo de repo para el sistema operativo actual
+    # 09) Abortar si el OS no está soportado por el mapeo
     - name: Falla si el sistema operativo no es compatible
       fail:
         msg: "Sistema no soportado: {{ ansible_distribution }} {{ ansible_distribution_major_version }}"
       when: zabbix_repo_url == ''
 
-    # Desinstala Zabbix Agent 1 si está presente (para evitar coexistencia)
-    - name: Eliminar Zabbix Agent 1 si está presente
-      package:
-        name: zabbix-agent
-        state: absent
-      when: "'not_installed' not in zabbix_v1_check.stdout"
+    # 10) Remover Zabbix Agent 1 en familia RedHat con DNF, sin consultar repos
+    - name: Remover zabbix-agent en RHEL/CentOS/Oracle (DNF) sin consultar repos
+      command: dnf -y remove zabbix-agent --disablerepo="*" --noplugins
+      register: rm_v1_rhel8
+      changed_when: "'No packages marked for removal' not in (rm_v1_rhel8.stdout + rm_v1_rhel8.stderr)"
+      failed_when: false
+      when:
+        - ansible_os_family == 'RedHat'
+        - ansible_pkg_mgr == 'dnf'
+        - "'not_installed' not in zabbix_v1_check.stdout"
 
-    # (Opcional “instalación limpia”) Desinstala Agent 2 si vamos a reinstalar y ya estaba instalado
-    - name: Eliminar Zabbix Agent 2 si se requiere reinstalación
-      package:
-        name: zabbix-agent2
-        state: absent
+    # 11) Remover Zabbix Agent 1 en RHEL7/CentOS7/OL7 con YUM, sin consultar repos
+    - name: Remover zabbix-agent en RHEL7/CentOS7/OL7 (YUM) sin consultar repos
+      command: yum -y remove zabbix-agent --disablerepo="*" --noplugins
+      register: rm_v1_rhel7
+      changed_when: "'No Packages marked for removal' not in (rm_v1_rhel7.stdout + rm_v1_rhel7.stderr)"
+      failed_when: false
+      when:
+        - ansible_os_family == 'RedHat'
+        - ansible_pkg_mgr == 'yum'
+        - "'not_installed' not in zabbix_v1_check.stdout"
+
+    # 12) Remover Zabbix Agent 1 en SLES con zypper, sin firmas
+    - name: Remover zabbix-agent en SLES sin comprobar firmas
+      command: zypper --non-interactive --no-gpg-checks remove -y zabbix-agent
+      register: rm_v1_sles
+      changed_when: "'Nothing to do.' not in (rm_v1_sles.stdout + rm_v1_sles.stderr)"
+      failed_when: false
+      when:
+        - ansible_os_family == 'Suse'
+        - "'not_installed' not in zabbix_v1_check.stdout"
+
+    # 13) Fallback final: quitar Zabbix Agent 1 con rpm -e si lo anterior no funcionó
+    - name: Fallback - Remover zabbix-agent con rpm -e (último recurso)
+      command: rpm -e zabbix-agent
+      register: rm_v1_rpm
+      changed_when: rm_v1_rpm.rc == 0
+      failed_when: false
+      when:
+        - "'not_installed' not in zabbix_v1_check.stdout"
+        - >
+          (
+            (rm_v1_rhel8 is defined and ((rm_v1_rhel8.rc | default(1, true)) != 0)) or
+            (rm_v1_rhel7 is defined and ((rm_v1_rhel7.rc | default(1, true)) != 0)) or
+            (rm_v1_sles  is defined and ((rm_v1_sles.rc  | default(1, true)) != 0)) or
+            (rm_v1_rhel8 is not defined and rm_v1_rhel7 is not defined and rm_v1_sles is not defined)
+          )
+
+    # 14) Remover Agent 2 si vamos a reinstalar — DNF sin consultar repos
+    - name: Remover zabbix-agent2 (si se reinstala) en RHEL/CentOS/Oracle (DNF) sin consultar repos
+      command: dnf -y remove zabbix-agent2 --disablerepo="*" --noplugins
+      register: rm_v2_rhel8
+      changed_when: "'No packages marked for removal' not in (rm_v2_rhel8.stdout + rm_v2_rhel8.stderr)"
+      failed_when: false
+      when:
+        - reinstall_required
+        - ansible_os_family == 'RedHat'
+        - ansible_pkg_mgr == 'dnf'
+        - "'not_installed' not in zbx2_ver_q.stdout"
+
+    # 15) Remover Agent 2 si vamos a reinstalar — YUM sin consultar repos
+    - name: Remover zabbix-agent2 (si se reinstala) en RHEL7/CentOS7/OL7 (YUM) sin consultar repos
+      command: yum -y remove zabbix-agent2 --disablerepo="*" --noplugins
+      register: rm_v2_rhel7
+      changed_when: "'No Packages marked for removal' not in (rm_v2_rhel7.stdout + rm_v2_rhel7.stderr)"
+      failed_when: false
+      when:
+        - reinstall_required
+        - ansible_os_family == 'RedHat'
+        - ansible_pkg_mgr == 'yum'
+        - "'not_installed' not in zbx2_ver_q.stdout"
+
+    # 16) Remover Agent 2 si vamos a reinstalar — SLES sin firmas
+    - name: Remover zabbix-agent2 (si se reinstala) en SLES sin comprobar firmas
+      command: zypper --non-interactive --no-gpg-checks remove -y zabbix-agent2
+      register: rm_v2_sles
+      changed_when: "'Nothing to do.' not in (rm_v2_sles.stdout + rm_v2_sles.stderr)"
+      failed_when: false
+      when:
+        - reinstall_required
+        - ansible_os_family == 'Suse'
+        - "'not_installed' not in zbx2_ver_q.stdout"
+
+    # 17) Fallback final: quitar Agent 2 con rpm -e si el gestor no pudo
+    - name: Fallback - Remover zabbix-agent2 con rpm -e (último recurso)
+      command: rpm -e zabbix-agent2
+      register: rm_v2_rpm
+      changed_when: rm_v2_rpm.rc == 0
+      failed_when: false
       when:
         - reinstall_required
         - "'not_installed' not in zbx2_ver_q.stdout"
+        - >
+          (
+            (rm_v2_rhel8 is defined and ((rm_v2_rhel8.rc | default(1, true)) != 0)) or
+            (rm_v2_rhel7 is defined and ((rm_v2_rhel7.rc | default(1, true)) != 0)) or
+            (rm_v2_sles  is defined and ((rm_v2_sles.rc  | default(1, true)) != 0)) or
+            (rm_v2_rhel8 is not defined and rm_v2_rhel7 is not defined and rm_v2_sles is not defined)
+          )
 
-    # Crea repo temporal YUM/DNF para RHEL/CentOS/Oracle (sin GPG por ser repo local)
+    # 18) Crear repo temporal YUM/DNF (familia RedHat: RHEL/CentOS/Oracle) sin GPG (repo local)
     - name: Agregar repositorio Zabbix temporal (RHEL/CentOS/Oracle)
       yum_repository:
         name: zabbix-local
@@ -89,25 +182,134 @@
         gpgcheck: no
       when: ansible_os_family == "RedHat"
 
-    # Crea repo temporal en SLES mediante Zypper
-    - name: Agregar repositorio Zabbix temporal (SLES)
-      zypper_repository:
-        name: zabbix-local
-        description: Repositorio local Zabbix Agent2
-        auto_import_keys: yes
-        autorefresh: yes
-        enabled: yes
-        repo: "{{ zabbix_repo_url }}"
-      when: ansible_distribution == "SLES"
+    # 19) Crear repo temporal en SLES escribiendo .repo con gpgcheck=0/repo_gpgcheck=0
+    - name: Crear repo Zabbix local en SLES (sin firmas)
+      copy:
+        dest: /etc/zypp/repos.d/zabbix-local.repo
+        mode: "0644"
+        content: |
+          [zabbix-local]
+          name=Repositorio local Zabbix Agent2
+          enabled=1
+          autorefresh=1
+          baseurl={{ zabbix_repo_url }}
+          type=rpm-md
+          gpgcheck=0
+          repo_gpgcheck=0
+      when: ansible_os_family == "Suse"
 
-    # Instala/asegura presencia de zabbix-agent2 (versión que resuelva el repo)
-    - name: Instalar Zabbix Agent 2 desde el repositorio
-      package:
-        name: zabbix-agent2
+    # 20) Refrescar solo el repo SLES recién creado (no interactivo)
+    - name: Refrescar repo SLES (no interactivo)
+      command: zypper --non-interactive refresh zabbix-local
+      register: sles_refresh_repo
+      changed_when: "'Nothing to do.' not in (sles_refresh_repo.stdout + sles_refresh_repo.stderr)"
+      when: ansible_os_family == "Suse"
+
+    # 21) (Solo SLES) Lockdown de repos: deshabilitar TODOS los repos y habilitar SOLO el local
+    - name: SLES | Deshabilitar TODOS los repos
+      command: zypper mr -d -all
+      register: sles_mr_disable_all 
+      changed_when: >
+        'Nothing to change' not in (sles_mr_disable_all.stdout | default('')) or
+        'Nothing to change' not in (sles_mr_disable_all.stderr | default(''))
+      when: ansible_os_family == "Suse"
+
+    # 22) (Solo SLES) Re-habilitar SOLO el repo local para que toda instalación venga de allí
+    - name: SLES | Re-habilitar SOLO zabbix-local
+      command: zypper mr -e zabbix-local
+      register: sles_mr_enable_local
+      changed_when: >
+        'is already enabled' not in (sles_mr_enable_local.stdout | default('')) and
+        'enabled' in ((sles_mr_enable_local.stdout | default('')) + (sles_mr_enable_local.stderr | default('')))
+      failed_when: false
+      when: ansible_os_family == "Suse"
+
+    # 23) Instalar Agent 2 versión exacta en familia RedHat (RHEL/CentOS/Oracle) solo desde repo local
+    - name: Instalar Zabbix Agent 2 versión exacta (RHEL/CentOS/Oracle)
+      yum:
+        name: "zabbix-agent2-{{ zabbix_desired_version }}*"
         state: present
-      when: reinstall_required
+        enablerepo: zabbix-local
+        disablerepo: "*"
+        disable_gpg_check: yes
+      when:
+        - ansible_os_family == "RedHat"
+        - reinstall_required
 
-    # Despliega el template de configuración principal del Agent 2
+    # 24) Instalar Agent 2 versión exacta en SLES, forzando origen repositorio local
+    - name: Instalar Zabbix Agent 2 versión exacta (SLES) desde repo 'zabbix-local'
+      command: >
+        zypper --non-interactive --no-gpg-checks
+        install -y -r zabbix-local
+        zabbix-agent2={{ zabbix_desired_version }}
+      register: zypper_install_v2
+      changed_when: >
+        'Nothing to do.' not in (zypper_install_v2.stdout | default('')) and
+        'Nothing to do.' not in (zypper_install_v2.stderr | default(''))
+      failed_when: false
+      when:
+        - ansible_os_family == "Suse"
+        - reinstall_required
+
+    # 25) Detectar plugins de Agent2 instalados (para alinearlos a la misma versión)
+    - name: Detectar plugins instalados de zabbix-agent2
+      shell: "rpm -qa --qf '%{NAME}\n' 'zabbix-agent2-plugin*' || true"
+      register: zbx_plugins_installed
+      changed_when: false
+
+    # 26) Preparar lista normalizada de plugins (solo nombres que empiezan por zabbix-agent2-plugin)
+    - name: Preparar lista de plugins instalados
+      set_fact:
+        zbx_plugins_list: "{{ (zbx_plugins_installed.stdout_lines | default([])) | select('match', '^zabbix-agent2-plugin') | list }}"
+
+    # 27) (RHEL-like) Alinear versión de plugins = {{ zabbix_desired_version }} desde repo local
+    - name: Alinear versión de plugins (RHEL/CentOS/Oracle)
+      yum:
+        name: "{{ item }}-{{ zabbix_desired_version }}*"
+        state: present
+        enablerepo: zabbix-local
+        disablerepo: "*"
+        disable_gpg_check: yes
+      loop: "{{ zbx_plugins_list }}"
+      when:
+        - ansible_os_family == 'RedHat'
+        - zbx_plugins_list | length > 0
+      register: zbx_plugins_align_rhel
+      failed_when: false
+
+    # 28) (SLES) Alinear versión de plugins = {{ zabbix_desired_version }} desde repo local
+    - name: Alinear versión de plugins (SLES) usando zypper y repo zabbix-local
+      command: >
+        zypper --non-interactive --no-gpg-checks
+        install -y -r zabbix-local {{ item }}={{ zabbix_desired_version }}
+      loop: "{{ zbx_plugins_list }}"
+      when:
+        - ansible_os_family == 'Suse'
+        - zbx_plugins_list | length > 0
+      register: zbx_plugins_align_sles
+      failed_when: false
+      changed_when: >
+        ('Nothing to do.' not in (zbx_plugins_align_sles.stdout | default(''))) or
+        ('Installing:' in ((zbx_plugins_align_sles.stdout | default('')) + (zbx_plugins_align_sles.stderr | default(''))))
+
+    # 29) (Opcional, airbag) Si no se pudo alinear, desactivar plugins conflictivos (MongoDB/PostgreSQL)
+    - name: Deshabilitar plugins conflictivos por configuración (MongoDB/PostgreSQL) si persisten errores
+      copy:
+        dest: /etc/zabbix/zabbix_agent2.d/plugins.d/disable-db.conf
+        mode: "0644"
+        content: |
+          Plugins.MongoDB.Enabled=false
+          Plugins.PostgreSQL.Enabled=false
+      when:
+        - zbx_plugins_list | length > 0
+        - >
+          (
+            (zbx_plugins_align_rhel is defined and (zbx_plugins_align_rhel is failed or (zbx_plugins_align_rhel.results | selectattr('failed', 'defined') | selectattr('failed') | list | length > 0)))
+            or
+            (zbx_plugins_align_sles is defined and (zbx_plugins_align_sles is failed))
+          )
+
+    # 30) Desplegar el template de configuración del Agent 2 (solo si hubo instalación/reinstalación)
     - name: Configurar /etc/zabbix/zabbix_agent2.conf
       template:
         src: files/zabbix_agent2.conf.template
@@ -116,34 +318,34 @@
       notify: Reiniciar zabbix-agent2
       when: reinstall_required
 
-    # Asegura que el servicio esté iniciado y habilitado al arranque
+    # 31) Asegurar que el servicio quede iniciado y habilitado (arranque automático)
     - name: Iniciar y habilitar zabbix-agent2
       systemd:
         name: zabbix-agent2
         state: started
         enabled: yes
 
-    # Elimina el repo temporal en RHEL-family
+    # 32) Limpieza: eliminar repo temporal en familia RedHat
     - name: Eliminar repositorio temporal (RHEL/CentOS/Oracle)
       yum_repository:
         name: zabbix-local
         state: absent
       when: ansible_os_family == "RedHat"
 
-    # Elimina el repo temporal en SLES
+    # 33) Limpieza: eliminar repo temporal en SLES (borrar archivo .repo)
     - name: Eliminar repositorio temporal (SLES)
-      zypper_repository:
-        name: zabbix-local
+      file:
+        path: /etc/zypp/repos.d/zabbix-local.repo
         state: absent
-      when: ansible_distribution == "SLES"
+      when: ansible_os_family == "Suse"
 
-    # Verifica que el servicio final esté 'active' (sin cambiar estado)
+    # 34) Verificación: estado final del servicio (solo lectura)
     - name: Verificar estado final del servicio
       shell: systemctl is-active zabbix-agent2
       register: final_status
       changed_when: false
 
-    # Agrega un registro por host al arreglo de resultados (usando IP del inventario)
+    # 35) Reporte: agregar registro de resultados por host
     - name: Guardar resultados por host
       set_fact:
         resultados_zabbix: >-
@@ -154,33 +356,34 @@
                 'ip': ansible_host | default(inventory_hostname),
                 'nueva_version_instalada': zabbix_desired_version if reinstall_required else 'No se instaló',
                 'version_zabbix_agent1': zabbix_agent1_version if zabbix_agent1_version is defined else 'No instalado',
-                'version_zabbix_agent2': zabbix_agent2_version if zabbix_agent2_version is defined else 'No instalado',
+                'version_zabbix_agent2': (zabbix_desired_version if reinstall_required else (zabbix_agent2_version | default('No instalado'))),
                 'estado_servicio_final': final_status.stdout
               }
             ]
           }}
 
-
   handlers:
-    # Reinicia el servicio del Agent 2 cuando haya cambios en el template
+    # H1) Reinicio del servicio si cambia el template de configuración
     - name: Reiniciar zabbix-agent2
       systemd:
         name: zabbix-agent2
         state: restarted
 
+
+# ==== PLAY 2: Compilar reporte y generar Excel ====
 - name: Compilar reporte y generar Excel
   hosts: localhost
   gather_facts: false
   tasks:
 
-    # (Recomendado) Asegura que exista el directorio de salidas
+    # 36) Asegurar directorio para artefactos (JSON/Excel)
     - name: Asegurar directorio de salidas
       file:
         path: "{{ playbook_dir }}/Salidas_Playbooks"
         state: directory
         mode: '0755'
 
-    # Exporta a JSON los resultados agregados por host (solo una vez)
+    # 37) Exportar JSON con los resultados por host (run_once)
     - name: Exportar JSON con resultados
       copy:
         content: "{{ hostvars | json_query(query) | to_nice_json }}"
@@ -189,7 +392,7 @@
         query: "*[].resultados_zabbix[]"
       run_once: true
 
-    # Ejecuta el script Python que genera el Excel (una sola vez)
+    # 38) Ejecutar script Python que genera Excel (si lo usas)
     - name: Ejecutar script Python para generar Excel
       command: python3 scripts/generar_excel_zabbix.py
       args:

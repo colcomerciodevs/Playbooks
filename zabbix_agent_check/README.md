@@ -1,78 +1,115 @@
-INSTRUCCIONES - PLAYBOOK ZABBIX AGENT 2 (7.0.10 LTS) DESDE REPOSITORIO LOCAL HTTP
+Playbook: Instalación/Auditoría de Zabbix Agent 2 desde repositorio HTTP local
 
-Este playbook instala o actualiza el Zabbix Agent 2 versión 7.0.10 LTS desde un repositorio HTTP local 
-en servidores Linux compatibles, elimina agentes anteriores, configura el archivo de agente 
-y genera un reporte en formato Excel.
+📌 Objetivo
+Automatiza la verificación, desinstalación controlada e instalación de Zabbix Agent 2 (versión exacta) usando un repositorio HTTP local sin firmas, evitando dependencias de Internet/repocentros externos y generando un reporte JSON + Excel con el resultado por host.
 
---------------------------------------------------------------------------------
-SISTEMAS OPERATIVOS SOPORTADOS:
---------------------------------------------------------------------------------
-- Red Hat Enterprise Linux 7, 8, 9
-- CentOS 7, 8
-- Oracle Linux 7, 8, 9
-- SUSE Linux Enterprise Server 15
+🧩 Qué hace (resumen)
+* Detecta versiones instaladas de zabbix-agent (v1) y zabbix-agent2 (v2).
+* Decide si reinstalar v2 (si no existe o si la versión ≠ deseada).
+* Desinstala sin consultar repos:
+   RHEL/CentOS/Oracle: dnf/yum --disablerepo="*" --noplugins
+   SLES: zypper --no-gpg-checks
+   Fallback: rpm -e (último recurso si falla el gestor).
+* Crea repos temporales hacia el repo HTTP local:
+   RHEL/CentOS/Oracle: yum_repository sin GPG.
+   SLES: escribe /etc/zypp/repos.d/zabbix-local.repo con gpgcheck=0 y repo_gpgcheck=0.
+* Instala Zabbix Agent 2 con versión exacta solo desde el repo local:
+   RHEL/CentOS/Oracle: yum con enablerepo=zabbix-local y disablerepo=*.
+   SLES: zypper install -r zabbix-local zabbix-agent2=VERSION (sin firmas).
+* Configura /etc/zabbix/zabbix_agent2.conf (template Ansible).
+* Habilita e inicia el servicio zabbix-agent2.
+* Limpia repos temporales.
+* Reporta por host: JSON y Excel en Salidas_Playbooks/.
 
---------------------------------------------------------------------------------
-REQUISITOS:
---------------------------------------------------------------------------------
-1. Repositorio local HTTP funcional (ya configurado con `createrepo`) y accesible, ejemplo:
-   http://10.181.8.209:8080/repos/localrepo/zabbix2/
+✅ Compatibilidad
 
-2. Estructura del repositorio en el servidor:
-   ├── el7/
-   ├── el8/
-   ├── el9/
-   └── sles15/
+Familia RedHat: RHEL / CentOS / Oracle Linux (7/8/9)
+SUSE: SLES 12/15
 
-   Cada carpeta debe contener el `.rpm` correspondiente a su OS y arquitectura + metadatos.
+La selección de ruta del repo se hace con facts:
+.../el7/, .../el8/, .../el9/
+.../sles12/, .../sles15/
 
-3. En el controlador Ansible:
-   - Instalar dependencias para generar el Excel:
-     pip3 install pandas openpyxl
+📦 Requisitos del repositorio local
+Servido por HTTP accesible para los hosts, ej.:
+http://10.181.8.209:8080/repos/localrepo/zabbix2/
 
-   - Estructura del proyecto:
+Cada subcarpeta debe contener metadata válida:
+el7/      repodata/repomd.xml
+el8/      repodata/repomd.xml
+el9/      repodata/repomd.xml
+sles12/   repodata/repomd.xml
+sles15/   repodata/repomd.xml
 
-     zabbix_agent_check/
-     ├── playbook.yml
-     ├── files/
-     │   └── zabbix_agentd.conf.template
-     ├── scripts/
-     │   └── generar_excel_zabbix.py
-     ├── Salidas_Playbooks/
-     └── INSTRUCCIONES.txt
 
---------------------------------------------------------------------------------
-¿QUÉ HACE EL PLAYBOOK?
---------------------------------------------------------------------------------
-1. Verifica si el agente Zabbix v1 está instalado (zabbix-agent).
-2. Verifica si el agente Zabbix v2 está instalado (zabbix-agent2).
-3. Si hay que reemplazar v1 o actualizar v2, desinstala el anterior.
-4. Agrega temporalmente el repositorio HTTP correspondiente según OS detectado.
-5. Instala zabbix-agent2 desde el repositorio local.
-6. Configura /etc/zabbix/zabbix_agentd.conf usando plantilla.
-7. Habilita e inicia el servicio zabbix-agent2.
-8. Elimina el repositorio del sistema después de la instalación.
-9. Genera reporte en JSON y lo convierte a Excel con:
+Si no hay firmas, el playbook desactiva GPG check para ese repo temporal.
 
-   - IP del servidor
-   - Versión de Zabbix Agent 1
-   - Versión de Zabbix Agent 2
-   - Nueva versión instalada (si aplica)
-   - Estado final del servicio
 
---------------------------------------------------------------------------------
-¿CÓMO EJECUTARLO?
---------------------------------------------------------------------------------
-Desde el directorio raíz del proyecto:
+🔧 Variables clave
 
-ansible-playbook playbook.yml -i inventario
+En el playbook:
+zabbix_desired_version: "7.0.18"  # versión exacta a instalar
+repo_base_url: "http://10.181.8.209:8080/repos/localrepo/zabbix2"
 
-El Excel se genera en la carpeta:
-  Salidas_Playbooks/Reporte_Zabbix_<fecha>.xlsx
+🗂️ Estructura sugerida del proyecto
+zabbix_agent_check/
+├── ansible.cfg
+├── inventario.ini
+├── zabbix_agent_checkV2.yml
+├── files/
+│   └── zabbix_agent2.conf.template
+├── scripts/
+│   └── generar_excel_zabbix.py
+└── Salidas_Playbooks/
+    ├── zabbix_auditoria.json
+    └── zabbix_auditoria.xlsx
 
---------------------------------------------------------------------------------
-NOTAS ADICIONALES:
---------------------------------------------------------------------------------
-- El repositorio se agrega como `zabbix-local` y luego se elimina para no dejarlo persistente.
-- El archivo de configuración zabbix_agentd.conf se define en `files/zabbix_agentd.conf.template`.
-- Puedes modificarlo según tus parámetros de red, hostname, etc.
+🧪 Inventario (ejemplo)
+
+inventario.ini
+[PRUEBA]
+appidman ansible_host=10.10.10.11
+ibm_audit ansible_host=10.10.10.12
+appdespadock_prd ansible_host=10.10.10.13
+soabogdis01 ansible_host=10.10.10.14
+crm04_k8s ansible_host=10.10.10.15
+ethical_hacking ansible_host=10.10.10.16
+pos_historicos2 ansible_host=10.10.10.17
+mford-new ansible_host=10.10.10.18
+
+▶️ Ejecución
+Desde la raíz del proyecto:
+ansible-playbook -i inventario.ini zabbix_agent_checkV2.yml
+
+🔄 Lógica e idempotencia (cómo lo hace)
+
+Detección:
+rpm -q zabbix-agent ⇒ captura versión v1 (si existe).
+rpm -q --qf '%{VERSION}\n' zabbix-agent2 ⇒ captura versión v2.
+
+Decisión reinstall_required:
+true si v2 no está o si su versión ≠ zabbix_desired_version.
+
+Desinstalación controlada:
+Intenta con dnf/yum/zypper sin tocar repos ni plugins.
+Si falla (o no aplica), fallback rpm -e.
+
+Repo temporal:
+RedHat-family: yum_repository con gpgcheck: no.
+SLES: .repo con gpgcheck=0 y repo_gpgcheck=0 + zypper refresh.
+
+Instalación forzada:
+RedHat-family: yum name="zabbix-agent2-<vers>*" + enablerepo=zabbix-local + disablerepo=* + disable_gpg_check: yes.
+SLES: zypper --no-gpg-checks install -r zabbix-local zabbix-agent2=<vers>.
+
+Configuración + servicio:
+Template a /etc/zabbix/zabbix_agent2.conf + handler de reinicio.
+systemd para enabled + started.
+
+Limpieza:
+Borra el repo temporal (yum_repository state=absent o borrar .repo en SLES).
+
+Reporte:
+Junta resultados en resultados_zabbix (por host).
+Exporta JSON (Salidas_Playbooks/zabbix_auditoria.json).
+Ejecuta script Python que genera Excel.
