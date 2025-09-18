@@ -1,10 +1,12 @@
 {
     "ansible.python.interpreterPath": "/usr/bin/python",
     "yaml.customTags": [
-    "!vault scalar"
-  ],
-  "python.analysis.diagnosticSeverityOverrides": {
-    "reportMissingImports": "none"
-  }
-    
+        "!vault scalar"
+    ],
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportMissingImports": "none"
+    },
+
+    // 🚫 Desactiva ansible-lint SOLO en este proyecto
+    "ansibleLint.enabled": false
 }
