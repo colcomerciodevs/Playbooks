@@ -1,12 +1,14 @@
 {
-    "ansible.python.interpreterPath": "/usr/bin/python",
-    "yaml.customTags": [
-        "!vault scalar"
-    ],
-    "python.analysis.diagnosticSeverityOverrides": {
-        "reportMissingImports": "none"
-    },
+  "ansible.python.interpreterPath": "/usr/bin/python",
+  "yaml.customTags": ["!vault scalar"],
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportMissingImports": "none"
+  },
 
-    // 🚫 Desactiva ansible-lint SOLO en este proyecto
-    "ansibleLint.enabled": false
+  // 🔴 Desactivar el linter de Ansible en este proyecto
+  "ansible.lint.enabled": false,
+
+  // (opcional) por si otra config lo invoca
+  "ansible.lint.path": "",
+  "ansible.lint.arguments": ""
 }
