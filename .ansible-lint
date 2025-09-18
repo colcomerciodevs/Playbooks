@@ -13,6 +13,12 @@ skip_list:
   - yaml[new-line-at-end-of-file]
   - yaml[empty-lines]
   - yaml[line-length]
+  - yaml[truthy]
   - key-order[task]
-  - experimental
+  - command-instead-of-module
+  - command-instead-of-shell
+  - run-once[task]
+  
+ 
+
 
