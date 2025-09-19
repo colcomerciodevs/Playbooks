@@ -15,3 +15,6 @@ excel_report_filename: "reporte_trendmicro.xlsx"
 # Criterio de OK final
 ok_version: "20.0.2"
 ok_release: "20480"
+
+# Tiempo de espera para realizar instalaccion 
+tm_install_timeout: 180

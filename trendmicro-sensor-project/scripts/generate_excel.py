@@ -45,8 +45,9 @@ headers = [
     "Release Before",
     "Version After",
     "Release After",
-    "Service vls_agent",
-    "Service tmxbc",
+    "Service ds_agent",   # muestra active/running, etc.
+    "Service vls_agent",  # active / inactive / no instalado
+    "Service tmxbc",      # debe ser active para OK
     "Estado Final"
 ]
 ws.append(headers)  # Primera fila con encabezados
@@ -55,18 +56,32 @@ ws.append(headers)  # Primera fila con encabezados
 green = PatternFill(start_color="92D050", end_color="92D050", fill_type="solid")   # Verde
 orange = PatternFill(start_color="F4B084", end_color="F4B084", fill_type="solid") # Naranja
 
+# ===================== NORMALIZADOR =====================
+def norm(v):
+    """Normaliza cualquier valor a str para Excel."""
+    if v is None:
+        return ""
+    if isinstance(v, list):
+        return " ".join(str(x) for x in v)
+    if isinstance(v, dict):
+        return json.dumps(v, ensure_ascii=False)
+    return str(v)
+
 # ===================== ITERACIÓN SOBRE LOS HOSTS =====================
 for item in data:
-    # Construimos cada fila con los datos del JSON
+    services_after = item.get("services_after", {}) or {}
+
+    # Construimos cada fila con los datos del JSON (normalizados a str)
     row = [
-        item.get("host", ""),
-        item.get("ds_agent_version_before", ""),
-        item.get("ds_agent_release_before", ""),
-        item.get("ds_agent_version_after", ""),
-        item.get("ds_agent_release_after", ""),
-        item.get("services_after", {}).get("vls_agent", ""),
-        item.get("services_after", {}).get("tmxbc", ""),
-        item.get("estado_final", ""),
+        norm(item.get("host", "")),
+        norm(item.get("ds_agent_version_before", "")),
+        norm(item.get("ds_agent_release_before", "")),
+        norm(item.get("ds_agent_version_after", "")),
+        norm(item.get("ds_agent_release_after", "")),
+        norm(services_after.get("ds_agent", "")),
+        norm(services_after.get("vls_agent", "")),
+        norm(services_after.get("tmxbc", "")),
+        norm(item.get("estado_final", "")),
     ]
 
     ws.append(row)  # Añadimos la fila al Excel
