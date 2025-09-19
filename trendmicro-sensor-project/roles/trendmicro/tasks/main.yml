@@ -1,0 +1,186 @@
+---
+# ============================================================
+# Rol de instalación y validación de Trend Micro Agent + Sensor
+# ============================================================
+
+# ============ COPIA DE INSTALADORES ============
+
+# 1# Crea el directorio remoto donde se guardarán los instaladores
+- name: Crear directorio remoto para instaladores
+  file:
+    path: "{{ remote_installer_root }}"
+    state: directory
+    mode: '0755'
+
+# 2# Copia al host remoto las carpetas de instaladores (ServerAgent y Sensor)
+- name: Copiar instaladores Trend Micro (ServerAgent y Sensor)
+  copy:
+    src: "{{ local_installer_root }}/{{ item }}"
+    dest: "{{ remote_installer_root }}/"
+    mode: '0755'
+  with_items:
+    - "{{ tm_server_agent_dirname }}"
+    - "{{ tm_sensor_dirname }}"
+  ignore_errors: no
+
+# ============ VALIDACIÓN DE VERSIÓN ACTUAL ============
+
+# 3# Verifica si ds_agent ya está instalado y obtiene su versión
+- name: Obtener versión instalada de ds_agent (si existe)
+  command: rpm -qi ds_agent
+  register: ds_agent_version
+  failed_when: false
+  changed_when: false
+
+# 4# Extrae los campos Version y Release del rpm -qi ds_agent (maneja ausencia segura)
+- name: Parsear versión de ds_agent
+  set_fact:
+    ds_agent_info:
+      version: "{{ (ds_agent_version.stdout | default('') | regex_search('Version\\s*:\\s*(\\S+)', '\\1')) | default('N/A', true) }}"
+      release: "{{ (ds_agent_version.stdout | default('') | regex_search('Release\\s*:\\s*(\\S+)', '\\1')) | default('N/A', true) }}"
+
+
+# ============ VALIDACIÓN DE SERVICIOS PREVIOS ============
+
+# 5# Revisa si el servicio vls_agent estaba activo antes de instalar
+- name: Verificar estado de servicio vls_agent
+  command: systemctl is-active vls_agent
+  register: vls_status
+  failed_when: false
+  changed_when: false
+
+# 6# Revisa si el servicio tmxbc estaba activo antes de instalar
+- name: Verificar estado de servicio tmxbc
+  command: systemctl is-active tmxbc
+  register: tmx_status
+  failed_when: false
+  changed_when: false
+
+# 7# Guarda los estados iniciales de ambos servicios en una variable
+- name: Guardar estados iniciales
+  set_fact:
+    tm_services_before:
+      vls_agent: "{{ 'active' if vls_status.stdout == 'active' else 'no identificado' }}"
+      tmxbc: "{{ 'active' if tmx_status.stdout == 'active' else 'no identificado' }}"
+
+# ============ INSTALACIÓN DEL SERVER AGENT ============
+
+# 8# Ejecuta el instalador del ServerAgent
+- name: Ejecutar instalador ServerAgent
+  command: ./tmxbc install
+  args:
+    chdir: "{{ remote_installer_root }}/{{ tm_server_agent_dirname }}"
+  register: install_server
+  changed_when: false
+  ignore_errors: yes
+
+# ============ INSTALACIÓN DEL SENSOR ============
+
+# 9# Da permisos de ejecución al binario tmxbc dentro del directorio Sensor
+- name: Dar permisos de ejecución a tmxbc
+  file:
+    path: "{{ remote_installer_root }}/{{ tm_sensor_dirname }}/tmxbc"
+    mode: '0755'
+
+# 10# Ejecuta el instalador del Sensor
+- name: Ejecutar instalador Sensor
+  command: ./tmxbc install
+  args:
+    chdir: "{{ remote_installer_root }}/{{ tm_sensor_dirname }}"
+  register: install_sensor
+  changed_when: false
+  ignore_errors: yes
+
+# ============ VALIDACIÓN POST INSTALACIÓN ============
+
+# 11# Obtiene la versión final de ds_agent después de la instalación
+- name: Obtener versión instalada final de ds_agent
+  command: rpm -qi ds_agent
+  register: ds_agent_version_final
+  failed_when: false
+  changed_when: false
+
+# 12# Extrae Version y Release finales de ds_agent (maneja ausencia segura)
+- name: Parsear versión final de ds_agent
+  set_fact:
+    ds_agent_info_final:
+      version: "{{ (ds_agent_version_final.stdout | default('') | regex_search('Version\\s*:\\s*(\\S+)', '\\1')) | default('N/A', true) }}"
+      release: "{{ (ds_agent_version_final.stdout | default('') | regex_search('Release\\s*:\\s*(\\S+)', '\\1')) | default('N/A', true) }}"
+
+
+# 13# Verifica el estado final del servicio vls_agent
+- name: Verificar estado final de servicio vls_agent
+  command: systemctl is-active vls_agent
+  register: vls_status_final
+  failed_when: false
+  changed_when: false
+
+# 14# Verifica el estado final del servicio tmxbc
+- name: Verificar estado final de servicio tmxbc
+  command: systemctl is-active tmxbc
+  register: tmx_status_final
+  failed_when: false
+  changed_when: false
+
+# 15# Guarda los estados finales de los servicios para el reporte
+- name: Guardar estados finales
+  set_fact:
+    tm_services_after:
+      vls_agent: "{{ 'active' if vls_status_final.stdout == 'active' else 'no identificado' }}"
+      tmxbc: "{{ 'active' if tmx_status_final.stdout == 'active' else 'no identificado' }}"
+
+# ============ RECOLECCIÓN PARA REPORTE ============
+
+# 16# Construye el objeto con toda la información recopilada (versiones y servicios)
+- name: Construir objeto de reporte
+  set_fact:
+    trendmicro_resultado:
+      host: "{{ inventory_hostname }}"
+      ds_agent_version_before: "{{ ds_agent_info.version }}"
+      ds_agent_release_before: "{{ ds_agent_info.release }}"
+      ds_agent_version_after: "{{ ds_agent_info_final.version }}"
+      ds_agent_release_after: "{{ ds_agent_info_final.release }}"
+      services_before: "{{ tm_services_before }}"
+      services_after: "{{ tm_services_after }}"
+      estado_final: >-
+        {% if (tm_services_after.vls_agent == 'active' and
+               tm_services_after.tmxbc == 'active' and
+               ds_agent_info_final.version == ok_version and
+               ds_agent_info_final.release == ok_release) %}
+          OK
+        {% else %}
+          REVISAR
+        {% endif %}
+
+# 17# Acumula resultados por host en una lista global
+- name: Acumular resultado en lista global
+  set_fact:
+    tm_results: "{{ (tm_results | default([])) + [ trendmicro_resultado ] }}"
+
+# 18# Exporta un único JSON consolidado con todos los hosts
+- name: Exportar JSON consolidado con todos los hosts
+  delegate_to: localhost
+  run_once: true
+  copy:
+    dest: "{{ report_dir_local }}/{{ json_report_filename }}"
+    mode: "0644"
+    content: >-
+      {{
+        hostvars
+        | dict2items
+        | map(attribute='value.tm_results')
+        | select('defined')
+        | list
+        | sum(start=[])
+        | to_nice_json
+      }}
+
+# 19# Convertir el JSON consolidado en Excel (usando el script Python)
+- name: Generar Excel final a partir del JSON consolidado
+  delegate_to: localhost
+  run_once: true
+  changed_when: false
+  command: >
+    python3 scripts/generate_excel.py
+    {{ report_dir_local }}/{{ json_report_filename }}
+    {{ report_dir_local }}/{{ excel_report_filename }}

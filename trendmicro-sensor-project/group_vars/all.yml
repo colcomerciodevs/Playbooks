@@ -1,0 +1,17 @@
+---
+# Rutas locales (nodo de control) y remotas
+local_installer_root: "./Antivirus"
+
+tm_server_agent_dirname: "TMServerAgent_Linux_auto_x86_64_Server_and_Workload_Protection_Manager_-_654927779606"
+tm_sensor_dirname: "TMSensorAgent_Linux_auto_x86_64"
+
+remote_installer_root: "/opt/TrendMicroInstallers"
+
+# Reportes en el nodo de control
+report_dir_local: "Salidas_Playbooks"
+json_report_filename: "trendmicro_instalacion_sensor.json"
+excel_report_filename: "reporte_trendmicro.xlsx"
+
+# Criterio de OK final
+ok_version: "20.0.2"
+ok_release: "20480"

@@ -18,6 +18,7 @@ skip_list:
   - command-instead-of-module
   - command-instead-of-shell
   - run-once[task]
+  - fqcn[action-core]
   
  
 
