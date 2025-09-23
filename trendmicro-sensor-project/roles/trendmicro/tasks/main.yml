@@ -1,250 +1,211 @@
----
 # ============================================================
-# Rol de instalación y validación de Trend Micro Agent + Sensor
+# Rol Trend Micro - Instalar/actualizar agente y asegurar sensor activo
+# (variables se definen en all.yml)
 # ============================================================
 
-# ============ COPIA DE INSTALADORES ============
-
-# 1# Crea el directorio remoto donde se guardarán los instaladores
+# 1# Crear directorio remoto para instaladores
 - name: Crear directorio remoto para instaladores
-  file:
+  ansible.builtin.file:
     path: "{{ remote_installer_root }}"
     state: directory
     mode: '0755'
 
-# 2# Copia al host remoto las carpetas de instaladores (ServerAgent y Sensor)
-- name: Copiar instaladores Trend Micro (ServerAgent y Sensor)
-  copy:
+# 2# service_facts (inicial) - opcional (dejado por telemetría general)
+- name: service_facts (inicial)
+  ansible.builtin.service_facts:
+
+# 3# Guardar estado inicial (valores de service_facts si llegan)
+- name: Guardar estado inicial de tmxbc (sensor) y ds_agent (service_facts)
+  ansible.builtin.set_fact:
+    _tmxbc_state_sf: "{{ (services['tmxbc.service'].state if services['tmxbc.service'] is defined else 'desconocido') }}"
+    _ds_agent_state_sf: "{{ (services['ds_agent.service'].state if services['ds_agent.service'] is defined else 'desconocido') }}"
+
+# 3.1# Fallback a systemctl para tmxbc (is-active)
+- name: Fallback a systemctl para tmxbc (is-active)
+  ansible.builtin.command: systemctl is-active tmxbc
+  register: _tmxbc_is_active
+  changed_when: false
+  failed_when: false
+
+# 3.1.c# Fallback a systemctl para ds_agent (is-active)
+- name: Fallback a systemctl para ds_agent (is-active)
+  ansible.builtin.command: systemctl is-active ds_agent
+  register: _ds_agent_is_active
+  changed_when: false
+  failed_when: false
+
+# 3.2# Normalizar estados iniciales ds_agent/tmxbc (basado en systemctl)
+- name: Normalizar estados iniciales ds_agent/tmxbc
+  ansible.builtin.set_fact:
+    tmxbc_state_before: "{{ 'active' if _tmxbc_is_active.rc == 0 else 'no activo' }}"
+    ds_agent_state_before: "{{ 'active' if _ds_agent_is_active.rc == 0 else 'no activo' }}"
+
+# 4# Consultar versión y release de ds_agent (rpm)
+- name: Consultar versión y release de ds_agent
+  ansible.builtin.command: rpm -q --qf '%{VERSION} %{RELEASE}\n' ds_agent
+  register: ds_agent_q
+  failed_when: false
+  changed_when: false
+
+# 5# Normalizar versión/release inicial
+- name: Normalizar versión/release inicial
+  ansible.builtin.set_fact:
+    ds_version_before: "{{ (ds_agent_q.rc == 0) | ternary((ds_agent_q.stdout.split()|first|default('N/A')), 'No instalado') }}"
+    ds_release_before: "{{ (ds_agent_q.rc == 0) | ternary((ds_agent_q.stdout.split()|last |default('N/A')), 'No instalado') }}"
+
+# 6# Determinar si requiere (re)instalar/actualizar agente (version/release y servicio active por systemctl)
+- name: Determinar si requiere (re)instalar/actualizar agente
+  ansible.builtin.set_fact:
+    ds_install_required: >-
+      {{
+        (ds_version_before == 'No instalado')
+        or (ds_version_before != ok_version)
+        or (
+             ds_release_before not in ['No instalado','N/A']
+             and ((ds_release_before|string).startswith(ok_release|string) == false)
+           )
+        or (_ds_agent_is_active.rc != 0)
+      }}
+
+# 7# Determinar si el sensor (tmxbc) es requerido (solo systemctl)
+- name: Determinar si el sensor (tmxbc) es requerido
+  ansible.builtin.set_fact:
+    sensor_required: "{{ _tmxbc_is_active.rc != 0 }}"
+
+# 8# Copiar instaladores Trend Micro (solo si hará falta agente o sensor)
+- name: Copiar instaladores Trend Micro (según necesidad)
+  ansible.builtin.copy:
     src: "{{ local_installer_root }}/{{ item }}"
     dest: "{{ remote_installer_root }}/"
     mode: '0755'
-  with_items:
+  loop:
     - "{{ tm_server_agent_dirname }}"
     - "{{ tm_sensor_dirname }}"
-  ignore_errors: no
+  when: ds_install_required or sensor_required
 
-# ============ VALIDACIÓN DE VERSIÓN ACTUAL ============
-
-# 3# Verifica si ds_agent ya está instalado y obtiene versión y release (formato rpm)
-- name: Consultar versión y release iniciales de ds_agent
-  command: rpm -q --qf '%{VERSION} %{RELEASE}\n' ds_agent
-  register: ds_agent_q_initial
-  failed_when: false
-  changed_when: false
-
-# 4# Setea versión/release inicial con manejo de “No instalado”
-- name: Fijar facts de versión inicial de ds_agent
-  set_fact:
-    ds_agent_info:
-      version: "{{ (ds_agent_q_initial.rc == 0) | ternary((ds_agent_q_initial.stdout.split() | first | default('N/A')), 'No instalado') }}"
-      release: "{{ (ds_agent_q_initial.rc == 0) | ternary((ds_agent_q_initial.stdout.split() | last  | default('N/A')), 'No instalado') }}"
-
-# ============ VALIDACIÓN DE SERVICIOS PREVIOS (REFERENCIA) ============
-
-# 5# Revisa si el servicio vls_agent estaba activo antes de instalar (solo informativo)
-- name: Verificar estado de servicio vls_agent
-  command: systemctl is-active vls_agent
-  register: vls_status
-  failed_when: false
-  changed_when: false
-
-# 6# Revisa si el servicio tmxbc estaba activo antes de instalar (solo informativo)
-- name: Verificar estado de servicio tmxbc
-  command: systemctl is-active tmxbc
-  register: tmx_status
-  failed_when: false
-  changed_when: false
-
-# 7# Guarda los estados iniciales de ambos servicios en una variable (solo informativo)
-- name: Guardar estados iniciales
-  set_fact:
-    tm_services_before:
-      vls_agent: "{{ 'active' if vls_status.stdout == 'active' else (vls_status.stdout | default('no identificado')) }}"
-      tmxbc: "{{ 'active' if tmx_status.stdout == 'active' else (tmx_status.stdout | default('no identificado')) }}"
-
-# ============ PREPARACIÓN E INSTALACIÓN DEL SERVER AGENT ============
-
-# 8# Da permisos de ejecución al binario tmxbc dentro del directorio del agente
+# 9# Dar permisos de ejecución a tmxbc (ServerAgent) si se usará
 - name: Dar permisos de ejecución a tmxbc (ServerAgent)
-  file:
+  ansible.builtin.file:
     path: "{{ remote_installer_root }}/{{ tm_server_agent_dirname }}/tmxbc"
     mode: '0755'
+  when: ds_install_required
 
+# 10# Dar permisos de ejecución a tmxbc (Sensor) si se usará
+- name: Dar permisos de ejecución a tmxbc (Sensor)
+  ansible.builtin.file:
+    path: "{{ remote_installer_root }}/{{ tm_sensor_dirname }}/tmxbc"
+    mode: '0755'
+  when: ds_install_required or sensor_required
 
-# 9# Ejecuta el instalador del ServerAgent y captura salida (con timeout corto)
-- name: Ejecutar instalador ServerAgent
-  shell: "timeout {{ tm_install_timeout | default(180) }} ./tmxbc install"
+# 11# Instalar/actualizar ServerAgent (solo si hace falta agente)
+- name: Instalar/actualizar ServerAgent (si hace falta agente)
+  ansible.builtin.shell: "timeout {{ tm_install_timeout }} ./tmxbc install"
   args:
     chdir: "{{ remote_installer_root }}/{{ tm_server_agent_dirname }}"
   register: install_server
-  changed_when: >
-    (install_server.rc == 0) or
-    ('completed successfully' in (install_server.stdout | lower)) or
-    ('installation completed successfully' in (install_server.stdout | lower))
+  when: ds_install_required
   failed_when: false
+  changed_when: ds_install_required
 
-
-# 10# (Diagnóstico) Muestra stdout si la instalación del ServerAgent no reporta éxito
-- name: Diagnóstico instalación ServerAgent (solo si no reporta éxito)
-  debug:
-    var: install_server.stdout
-  when: not (install_server.rc == 0 or
-             'completed successfully' in (install_server.stdout | lower) or
-             'installation completed successfully' in (install_server.stdout | lower))
-
-# ============ PREPARACIÓN E INSTALACIÓN DEL SENSOR ============
-
-# 11# Da permisos de ejecución a tmxbc dentro del directorio del Sensor
-- name: Dar permisos de ejecución a tmxbc (Sensor)
-  file:
-    path: "{{ remote_installer_root }}/{{ tm_sensor_dirname }}/tmxbc"
-    mode: '0755'
-
-# 12# Ejecuta el instalador del Sensor y captura salida (con timeout corto)
-- name: Ejecutar instalador Sensor
-  shell: "timeout {{ tm_install_timeout | default(180) }} ./tmxbc install"
+# 12# Instalar/rehabilitar Sensor (solo si hace falta sensor)
+- name: Instalar/rehabilitar Sensor (si hace falta sensor)
+  ansible.builtin.shell: "timeout {{ tm_install_timeout }} ./tmxbc install"
   args:
     chdir: "{{ remote_installer_root }}/{{ tm_sensor_dirname }}"
   register: install_sensor
-  changed_when: >
-    (install_sensor.rc == 0) or
-    ('completed successfully' in (install_sensor.stdout | lower)) or
-    ('installation completed successfully' in (install_sensor.stdout | lower))
+  when: sensor_required
   failed_when: false
+  changed_when: sensor_required
 
-# 13# (Diagnóstico) Muestra stdout si la instalación del Sensor no reporta éxito
-- name: Diagnóstico instalación Sensor (solo si no reporta éxito)
-  debug:
-    var: install_sensor.stdout
-  when: not (install_sensor.rc == 0 or
-             'completed successfully' in (install_sensor.stdout | lower) or
-             'installation completed successfully' in (install_sensor.stdout | lower))
-
-# 14# Habilita y arranca servicios tras la instalación (si existen)
-- name: Habilitar y arrancar vls_agent (tolerante a errores)
-  systemd:
-    name: vls_agent
+# 13# Habilitar y arrancar ds_agent
+- name: Habilitar y arrancar ds_agent
+  ansible.builtin.systemd:
+    name: ds_agent
     state: started
     enabled: yes
   failed_when: false
 
-- name: Habilitar y arrancar tmxbc (tolerante a errores)
-  systemd:
+# 14# Habilitar y arrancar tmxbc (sensor)
+- name: Habilitar y arrancar tmxbc (sensor)
+  ansible.builtin.systemd:
     name: tmxbc
     state: started
     enabled: yes
   failed_when: false
 
-# ============ VALIDACIÓN POST INSTALACIÓN ============
-
-# 15# Obtiene versión y release finales de ds_agent con formato rpm
-- name: Consultar versión y release finales de ds_agent
-  command: rpm -q --qf '%{VERSION} %{RELEASE}\n' ds_agent
+# 15# Consultar versión/release finales de ds_agent (rpm)
+- name: Consultar versión/release finales de ds_agent
+  ansible.builtin.command: rpm -q --qf '%{VERSION} %{RELEASE}\n' ds_agent
   register: ds_agent_q_final
   failed_when: false
   changed_when: false
 
-# 16# Setea versión/release final con manejo de “No instalado”
-- name: Fijar facts de versión final de ds_agent
-  set_fact:
-    ds_agent_info_final:
-      version: "{{ (ds_agent_q_final.rc == 0) | ternary((ds_agent_q_final.stdout.split() | first | default('N/A')), 'No instalado') }}"
-      release: "{{ (ds_agent_q_final.rc == 0) | ternary((ds_agent_q_final.stdout.split() | last  | default('N/A')), 'No instalado') }}"
+# 16# Normalizar versión/release final
+- name: Normalizar versión/release final
+  ansible.builtin.set_fact:
+    ds_version_after: "{{ (ds_agent_q_final.rc == 0) | ternary((ds_agent_q_final.stdout.split()|first|default('N/A')), 'No instalado') }}"
+    ds_release_after: "{{ (ds_agent_q_final.rc == 0) | ternary((ds_agent_q_final.stdout.split()|last |default('N/A')), 'No instalado') }}"
 
-# 17# Verificar estado final de ds_agent con systemd (captura ActiveState/SubState)
-- name: Obtener estado final de ds_agent (systemd)
-  ansible.builtin.systemd:
-    name: ds_agent
-  register: ds_agent_sys
-  failed_when: false
+# 17# service_facts (final) - opcional (dejado por telemetría general)
+- name: service_facts (final)
+  ansible.builtin.service_facts:
+
+# 18# Guardar estado final de servicios (de service_facts si están)
+- name: Guardar estado final de servicios
+  ansible.builtin.set_fact:
+    tmxbc_state_after: "{{ (services['tmxbc.service'].state if services['tmxbc.service'] is defined else 'desconocido') }}"
+    ds_agent_state_after: "{{ (services['ds_agent.service'].state if services['ds_agent.service'] is defined else 'desconocido') }}"
+
+# 18.1# Reforzar estado final con systemctl (garantiza 'active' si lo está)
+- name: Reforzar estado final con systemctl (tmxbc)
+  ansible.builtin.command: systemctl is-active tmxbc
+  register: _tmxbc_is_active_final
   changed_when: false
-  # ds_agent_sys.status.* incluye ActiveState y SubState cuando la unidad existe
-
-# 18# Normalizar estado ds_agent en formato ActiveState/SubState
-- name: Normalizar estado de ds_agent (ActiveState/SubState)
-  set_fact:
-    ds_agent_service: >-
-      {{
-        (ds_agent_sys.status.ActiveState | default('unknown')) ~ '/' ~
-        (ds_agent_sys.status.SubState    | default('unknown'))
-      }}
-
-# 19# Verificar estado final de vls_agent con systemd (en vez de is-active)
-- name: Obtener estado final de vls_agent (systemd)
-  ansible.builtin.systemd:
-    name: vls_agent
-  register: vls_sys
   failed_when: false
-  changed_when: false
 
-# 20# Verificar estado final de tmxbc con systemd (en vez de is-active)
-- name: Obtener estado final de tmxbc (systemd)
-  ansible.builtin.systemd:
-    name: tmxbc
-  register: tmxbc_sys
+- name: Reforzar estado final con systemctl (ds_agent)
+  ansible.builtin.command: systemctl is-active ds_agent
+  register: _ds_agent_is_active_final
+  changed_when: false
   failed_when: false
-  changed_when: false
 
-# 21# Guardar estados finales (ds_agent, vls_agent, tmxbc) normalizados
-- name: Guardar estados finales
-  set_fact:
-    tm_services_after:
-      ds_agent: >-
-        {{
-          ((ds_agent_sys.status.ActiveState | default('unknown')) ~ '/' ~
-           (ds_agent_sys.status.SubState    | default('unknown'))) | trim
-        }}
-      vls_agent: >-
-        {% if vls_sys is not defined or vls_sys.status is not defined %}
-          no instalado
-        {% else %}
-          {{ (vls_sys.status.ActiveState | default('unknown')) | trim }}
-        {% endif %}
-      tmxbc: "{{ (tmxbc_sys.status.ActiveState | default('unknown')) | trim }}"
+- name: Normalizar estados finales efectivos
+  ansible.builtin.set_fact:
+    tmxbc_state_after: "{{ 'active' if _tmxbc_is_active_final.rc == 0 else (tmxbc_state_after | default('no activo')) }}"
+    ds_agent_state_after: "{{ 'active' if _ds_agent_is_active_final.rc == 0 else (ds_agent_state_after | default('no activo')) }}"
 
-
-# ============ RECOLECCIÓN PARA REPORTE ============
-
-# 22# Construye el objeto con toda la información recopilada (versiones y servicios)
-- name: Construir objeto de reporte
-  set_fact:
+# 19# Evaluar estado final OK/REVISAR y construir resultado
+- name: Evaluar estado final OK/REVISAR y construir resultado
+  ansible.builtin.set_fact:
     trendmicro_resultado:
       host: "{{ inventory_hostname }}"
-      ds_agent_version_before: "{{ ds_agent_info.version }}"
-      ds_agent_release_before: "{{ ds_agent_info.release }}"
-      ds_agent_version_after: "{{ ds_agent_info_final.version }}"
-      ds_agent_release_after: "{{ ds_agent_info_final.release }}"
-      services_before: "{{ tm_services_before }}"
-      services_after: "{{ tm_services_after }}"
+      ds_agent_version_before: "{{ ds_version_before }}"
+      ds_agent_release_before: "{{ ds_release_before }}"
+      ds_agent_version_after: "{{ ds_version_after }}"
+      ds_agent_release_after: "{{ ds_release_after }}"
+      tmxbc_state_before: "{{ tmxbc_state_before }}"
+      tmxbc_state_after: "{{ tmxbc_state_after }}"
+      ds_agent_state_before: "{{ ds_agent_state_before }}"   # << agregado
+      ds_agent_state_after: "{{ ds_agent_state_after }}"
       estado_final: >-
-        {% set vls_state = (tm_services_after.vls_agent | default('no instalado')) | trim %}
-        {% set ds_state  = (tm_services_after.ds_agent  | default('unknown/unknown')) | trim %}
-        {% set tmx_state = (tm_services_after.tmxbc     | default('unknown')) | trim %}
-        {% set ok_release_match = (ds_agent_info_final.release | string).startswith(ok_release | string) %}
-        {% set ds_ok = (ds_state == 'active/running') %}
-        {# Aceptar vls_agent inactive como válido (sensor no corre siempre) #}
-        {% set vls_ok_info = vls_state in ['active', 'inactive', 'no instalado'] %}
+        {% set rel_ok = (ds_release_after not in ['No instalado','N/A'])
+                        and (ds_release_after|string).startswith(ok_release|string) %}
+        {% set ds_ok = (ds_version_after == ok_version and rel_ok
+                        and ds_agent_state_after in ['running','active']) %}
+        {% set sensor_ok = (tmxbc_state_after in ['running','active']) %}   
+        {% if ds_ok and sensor_ok %}OK{% else %}REVISAR{% endif %}
 
-        {% if ( tmx_state == 'active'
-               and ds_ok
-               and ds_agent_info_final.version == ok_version
-               and ok_release_match
-               and vls_ok_info ) %}
-          OK
-        {% else %}
-          REVISAR
-        {% endif %}
 
-# 23# Acumula resultados por host en una lista global
-- name: Acumular resultado en lista global
-  set_fact:
+# 20# Acumular resultado en lista global
+- name: Acumular resultado
+  ansible.builtin.set_fact:
     tm_results: "{{ (tm_results | default([])) + [ trendmicro_resultado ] }}"
 
-# 24# Exporta un único JSON consolidado con todos los hosts
-- name: Exportar JSON consolidado con todos los hosts
+# 21# Exportar JSON consolidado
+- name: Exportar JSON consolidado
   delegate_to: localhost
   run_once: true
-  copy:
+  ansible.builtin.copy:
     dest: "{{ report_dir_local }}/{{ json_report_filename }}"
     mode: "0644"
     content: >-
@@ -258,12 +219,12 @@
         | to_nice_json
       }}
 
-# 25# Convertir el JSON consolidado en Excel (usando el script Python)
-- name: Generar Excel final a partir del JSON consolidado
+# 22# Generar Excel final
+- name: Generar Excel final
   delegate_to: localhost
   run_once: true
   changed_when: false
-  command: >
+  ansible.builtin.command: >
     python3 scripts/generate_excel.py
     {{ report_dir_local }}/{{ json_report_filename }}
     {{ report_dir_local }}/{{ excel_report_filename }}

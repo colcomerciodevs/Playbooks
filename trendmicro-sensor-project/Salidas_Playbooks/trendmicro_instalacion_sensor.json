@@ -1,0 +1,14 @@
+[
+    {
+        "ds_agent_release_after": "20480.ol9",
+        "ds_agent_release_before": "20480.ol9",
+        "ds_agent_state_after": "active",
+        "ds_agent_state_before": "active",
+        "ds_agent_version_after": "20.0.2",
+        "ds_agent_version_before": "20.0.2",
+        "estado_final": "    OK",
+        "host": "ansible",
+        "tmxbc_state_after": "active",
+        "tmxbc_state_before": "no activo"
+    }
+]
