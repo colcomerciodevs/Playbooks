@@ -1,6 +1,6 @@
 ---
 - name: Tarea para crear relación de confianza SSH con llaves públicas
-  hosts: lote_10-2
+  hosts: alval-new
   become: true
 
   vars:
