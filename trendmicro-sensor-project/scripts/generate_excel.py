@@ -38,16 +38,18 @@ ws = wb.active
 ws.title = "Reporte TrendMicro"
 
 # ===================== ENCABEZADOS (actualizados) =====================
-# Se agregó "ds_agent Before"
+# Se agregan "Hostname" e "IP" justo después de "Host"
 headers = [
     "Host",
+    "Hostname",
+    "IP",
     "Version Before",
     "Release Before",
     "Version After",
     "Release After",
     "tmxbc Before",      # estado inicial del sensor
     "tmxbc After",       # estado final del sensor
-    "ds_agent Before",   # NUEVO: estado inicial del agente
+    "ds_agent Before",   # estado inicial del agente
     "ds_agent After",    # estado final del agente
     "Estado Final"       # OK / REVISAR
 ]
@@ -100,16 +102,22 @@ for item in data:
     if ds_after is None:
         ds_after = services_after.get("ds_agent", "no instalado")
 
-    # Construir fila
+    # Hostname e IP (nuevos campos)
+    hostname = item.get("hostname", "")
+    ip_addr = item.get("ip", "")
+
+    # Construir fila (Host -> Hostname -> IP -> resto)
     row = [
         norm(item.get("host", "")),
+        norm(hostname),
+        norm(ip_addr),
         norm(item.get("ds_agent_version_before", "")),
         norm(item.get("ds_agent_release_before", "")),
         norm(item.get("ds_agent_version_after", "")),
         norm(item.get("ds_agent_release_after", "")),
         norm(tmxbc_before),
         norm(tmxbc_after),
-        norm(ds_before),     # << NUEVA columna
+        norm(ds_before),
         norm(ds_after),
         norm(item.get("estado_final", "")),
     ]

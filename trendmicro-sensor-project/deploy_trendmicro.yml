@@ -1,6 +1,6 @@
 ---
 - name: Despliegue y validación Trend Micro (ServerAgent + Sensor)
-  hosts: prueba
+  hosts: PPU
   become: true
   gather_facts: true
   roles:

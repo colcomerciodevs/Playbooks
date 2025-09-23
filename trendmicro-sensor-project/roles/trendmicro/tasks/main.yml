@@ -117,6 +117,12 @@
   failed_when: false
   changed_when: sensor_required
 
+# 12.8# Pausa para dar tiempo a que termine la instalación
+- name: Esperar unos segundos a que ds_agent termine de instalar
+  ansible.builtin.command: sleep 10
+  changed_when: false
+  failed_when: false
+
 # 13# Habilitar y arrancar ds_agent
 - name: Habilitar y arrancar ds_agent
   ansible.builtin.systemd:
@@ -179,21 +185,24 @@
   ansible.builtin.set_fact:
     trendmicro_resultado:
       host: "{{ inventory_hostname }}"
+      hostname: "{{ ansible_hostname | default('N/A') }}"
+      ip: "{{ ansible_default_ipv4.address | default('N/A') }}"
       ds_agent_version_before: "{{ ds_version_before }}"
       ds_agent_release_before: "{{ ds_release_before }}"
       ds_agent_version_after: "{{ ds_version_after }}"
       ds_agent_release_after: "{{ ds_release_after }}"
       tmxbc_state_before: "{{ tmxbc_state_before }}"
       tmxbc_state_after: "{{ tmxbc_state_after }}"
-      ds_agent_state_before: "{{ ds_agent_state_before }}"   # << agregado
+      ds_agent_state_before: "{{ ds_agent_state_before }}"
       ds_agent_state_after: "{{ ds_agent_state_after }}"
       estado_final: >-
         {% set rel_ok = (ds_release_after not in ['No instalado','N/A'])
                         and (ds_release_after|string).startswith(ok_release|string) %}
         {% set ds_ok = (ds_version_after == ok_version and rel_ok
                         and ds_agent_state_after in ['running','active']) %}
-        {% set sensor_ok = (tmxbc_state_after in ['running','active']) %}   
+        {% set sensor_ok = (tmxbc_state_after in ['running','active']) %}
         {% if ds_ok and sensor_ok %}OK{% else %}REVISAR{% endif %}
+
 
 
 # 20# Acumular resultado en lista global
