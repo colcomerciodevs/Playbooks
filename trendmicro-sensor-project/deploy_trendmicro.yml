@@ -1,6 +1,6 @@
 ---
 - name: Despliegue y validación Trend Micro (ServerAgent + Sensor)
-  hosts: PPU
+  hosts: EXADATA_VRT
   become: true
   gather_facts: true
   roles:

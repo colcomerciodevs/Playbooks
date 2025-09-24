@@ -119,7 +119,7 @@
 
 # 12.8# Pausa para dar tiempo a que termine la instalación
 - name: Esperar unos segundos a que ds_agent termine de instalar
-  ansible.builtin.command: sleep 10
+  ansible.builtin.command: sleep 20
   changed_when: false
   failed_when: false
 
@@ -180,13 +180,26 @@
     tmxbc_state_after: "{{ 'active' if _tmxbc_is_active_final.rc == 0 else (tmxbc_state_after | default('no activo')) }}"
     ds_agent_state_after: "{{ 'active' if _ds_agent_is_active_final.rc == 0 else (ds_agent_state_after | default('no activo')) }}"
 
+# 18.2# Resolver IP efectiva desde inventario (preferir ansible_host)
+- name: Resolver IP efectiva (ansible_host > ansible_ssh_host > ansible_default_ipv4.address)
+  ansible.builtin.set_fact:
+    tm_ip_efectiva: >-
+      {{
+        hostvars[inventory_hostname].ansible_host
+        | default(ansible_host)
+        | default(ansible_ssh_host)
+        | default(ansible_default_ipv4.address)
+        | default('N/A')
+      }}
+
+
 # 19# Evaluar estado final OK/REVISAR y construir resultado
 - name: Evaluar estado final OK/REVISAR y construir resultado
   ansible.builtin.set_fact:
     trendmicro_resultado:
       host: "{{ inventory_hostname }}"
       hostname: "{{ ansible_hostname | default('N/A') }}"
-      ip: "{{ ansible_default_ipv4.address | default('N/A') }}"
+      ip: "{{ tm_ip_efectiva }}"
       ds_agent_version_before: "{{ ds_version_before }}"
       ds_agent_release_before: "{{ ds_release_before }}"
       ds_agent_version_after: "{{ ds_version_after }}"
