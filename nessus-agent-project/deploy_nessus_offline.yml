@@ -1,0 +1,30 @@
+---
+# Playbook principal (raíz): deploy_nessus_offline.yml
+# Objetivo: instalar desde paquete local, (opcional) vincular, y generar reporte Excel.
+
+- hosts: linux
+  gather_facts: true
+  become: true
+
+  vars:
+    # 0# Variables overrideables
+    nessus_manager_host: "10.181.8.192"
+    nessus_manager_port: 8834
+    nessus_agent_key: "CAMBIAR_EN_VAULT"
+    nessus_agent_groups: "corbeta"
+    nessus_try_link: false
+    nessus_force_relink: false
+
+  pre_tasks:
+    # 1# Crear carpeta de salidas en el controlador
+    - name: Crear carpeta de salidas
+      ansible.builtin.file:
+        path: "{{ playbook_dir | realpath }}/Salidas_Playbooks/nessus"
+        state: directory
+        mode: "0755"
+      run_once: true
+      delegate_to: localhost
+
+  roles:
+    # 2# Rol offline que selecciona instalador local por SO, instala, (opcional) linkea y reporta
+    - role: ansible/roles/nessus_agent_offline

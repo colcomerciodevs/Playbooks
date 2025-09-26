@@ -1,6 +1,7 @@
 ---
 - name: Despliegue y validación Trend Micro (ServerAgent + Sensor)
-  hosts: EXADATA_VRT
+  hosts: CAJAS
+  serial: 50
   become: true
   gather_facts: true
   roles:

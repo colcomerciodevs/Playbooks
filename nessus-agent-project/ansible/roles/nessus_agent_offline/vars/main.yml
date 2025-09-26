@@ -1,0 +1,29 @@
+---
+# Variables por defecto
+nessus_manager_host: "10.181.8.192"
+nessus_manager_port: 8834
+nessus_agent_key: "CAMBIAR_EN_VAULT"
+nessus_agent_groups: "corbeta"
+nessus_try_link: false
+nessus_force_relink: false
+nessus_cli_path: "/opt/nessus_agent/sbin/nessuscli"
+
+# Carpeta de instaladores (relativa a la raíz del proyecto/playbook_dir)
+nessus_installers_dir: "{{ playbook_dir | realpath }}/installers"
+
+# Carpeta de salidas (en el controlador)
+nessus_output_dir: "{{ playbook_dir | realpath }}/Salidas_Playbooks/nessus"
+
+# Mapa de selección por SO
+nessus_pkg_dir_map:
+  RedHat-7: "rhel7"
+  RedHat-8: "rhel8"
+  RedHat-9: "rhel8"         # usar paquete el8 si no hay específico
+  OracleLinux-7: "ol7"
+  OracleLinux-8: "ol8"
+  OracleLinux-9: "ol9"
+  Suse-12: "sles12"
+  Suse-15: "sles15"
+  Debian-any: "debian"
+  Ubuntu-any: "ubuntu"
+  Fedora-any: "fedora"
