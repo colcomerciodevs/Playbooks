@@ -47,11 +47,13 @@ headers = [
     "Release Before",
     "Version After",
     "Release After",
-    "tmxbc Before",      # estado inicial del sensor
-    "tmxbc After",       # estado final del sensor
-    "ds_agent Before",   # estado inicial del agente
-    "ds_agent After",    # estado final del agente
-    "Estado Final"       # OK / REVISAR
+    "tmxbc Version Before",  # NUEVO: versión del sensor antes
+    "tmxbc Version After",   # NUEVO: versión del sensor después
+    "tmxbc Before",          # estado inicial del sensor
+    "tmxbc After",           # estado final del sensor
+    "ds_agent Before",       # estado inicial del agente
+    "ds_agent After",        # estado final del agente
+    "Estado Final"           # OK / REVISAR
 ]
 ws.append(headers)
 
@@ -82,31 +84,35 @@ for item in data:
     services_before = item.get("services_before", {}) or {}
 
     # Compatibilidad y preferencia por nuevas claves del rol
-    # tmxbc BEFORE
-    tmxbc_before = item.get("tmxbc_state_before")
-    if tmxbc_before is None:
-        tmxbc_before = services_before.get("tmxbc", "no instalado")
+    # tmxbc BEFORE (estado)
+    tmxbc_before_state = item.get("tmxbc_state_before")
+    if tmxbc_before_state is None:
+        tmxbc_before_state = services_before.get("tmxbc", "no instalado")
 
-    # tmxbc AFTER
-    tmxbc_after = item.get("tmxbc_state_after")
-    if tmxbc_after is None:
-        tmxbc_after = services_after.get("tmxbc", "no instalado")
+    # tmxbc AFTER (estado)
+    tmxbc_after_state = item.get("tmxbc_state_after")
+    if tmxbc_after_state is None:
+        tmxbc_after_state = services_after.get("tmxbc", "no instalado")
 
-    # ds_agent BEFORE (NUEVO)
-    ds_before = item.get("ds_agent_state_before")
-    if ds_before is None:
-        ds_before = services_before.get("ds_agent", "no instalado")
+    # ds_agent BEFORE (estado)
+    ds_before_state = item.get("ds_agent_state_before")
+    if ds_before_state is None:
+        ds_before_state = services_before.get("ds_agent", "no instalado")
 
-    # ds_agent AFTER
-    ds_after = item.get("ds_agent_state_after")
-    if ds_after is None:
-        ds_after = services_after.get("ds_agent", "no instalado")
+    # ds_agent AFTER (estado)
+    ds_after_state = item.get("ds_agent_state_after")
+    if ds_after_state is None:
+        ds_after_state = services_after.get("ds_agent", "no instalado")
 
     # Hostname e IP (nuevos campos)
     hostname = item.get("hostname", "")
     ip_addr = item.get("ip", "")
 
-    # Construir fila (Host -> Hostname -> IP -> resto)
+    # Versiones de tmxbc (nuevos campos)
+    tmxbc_ver_before = item.get("tmxbc_version_before", "")
+    tmxbc_ver_after = item.get("tmxbc_version_after", "")
+
+    # Construir fila (Host -> Hostname -> IP -> versiones ds -> versiones tmxbc -> estados -> estado final)
     row = [
         norm(item.get("host", "")),
         norm(hostname),
@@ -115,10 +121,12 @@ for item in data:
         norm(item.get("ds_agent_release_before", "")),
         norm(item.get("ds_agent_version_after", "")),
         norm(item.get("ds_agent_release_after", "")),
-        norm(tmxbc_before),
-        norm(tmxbc_after),
-        norm(ds_before),
-        norm(ds_after),
+        norm(tmxbc_ver_before),
+        norm(tmxbc_ver_after),
+        norm(tmxbc_before_state),
+        norm(tmxbc_after_state),
+        norm(ds_before_state),
+        norm(ds_after_state),
         norm(item.get("estado_final", "")),
     ]
     ws.append(row)

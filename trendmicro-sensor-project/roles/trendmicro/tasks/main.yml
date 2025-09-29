@@ -47,11 +47,32 @@
   failed_when: false
   changed_when: false
 
+# 4.1# Consultar versión actual de tmxbc (si está instalado)
+- name: Consultar versión actual de tmxbc (sensor)
+  ansible.builtin.command: /opt/TrendMicro/EndpointBasecamp/bin/tmxbc --version
+  register: tmxbc_ver_cmd_before
+  failed_when: false
+  changed_when: false
+
 # 5# Normalizar versión/release inicial
 - name: Normalizar versión/release inicial
   ansible.builtin.set_fact:
     ds_version_before: "{{ (ds_agent_q.rc == 0) | ternary((ds_agent_q.stdout.split()|first|default('N/A')), 'No instalado') }}"
     ds_release_before: "{{ (ds_agent_q.rc == 0) | ternary((ds_agent_q.stdout.split()|last |default('N/A')), 'No instalado') }}"
+
+# 5.1# Normalizar versión inicial de tmxbc (robusto con regex_findall)
+- name: Capturar salida cruda de tmxbc --version (antes)
+  ansible.builtin.set_fact:
+    _tmxbc_out_before: "{{ tmxbc_ver_cmd_before.stdout | default('') }}"
+
+- name: Extraer posibles versiones de tmxbc (antes)
+  ansible.builtin.set_fact:
+    _tmxbc_matches_before: "{{ _tmxbc_out_before | regex_findall('([0-9]+(?:\\.[0-9]+)+)') | default([]) }}"
+
+- name: Normalizar versión inicial de tmxbc (antes)
+  ansible.builtin.set_fact:
+    tmxbc_version_before: "{{ _tmxbc_matches_before[0] if (_tmxbc_matches_before | length) > 0 else 'No instalado' }}"
+
 
 # 6# Determinar si requiere (re)instalar/actualizar agente (version/release y servicio active por systemctl)
 - name: Determinar si requiere (re)instalar/actualizar agente
@@ -67,10 +88,17 @@
         or (_ds_agent_is_active.rc != 0)
       }}
 
-# 7# Determinar si el sensor (tmxbc) es requerido (solo systemctl)
+# 7# Determinar si el sensor (tmxbc) es requerido (servicio + versión objetivo)
 - name: Determinar si el sensor (tmxbc) es requerido
   ansible.builtin.set_fact:
-    sensor_required: "{{ _tmxbc_is_active.rc != 0 }}"
+    sensor_required: >-
+      {{
+        (_tmxbc_is_active.rc != 0)
+        or (tmxbc_version_before in ['No instalado','N/A','','desconocido'])
+        or (ok_tmxbc_version is defined
+            and tmxbc_version_before not in ['No instalado','N/A','','desconocido']
+            and tmxbc_version_before != ok_tmxbc_version)
+      }}
 
 # 8# Copiar instaladores Trend Micro (solo si hará falta agente o sensor)
 - name: Copiar instaladores Trend Micro (según necesidad)
@@ -152,6 +180,26 @@
     ds_version_after: "{{ (ds_agent_q_final.rc == 0) | ternary((ds_agent_q_final.stdout.split()|first|default('N/A')), 'No instalado') }}"
     ds_release_after: "{{ (ds_agent_q_final.rc == 0) | ternary((ds_agent_q_final.stdout.split()|last |default('N/A')), 'No instalado') }}"
 
+# 16.5# Consultar y normalizar versión final de tmxbc (robusto con regex_findall)
+- name: Consultar versión final de tmxbc
+  ansible.builtin.command: /opt/TrendMicro/EndpointBasecamp/bin/tmxbc --version
+  register: tmxbc_ver_cmd_after
+  failed_when: false
+  changed_when: false
+
+- name: Capturar salida cruda de tmxbc --version (después)
+  ansible.builtin.set_fact:
+    _tmxbc_out_after: "{{ tmxbc_ver_cmd_after.stdout | default('') }}"
+
+- name: Extraer posibles versiones de tmxbc (después)
+  ansible.builtin.set_fact:
+    _tmxbc_matches_after: "{{ _tmxbc_out_after | regex_findall('([0-9]+(?:\\.[0-9]+)+)') | default([]) }}"
+
+- name: Normalizar versión final de tmxbc (después)
+  ansible.builtin.set_fact:
+    tmxbc_version_after: "{{ _tmxbc_matches_after[0] if (_tmxbc_matches_after | length) > 0 else 'No instalado' }}"
+
+
 # 17# service_facts (final) - opcional (dejado por telemetría general)
 - name: service_facts (final)
   ansible.builtin.service_facts:
@@ -192,7 +240,6 @@
         | default('N/A')
       }}
 
-
 # 19# Evaluar estado final OK/REVISAR y construir resultado
 - name: Evaluar estado final OK/REVISAR y construir resultado
   ansible.builtin.set_fact:
@@ -204,6 +251,8 @@
       ds_agent_release_before: "{{ ds_release_before }}"
       ds_agent_version_after: "{{ ds_version_after }}"
       ds_agent_release_after: "{{ ds_release_after }}"
+      tmxbc_version_before: "{{ tmxbc_version_before }}"
+      tmxbc_version_after: "{{ tmxbc_version_after }}"
       tmxbc_state_before: "{{ tmxbc_state_before }}"
       tmxbc_state_after: "{{ tmxbc_state_after }}"
       ds_agent_state_before: "{{ ds_agent_state_before }}"
@@ -213,10 +262,12 @@
                         and (ds_release_after|string).startswith(ok_release|string) %}
         {% set ds_ok = (ds_version_after == ok_version and rel_ok
                         and ds_agent_state_after in ['running','active']) %}
-        {% set sensor_ok = (tmxbc_state_after in ['running','active']) %}
+        {% set sensor_ok = (
+             tmxbc_state_after in ['running','active']
+             and (tmxbc_version_after not in ['No instalado','N/A'])
+             and (ok_tmxbc_version is not defined or tmxbc_version_after == ok_tmxbc_version)
+           ) %}
         {% if ds_ok and sensor_ok %}OK{% else %}REVISAR{% endif %}
-
-
 
 # 20# Acumular resultado en lista global
 - name: Acumular resultado
