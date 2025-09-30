@@ -1,0 +1,98 @@
+---
+# ============================================================
+# Playbook: Generar JSON con hostname, IP (inventario) y S.O. completo
+# Objetivo: Construir un JSON con: hostname real, IP tomada del inventario y
+# la versión completa del sistema operativo. El JSON se guardará en
+# Salidas_Playbooks/ en la raíz del proyecto.
+# ============================================================
+
+- name: Generar JSON con hostname, IP (inventario) y S.O. completo
+  hosts: INVENTARIO
+  gather_facts: true
+  vars:
+    # 0# Ruta de salida en la raíz del proyecto
+    out_dir: "{{ playbook_dir }}/Salidas_Playbooks"
+    json_file: "{{ out_dir }}/version_sistemas.json"
+
+  pre_tasks:
+    # 1# Crear carpeta de salidas (solo una vez, en localhost)
+    - name: 1# Crear carpeta de salidas en la raíz del proyecto
+      ansible.builtin.file:
+        path: "{{ out_dir }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+      run_once: true
+
+    # 2# Inicializar variable por host para recolectar datos
+    - name: 2# Inicializar estructura de datos por host
+      ansible.builtin.set_fact:
+        host_entry: {}
+
+  tasks:
+    # 3# Leer /etc/os-release del host remoto (S.O. modernos)
+    - name: 3# Leer contenido de /etc/os-release
+      ansible.builtin.slurp:
+        src: /etc/os-release
+      register: os_release_raw
+      ignore_errors: true
+
+    # 4# Separar líneas de os-release (si existe)
+    - name: 4# Separar líneas del archivo os-release
+      ansible.builtin.set_fact:
+        os_release_lines: "{{ os_release_raw.content | b64decode | regex_findall('.*') }}"
+      when: os_release_raw is defined and os_release_raw.content is defined
+
+    # 5# Determinar versión completa del S.O. (PRETTY_NAME o distribución/versión)
+    - name: 5# Determinar versión completa del sistema operativo
+      ansible.builtin.set_fact:
+        os_full_version: >-
+          {{
+            (
+              os_release_lines | default([])
+              | select('match', '^PRETTY_NAME=')
+              | list
+              | first
+              | default('')
+              | regex_replace('^PRETTY_NAME=\"?(.*?)\"?$', '\g<1>')
+            )
+            if (os_release_lines | default([]) | select('match', '^PRETTY_NAME=' ) | list | length) > 0
+            else (ansible_distribution ~ ' ' ~ ansible_distribution_version)
+          }}
+
+    # 6# Tomar IP desde inventario (ansible_host) con fallback a inventory_hostname
+    - name: 6# Definir IP desde inventario (fallback)
+      ansible.builtin.set_fact:
+        ip_from_inventory: "{{ hostvars[inventory_hostname].ansible_host | default(inventory_hostname) }}"
+
+    # 7# Construir entrada final por host
+    - name: 7# Construir diccionario por host (hostname, ip, os_full_version)
+      ansible.builtin.set_fact:
+        host_entry:
+          hostname: "{{ ansible_hostname | default(inventory_hostname) }}"
+          ip: "{{ ip_from_inventory }}"
+          os_full_version: "{{ os_full_version }}"
+
+  post_tasks:
+    # 8# Agregar todas las entradas en una lista y guardarlas como JSON (una vez)
+    - name: 8# Construir lista agregada de todos los hosts
+      ansible.builtin.set_fact:
+        aggregated_entries: "{{ ansible_play_hosts_all | map('extract', hostvars, 'host_entry') | list }}"
+      run_once: true
+
+    # 9# Escribir JSON en Salidas_Playbooks/version_sistemas.json
+    - name: 9# Guardar JSON consolidado
+      ansible.builtin.copy:
+        dest: "{{ json_file }}"
+        content: "{{ aggregated_entries | to_nice_json }}"
+        mode: "0644"
+      delegate_to: localhost
+      run_once: true
+
+
+    # 10# Ejecutar script Python para convertir el JSON a Excel
+    - name: 10# Ejecutar script convert_json_to_excel.py
+      ansible.builtin.command:
+        cmd: "python3 {{ playbook_dir }}/scripts/convert_json_to_excel.py"
+      delegate_to: localhost
+      run_once: true
