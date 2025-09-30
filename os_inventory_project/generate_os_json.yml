@@ -74,25 +74,32 @@
           os_full_version: "{{ os_full_version }}"
 
   post_tasks:
-    # 8# Agregar todas las entradas en una lista y guardarlas como JSON (una vez)
+    # 8# Construir lista agregada de todos los hosts (filtrar None)
     - name: 8# Construir lista agregada de todos los hosts
       ansible.builtin.set_fact:
-        aggregated_entries: "{{ ansible_play_hosts_all | map('extract', hostvars, 'host_entry') | list }}"
+        aggregated_entries: >-
+          {{
+            ansible_play_hosts_all
+            | map('extract', hostvars, 'host_entry')
+            | select('defined')
+            | select('ne', None)
+            | list
+          }}
       run_once: true
 
-    # 9# Escribir JSON en Salidas_Playbooks/version_sistemas.json
+    # 9# Guardar JSON consolidado (lista pura)
     - name: 9# Guardar JSON consolidado
       ansible.builtin.copy:
         dest: "{{ json_file }}"
-        content: "{{ aggregated_entries | to_nice_json }}"
+        content: "{{ aggregated_entries | to_json }}"
         mode: "0644"
       delegate_to: localhost
       run_once: true
 
-
-    # 10# Ejecutar script Python para convertir el JSON a Excel
+    # 10# Ejecutar script convert_json_to_excel.py
     - name: 10# Ejecutar script convert_json_to_excel.py
       ansible.builtin.command:
         cmd: "python3 {{ playbook_dir }}/scripts/convert_json_to_excel.py"
       delegate_to: localhost
       run_once: true
+

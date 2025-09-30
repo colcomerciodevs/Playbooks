@@ -1,6 +1,6 @@
 ---
 - name: Despliegue y validación Trend Micro (ServerAgent + Sensor)
-  hosts: FSC_Linux
+  hosts: ibm
   serial: 50
   become: true
   gather_facts: true
