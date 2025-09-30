@@ -1,6 +1,6 @@
 ---
 - name: Despliegue y validación Trend Micro (ServerAgent + Sensor)
-  hosts: GEOPOS_BK
+  hosts: FSC_Linux
   serial: 50
   become: true
   gather_facts: true
