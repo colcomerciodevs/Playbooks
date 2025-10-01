@@ -1,6 +1,6 @@
 ---
 - name: Tarea para crear relación de confianza SSH con llaves públicas
-  hosts: alval-new
+  hosts: inventario
   become: true
 
   vars:
