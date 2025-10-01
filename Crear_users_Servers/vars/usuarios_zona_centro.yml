@@ -1,0 +1,34 @@
+---
+usuarios:
+  - { name: "abarbosa",     comment: "Alexander Barbosa" }
+  - { name: "acuevas",      comment: "Andres Cuevas" }
+  - { name: "arodriguez",   comment: "Alexander Rodriguez" }
+  - { name: "aromero",      comment: "Alexis Romero" }
+  - { name: "bmarin",       comment: "Brandon Marin" }
+  - { name: "calonso",      comment: "Christian German Alonso Segura" }
+  - { name: "clozano",      comment: "Carlos Adolfo Lozano Rodriguez" }
+  - { name: "cperez",       comment: "Camilo Perez" }
+  - { name: "cpineda",      comment: "Carlos Augusto Pineda Roldan" }
+  - { name: "cserrano",     comment: "Cesar David Serrano" }
+  - { name: "csotomonte",   comment: "Cesar Alberto Sotomonte" }
+  - { name: "dcaballero",   comment: "Dagoberto Layton Caballero" }
+  - { name: "dforerof",     comment: "Daniel Forero" }
+  - { name: "ebernal",      comment: "Eder Bernal" }
+  - { name: "eramirez",     comment: "Edgar Ramirez" }
+  - { name: "facosta",      comment: "Fabian Elias Acosta Fajardo" }
+  - { name: "frodriguez",   comment: "Fabian Rodriguez" }
+  - { name: "iardila",      comment: "Ivonne Ardila Prada" }
+  - { name: "jcampo",       comment: "Juan Sebastian Campo Herrera" }
+  - { name: "jjimenez",     comment: "Jair Jimenez Guevara" }
+  - { name: "mbernal",      comment: "Myrian Camacho Bernal" }
+  - { name: "mrivas",       comment: "Michael Rene Rivas Reyes" }
+  - { name: "nmachado",     comment: "Nestor Machado" }
+  - { name: "oviloria",     comment: "Orlando Viloria" }
+  - { name: "ptocarruncho", comment: "Paula Tocarruncho" }
+  - { name: "rlopez",       comment: "Rodolfo Lopez" }
+  - { name: "rmoreno",      comment: "Ricardo Humberto Moreno Melo" }
+  - { name: "wfranco",      comment: "Wilmar Franco" }
+  - { name: "yureche",      comment: "Yahir Ureche" }
+  - { name: "jsuarez",      comment: "Jairo Suarez" }
+  - { name: "gochoa",       comment: "German Alberto Ochoa" }
+  - { name: "izapata",      comment: "Ivan Camilo Zapata" }

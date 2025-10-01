@@ -1,0 +1,8 @@
+---
+usuarios:
+  - { name: "dbuelvas",     comment: "Deyvi Buelvas" }
+  - { name: "obustamante",  comment: "Oscar Bustamante" }
+  - { name: "nromero",      comment: "Nibaldo Romero" }
+  - { name: "rlopez",       comment: "Rodolfo Lopez" }
+  - { name: "jgarcia",      comment: "Jose Miguel Garcia Rosado" }
+  - { name: "rrodriguez",   comment: "Rafael David Rodriguez Barrios" }
