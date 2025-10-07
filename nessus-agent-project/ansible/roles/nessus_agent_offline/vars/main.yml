@@ -28,3 +28,6 @@ nessus_pkg_dir_map:
   Ubuntu-any: "ubuntu"
   Fedora-any: "fedora"
   Amazon-any: "amazon"
+
+# Ruta remota del instalador
+nessus_installer_dest_dir: "{{ ansible_env.HOME }}"
