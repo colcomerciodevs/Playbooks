@@ -3,11 +3,13 @@
 - name: Reunir facts
   ansible.builtin.setup:
 
-# 2# Determinar clave de distro/versión
+# 2 - Determinar clave de distro/versión (incluye Amazon como 1 solo caso)
 - name: Construir clave de selección de instalador
   ansible.builtin.set_fact:
     _nessus_selector: >-
-      {%- if ansible_os_family in ['RedHat','OracleLinux'] -%}
+      {%- if ansible_distribution in ['Amazon', 'Amazon Linux'] -%}
+        Amazon-any
+      {%- elif ansible_os_family in ['RedHat','OracleLinux'] -%}
         {{ ansible_os_family }}-{{ ansible_distribution_major_version | default('8') }}
       {%- elif ansible_os_family == 'Suse' -%}
         {{ ansible_os_family }}-{{ (ansible_distribution_version | regex_search('^\d+')) | default('12') }}
@@ -16,6 +18,7 @@
       {%- else -%}
         {{ ansible_os_family }}-any
       {%- endif -%}
+
 
 # 3# Resolver subcarpeta del instalador
 - name: Resolver carpeta del instalador
