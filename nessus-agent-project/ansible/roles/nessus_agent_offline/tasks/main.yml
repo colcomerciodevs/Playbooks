@@ -19,7 +19,6 @@
         {{ ansible_os_family }}-any
       {%- endif -%}
 
-
 # 3# Resolver subcarpeta del instalador
 - name: Resolver carpeta del instalador
   ansible.builtin.set_fact:
@@ -41,6 +40,13 @@
     fail_msg: "Debe existir exactamente 1 archivo en {{ nessus_installers_dir }}/{{ _nessus_pkg_subdir }}"
     success_msg: "Instalador localizado correctamente"
 
+# 5a# Asegurar ruta remota del instalador (por si no es $HOME)
+- name: Crear ruta remota del instalador si no existe
+  ansible.builtin.file:
+    path: "{{ nessus_installer_dest_dir }}"
+    state: directory
+    mode: "0755"
+
 # 6 - Copiar el instalador al host (usa la variable)
 - name: Copiar instalador al host
   ansible.builtin.copy:
@@ -48,19 +54,90 @@
     dest: "{{ nessus_installer_dest_dir }}/{{ _pkg_search.files[0].path | basename }}"
     mode: "0644"
 
-# 7 - Comprobar presencia de nessuscli
+# 7 - Definir ruta final del instalador (coincide con el #6)
+- name: Definir _installer_path
+  ansible.builtin.set_fact:
+    _installer_path: "{{ nessus_installer_dest_dir }}/{{ _pkg_search.files[0].path | basename }}"
+
+# 8 - Detectar presencia previa del agente (nessuscli)
 - name: Comprobar nessuscli existente
   ansible.builtin.stat:
     path: "{{ nessus_cli_path }}"
   register: _nessuscli_stat
 
-# 8 - Definir ruta final del instalador (coincide con el #6)
-- name: Definir _installer_path
-  ansible.builtin.set_fact:
-    _installer_path: "{{ nessus_installer_dest_dir }}/{{ _pkg_search.files[0].path | basename }}"
+# 9 - Parar y deshabilitar servicio si estaba instalado
+- name: Parar y deshabilitar servicio (si existía)
+  ansible.builtin.shell: |
+    set -e
+    if command -v systemctl >/dev/null 2>&1; then
+      systemctl stop nessusagent 2>/dev/null || true
+      systemctl disable nessusagent 2>/dev/null || true
+      systemctl reset-failed nessusagent 2>/dev/null || true
+    else
+      service nessusagent stop 2>/dev/null || true
+    fi
+  args: { executable: /bin/bash }
+  when: _nessuscli_stat.stat.exists | bool
+  changed_when: false
+  failed_when: false
 
-# 9 - Instalar en RHEL/Oracle/Fedora/Amazon (sin repos)
-- name: Instalar en RHEL/Oracle/Fedora/Amazon
+# 10 - Desinstalar paquete en RHEL/Oracle/Fedora/Amazon (si estaba)
+- name: Quitar paquete nessus-agent (rpm-based)
+  ansible.builtin.shell: |
+    set -e
+    if command -v dnf >/dev/null 2>&1; then
+      dnf -y remove nessus-agent || true
+    elif command -v yum >/dev/null 2>&1; then
+      yum -y remove nessus-agent || true
+    else
+      rpm -e nessus-agent || true
+    fi
+  args: { executable: /bin/bash }
+  when: (_nessuscli_stat.stat.exists | bool) and ((ansible_os_family in ['RedHat','OracleLinux','Fedora']) or (ansible_distribution in ['Amazon','Amazon Linux']))
+  changed_when: false
+  failed_when: false
+
+# 11 - Desinstalar paquete en SUSE (si estaba)
+- name: Quitar paquete nessus-agent (SUSE)
+  ansible.builtin.shell: |
+    set -e
+    zypper -n rm -y nessus-agent || true
+  args: { executable: /bin/bash }
+  when: (_nessuscli_stat.stat.exists | bool) and (ansible_os_family == 'Suse')
+  changed_when: false
+  failed_when: false
+
+# 12 - Desinstalar paquete en Debian/Ubuntu (si estaba)
+- name: Quitar paquete nessus-agent (deb-based)
+  ansible.builtin.shell: |
+    set -e
+    if command -v apt-get >/dev/null 2>&1; then
+      apt-get -y remove nessus-agent || true
+      apt-get -y autoremove || true
+    else
+      dpkg -r nessus-agent || true
+    fi
+  args: { executable: /bin/bash }
+  when: (_nessuscli_stat.stat.exists | bool) and (ansible_os_family in ['Debian','Ubuntu'])
+  changed_when: false
+  failed_when: false
+
+# 13 - Limpiar restos del agente (solo si estaba)
+- name: Borrar restos del agente (si existía)
+  ansible.builtin.shell: |
+    set -e
+    rm -rf /opt/nessus_agent /etc/nessus /var/nessus /var/log/tenable \
+           /etc/systemd/system/nessusagent.service /etc/init.d/nessusagent 2>/dev/null || true
+    if command -v systemctl >/dev/null 2>&1; then
+      systemctl daemon-reload || true
+    fi
+  args: { executable: /bin/bash }
+  when: _nessuscli_stat.stat.exists | bool
+  changed_when: false
+  failed_when: false
+
+# 14 - Instalar en RHEL/Oracle/Fedora/Amazon (sin repos)
+- name: Instalar (rpm-based)
   ansible.builtin.shell: |
     set -e
     if command -v dnf >/dev/null 2>&1; then
@@ -68,25 +145,21 @@
     elif command -v yum >/dev/null 2>&1; then
       yum -y localinstall "{{ _installer_path }}" --disablerepo="*"
     else
-      rpm -ivh "{{ _installer_path }}"
+      rpm -Uvh --force "{{ _installer_path }}"
     fi
   args: { executable: /bin/bash }
-  when:
-    - not _nessuscli_stat.stat.exists
-    - (ansible_os_family in ['RedHat','OracleLinux','Fedora']) or (ansible_distribution in ['Amazon','Amazon Linux'])
+  when: (ansible_os_family in ['RedHat','OracleLinux','Fedora']) or (ansible_distribution in ['Amazon','Amazon Linux'])
 
-# 10 - Instalar en SUSE
-- name: Instalar en SUSE
+# 15 - Instalar en SUSE
+- name: Instalar (SUSE)
   ansible.builtin.shell: |
     set -e
     zypper -n --no-gpg-checks install "{{ _installer_path }}"
   args: { executable: /bin/bash }
-  when:
-    - not _nessuscli_stat.stat.exists
-    - ansible_os_family == 'Suse'
+  when: ansible_os_family == 'Suse'
 
-# 11 - Instalar en Debian/Ubuntu
-- name: Instalar en Debian/Ubuntu
+# 16 - Instalar en Debian/Ubuntu
+- name: Instalar (deb-based)
   ansible.builtin.shell: |
     set -e
     dpkg -i "{{ _installer_path }}" || true
@@ -94,27 +167,23 @@
       apt-get -y -o Acquire::Retries=0 -o Acquire::http::Timeout=1 -f install || true
     fi
   args: { executable: /bin/bash }
-  when:
-    - not _nessuscli_stat.stat.exists
-    - ansible_os_family in ['Debian','Ubuntu']
+  when: ansible_os_family in ['Debian','Ubuntu']
 
-
-
-# 12# Habilitar y arrancar servicio
+# 17# Habilitar y arrancar servicio
 - name: Habilitar y arrancar servicio
   ansible.builtin.service:
     name: nessusagent
     enabled: true
     state: started
 
-# 13# Estado pre-link
+# 18# Estado pre-link
 - name: Estado del agente (pre-link)
   ansible.builtin.command: "{{ nessus_cli_path }} agent status"
   register: _agent_status_pre
   changed_when: false
   failed_when: false
 
-# 14# Vincular (opcional)
+# 19# Vincular (opcional)
 - name: Vincular agente (opcional)
   ansible.builtin.command: >
     {{ nessus_cli_path }} agent link
@@ -127,7 +196,7 @@
   failed_when: false
   when: nessus_try_link | bool and ('Linked to' not in _agent_status_pre.stdout)
 
-# 15# Servicio activo
+# 20# Servicio activo
 - name: Verificar servicio activo
   ansible.builtin.shell: |
     if command -v systemctl >/dev/null 2>&1; then
@@ -138,14 +207,14 @@
   register: _svc_active
   changed_when: false
 
-# 16# Estado post-link
+# 21# Estado post-link
 - name: Estado del agente (post-link)
   ansible.builtin.command: "{{ nessus_cli_path }} agent status"
   register: _agent_status_post
   changed_when: false
   failed_when: false
 
-# 17# Fact por host
+# 22# Fact por host
 - name: Construir resultado por host
   ansible.builtin.set_fact:
     nessus_result:
@@ -163,21 +232,32 @@
       error: "{{ _link_result.stderr | default('') }}"
       timestamp: "{{ ansible_date_time.iso8601 }}"
 
-# 18# Consolidar lista global (run_once)
+# 23# Consolidar lista global (run_once)
 - name: Agregar a lista global
   ansible.builtin.set_fact:
     _nessus_all: "{{ (_nessus_all | default([])) + [hostvars[item].nessus_result] }}"
   loop: "{{ ansible_play_hosts }}"
   run_once: true
 
-# 19# Guardar JSON
+# 24# Crear directorio de salida en el controlador
+- name: Crear directorio de salida en el controlador
+  ansible.builtin.file:
+    path: "{{ nessus_output_dir }}"
+    state: directory
+    mode: "0755"
+  run_once: true
+  delegate_to: localhost
+
+# 25# Guardar JSON
 - name: Guardar JSON consolidado
   ansible.builtin.copy:
     content: "{{ _nessus_all | to_nice_json }}"
     dest: "{{ nessus_output_dir }}/nessus_results.json"
+    mode: "0644"
   run_once: true
+  delegate_to: localhost
 
-# 20# Generar Excel
+# 26# Generar Excel (controlador)
 - name: Generar Excel (controlador)
   ansible.builtin.command: >
     python3 {{ playbook_dir | realpath }}/nessus_excel_report.py
