@@ -76,8 +76,12 @@
     else
       service nessusagent stop 2>/dev/null || true
     fi
-  args: { executable: /bin/bash }
-  when: _nessuscli_stat.stat.exists | bool
+  args:
+    executable: /bin/bash
+  when:
+    - _nessuscli_stat is defined
+    - _nessuscli_stat.stat is defined
+    - _nessuscli_stat.stat.exists | default(false) | bool
   changed_when: false
   failed_when: false
 
@@ -92,8 +96,15 @@
     else
       rpm -e nessus-agent || true
     fi
-  args: { executable: /bin/bash }
-  when: (_nessuscli_stat.stat.exists | bool) and ((ansible_os_family in ['RedHat','OracleLinux','Fedora']) or (ansible_distribution in ['Amazon','Amazon Linux']))
+  args:
+    executable: /bin/bash
+  when:
+    - _nessuscli_stat is defined
+    - _nessuscli_stat.stat is defined
+    - _nessuscli_stat.stat.exists | default(false) | bool
+    - >
+      (ansible_os_family in ['RedHat','OracleLinux','Fedora']) or
+      (ansible_distribution in ['Amazon','Amazon Linux'])
   changed_when: false
   failed_when: false
 
@@ -102,8 +113,13 @@
   ansible.builtin.shell: |
     set -e
     zypper -n rm -y nessus-agent || true
-  args: { executable: /bin/bash }
-  when: (_nessuscli_stat.stat.exists | bool) and (ansible_os_family == 'Suse')
+  args:
+    executable: /bin/bash
+  when:
+    - _nessuscli_stat is defined
+    - _nessuscli_stat.stat is defined
+    - _nessuscli_stat.stat.exists | default(false) | bool
+    - ansible_os_family == 'Suse'
   changed_when: false
   failed_when: false
 
@@ -117,8 +133,13 @@
     else
       dpkg -r nessus-agent || true
     fi
-  args: { executable: /bin/bash }
-  when: (_nessuscli_stat.stat.exists | bool) and (ansible_os_family in ['Debian','Ubuntu'])
+  args:
+    executable: /bin/bash
+  when:
+    - _nessuscli_stat is defined
+    - _nessuscli_stat.stat is defined
+    - _nessuscli_stat.stat.exists | default(false) | bool
+    - ansible_os_family in ['Debian','Ubuntu']
   changed_when: false
   failed_when: false
 
@@ -131,7 +152,8 @@
     if command -v systemctl >/dev/null 2>&1; then
       systemctl daemon-reload || true
     fi
-  args: { executable: /bin/bash }
+  args:
+    executable: /bin/bash
   when: _nessuscli_stat.stat.exists | bool
   changed_when: false
   failed_when: false
@@ -147,7 +169,8 @@
     else
       rpm -Uvh --force "{{ _installer_path }}"
     fi
-  args: { executable: /bin/bash }
+  args:
+    executable: /bin/bash
   when: (ansible_os_family in ['RedHat','OracleLinux','Fedora']) or (ansible_distribution in ['Amazon','Amazon Linux'])
 
 # 15 - Instalar en SUSE
@@ -155,7 +178,8 @@
   ansible.builtin.shell: |
     set -e
     zypper -n --no-gpg-checks install "{{ _installer_path }}"
-  args: { executable: /bin/bash }
+  args:
+    executable: /bin/bash
   when: ansible_os_family == 'Suse'
 
 # 16 - Instalar en Debian/Ubuntu
@@ -166,7 +190,8 @@
     if command -v apt-get >/dev/null 2>&1; then
       apt-get -y -o Acquire::Retries=0 -o Acquire::http::Timeout=1 -f install || true
     fi
-  args: { executable: /bin/bash }
+  args:
+    executable: /bin/bash
   when: ansible_os_family in ['Debian','Ubuntu']
 
 # 17# Habilitar y arrancar servicio
@@ -265,3 +290,4 @@
     {{ nessus_output_dir }}/nessus_agent_reporte.xlsx
   run_once: true
   delegate_to: localhost
+  changed_when: myoutput.rc != 0
