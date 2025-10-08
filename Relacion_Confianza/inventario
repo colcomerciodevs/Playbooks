@@ -1,7 +1,0 @@
-
-## inventario Relacion de Confianza #####
-
-
-[inventario]
-alk2m-n0 ansible_host=10.132.0.4
-fomon-n0 ansible_host=10.31.3.7
