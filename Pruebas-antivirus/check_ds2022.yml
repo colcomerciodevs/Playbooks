@@ -15,9 +15,9 @@
 # ============================================================
 
 - name: 1️⃣ Verificar necesidad de enrolar DS2022 en Trend Micro
-  hosts: all
+  hosts: INFRA2_0
   gather_facts: true
-  serial: 1
+  become: true
 
   vars:
     # Directorio de salida para resultados
@@ -25,7 +25,7 @@
     # Archivo JSON final
     output_json: "{{ output_dir }}/ds2022_result.json"
     # Ruta del script Python
-    python_script: "./json_to_excel_ds2022.py"
+    python_script: "./Scripts/json_to_excel_ds2022.py"
 
   pre_tasks:
     # 1.1 📁 Crear el directorio de salida si no existe
@@ -82,48 +82,55 @@
         requiere_enrolar: >-
           {{
             (
-              (journal_ds.stdout is search('missing key', ignorecase=True)) or
-              (journal_ds.stdout is search('DS20', ignorecase=True)) or
-              (journal_ds.stdout is search('DS2022', ignorecase=True)) or
-              (journal_ds.stdout is search('tmhook failed', ignorecase=True)) or
-              (dmesg_ds.stdout is search('missing key', ignorecase=True)) or
-              (dmesg_ds.stdout is search('DS20', ignorecase=True)) or
-              (dmesg_ds.stdout is search('DS2022', ignorecase=True)) or
-              (dmesg_ds.stdout is search('tmhook.*failed', ignorecase=True))
+              ((journal_ds.stdout | default('')) is search('missing key', ignorecase=True)) or
+              ((journal_ds.stdout | default('')) is search('\\bDS2022\\b', ignorecase=True)) or
+              ((journal_ds.stdout | default('')) is search('\\bDS20(_v2)?\\b', ignorecase=True)) or
+              ((journal_ds.stdout | default('')) is search('tmhook\\s+.*failed', ignorecase=True)) or
+
+              ((dmesg_ds.stdout | default(''))   is search('missing key', ignorecase=True)) or
+              ((dmesg_ds.stdout | default(''))   is search('\\bDS2022\\b', ignorecase=True)) or
+              ((dmesg_ds.stdout | default(''))   is search('\\bDS20(_v2)?\\b', ignorecase=True)) or
+              ((dmesg_ds.stdout | default(''))   is search('tmhook\\s+.*failed', ignorecase=True))
             )
             and
-            (tmhook_mod.stdout | length == 0)
+            ((tmhook_mod.stdout | default('') | trim | length) == 0)
           }}
 
-    # 7️⃣ Reunir datos del host
-    - name: 7️⃣ Reunir datos del host
+
+    # 7️⃣.1 Calcular IP del inventario
+    - name: 7️⃣.1 Calcular IP del inventario
       set_fact:
         ip_inventario: "{{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address | default('')) }}"
+
+    # 7️⃣.2 Armar objeto JSON del host
+    - name: 7️⃣.2 Armar objeto JSON del host
+      set_fact:
         json_item:
           IP_INVENTARIO: "{{ ip_inventario }}"
-          HOSTANME_INVENTARIO: "{{ inventory_hostname }}"
+          HOSTNAME_INVENTARIO: "{{ inventory_hostname }}"   # <-- corregido (antes: HOSTANME_INVENTARIO)
           HOSTNAME: "{{ ansible_hostname }}"
           REQUIERE_ENROLAR_DS2022: "{{ 'SI' if requiere_enrolar else 'NO' }}"
+
 
     # 8️⃣ Guardar resultado temporal del host
     - name: 8️⃣ Guardar resultado temporal del host
       delegate_to: localhost
-      vars:
-        tmp_json: "/tmp/{{ inventory_hostname }}_tmp.json"
       copy:
         content: "{{ json_item | to_nice_json }}"
-        dest: "{{ tmp_json }}"
+        dest: "/tmp/{{ inventory_hostname }}_ds2022.tmp.json"
 
     # 9️⃣ Insertar resultado en JSON global
     - name: 9️⃣ Insertar resultado en JSON global
       delegate_to: localhost
+      throttle: 1
       shell: |
         tmp="{{ output_json }}.tmp"
-        jq '. += [input]' {{ output_json }} "{{ tmp_json }}" > "$tmp" && mv "$tmp" "{{ output_json }}"
-        rm -f "{{ tmp_json }}"
+        jq '. += [input]' "{{ output_json }}" "/tmp/{{ inventory_hostname }}_ds2022.tmp.json" > "$tmp" && mv "$tmp" "{{ output_json }}"
+        rm -f "/tmp/{{ inventory_hostname }}_ds2022.tmp.json"
       args:
         executable: /bin/bash
       changed_when: false
+
 
   post_tasks:
     # 🔟 Mostrar ruta final del JSON generado
@@ -133,7 +140,6 @@
       debug:
         msg: "✅ Archivo JSON generado en: {{ output_json }}"
 
-    # 1️⃣1️⃣ Ejecutar el script Python para convertir el JSON a Excel
     - name: 1️⃣1️⃣ Ejecutar script Python para generar Excel
       delegate_to: localhost
       run_once: true
@@ -144,6 +150,4 @@
         else
           echo "⚠️  No se encontró el script {{ python_script }}"
         fi
-      args:
-        chdir: "{{ output_dir }}"
       changed_when: false
