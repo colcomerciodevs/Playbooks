@@ -1,0 +1,149 @@
+---
+# ============================================================
+# PLAYBOOK: check_ds2022_json.yml
+# AUTOR: Infraestructura Linux
+# OBJETIVO:
+#   - Verificar si los agentes de Trend Micro requieren enrolar
+#     el certificado DS2022.der (u otras variantes como DS20_v2.der)
+#   - Generar un archivo JSON con los resultados
+#   - Ejecutar automáticamente un script Python para convertirlo a Excel
+# SALIDAS:
+#   ./Salidas_Playbooks/ds2022_result.json
+#   ./Salidas_Playbooks/ds2022_result.xlsx
+# USO:
+#   ansible-playbook -i inventario_ansible.ini check_ds2022_json.yml
+# ============================================================
+
+- name: 1️⃣ Verificar necesidad de enrolar DS2022 en Trend Micro
+  hosts: all
+  gather_facts: true
+  serial: 1
+
+  vars:
+    # Directorio de salida para resultados
+    output_dir: "./Salidas_Playbooks"
+    # Archivo JSON final
+    output_json: "{{ output_dir }}/ds2022_result.json"
+    # Ruta del script Python
+    python_script: "./json_to_excel_ds2022.py"
+
+  pre_tasks:
+    # 1.1 📁 Crear el directorio de salida si no existe
+    - name: 1.1 📁 Crear directorio de salida si no existe
+      delegate_to: localhost
+      file:
+        path: "{{ output_dir }}"
+        state: directory
+        mode: "0755"
+
+    # 1.2 🧾 Inicializar JSON vacío
+    - name: 1.2 🧾 Inicializar JSON vacío si no existe
+      delegate_to: localhost
+      run_once: true
+      ansible.builtin.shell: echo "[]" > {{ output_json }}
+      args:
+        creates: "{{ output_json }}"
+      changed_when: false
+
+  tasks:
+    # 2️⃣ Revisar logs del servicio ds_agent
+    - name: 2️⃣ Revisar logs del servicio ds_agent
+      shell: |
+        journalctl -u ds_agent --no-pager -n 2000 2>/dev/null | \
+        egrep -i "missing key|DS20|DS2022|tmhook failed" || true
+      register: journal_ds
+      changed_when: false
+
+    # 3️⃣ Buscar errores en dmesg
+    - name: 3️⃣ Buscar errores en dmesg
+      shell: |
+        dmesg -T 2>/dev/null | egrep -i "missing key|DS20|DS2022|tmhook|ds_am" || true
+      register: dmesg_ds
+      changed_when: false
+
+    # 4️⃣ Verificar si el módulo tmhook está cargado
+    - name: 4️⃣ Verificar si el módulo tmhook está cargado
+      shell: "lsmod | egrep -w '^tmhook' || true"
+      register: tmhook_mod
+      changed_when: false
+
+    # 5️⃣ Consultar estado del agente con dsa_query (opcional)
+    - name: 5️⃣ Consultar estado del agente con dsa_query (opcional)
+      shell: |
+        if [ -x /opt/ds_agent/dsa_query ]; then
+          /opt/ds_agent/dsa_query --cmd GetAgentStatus -t xml || true
+        fi
+      register: dsa_query_status
+      changed_when: false
+
+    # 6️⃣ Evaluar si el host requiere enrolar DS2022
+    - name: 6️⃣ Evaluar si requiere enrolar DS2022
+      set_fact:
+        requiere_enrolar: >-
+          {{
+            (
+              (journal_ds.stdout is search('missing key', ignorecase=True)) or
+              (journal_ds.stdout is search('DS20', ignorecase=True)) or
+              (journal_ds.stdout is search('DS2022', ignorecase=True)) or
+              (journal_ds.stdout is search('tmhook failed', ignorecase=True)) or
+              (dmesg_ds.stdout is search('missing key', ignorecase=True)) or
+              (dmesg_ds.stdout is search('DS20', ignorecase=True)) or
+              (dmesg_ds.stdout is search('DS2022', ignorecase=True)) or
+              (dmesg_ds.stdout is search('tmhook.*failed', ignorecase=True))
+            )
+            and
+            (tmhook_mod.stdout | length == 0)
+          }}
+
+    # 7️⃣ Reunir datos del host
+    - name: 7️⃣ Reunir datos del host
+      set_fact:
+        ip_inventario: "{{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address | default('')) }}"
+        json_item:
+          IP_INVENTARIO: "{{ ip_inventario }}"
+          HOSTANME_INVENTARIO: "{{ inventory_hostname }}"
+          HOSTNAME: "{{ ansible_hostname }}"
+          REQUIERE_ENROLAR_DS2022: "{{ 'SI' if requiere_enrolar else 'NO' }}"
+
+    # 8️⃣ Guardar resultado temporal del host
+    - name: 8️⃣ Guardar resultado temporal del host
+      delegate_to: localhost
+      vars:
+        tmp_json: "/tmp/{{ inventory_hostname }}_tmp.json"
+      copy:
+        content: "{{ json_item | to_nice_json }}"
+        dest: "{{ tmp_json }}"
+
+    # 9️⃣ Insertar resultado en JSON global
+    - name: 9️⃣ Insertar resultado en JSON global
+      delegate_to: localhost
+      shell: |
+        tmp="{{ output_json }}.tmp"
+        jq '. += [input]' {{ output_json }} "{{ tmp_json }}" > "$tmp" && mv "$tmp" "{{ output_json }}"
+        rm -f "{{ tmp_json }}"
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+  post_tasks:
+    # 🔟 Mostrar ruta final del JSON generado
+    - name: 🔟 Mostrar ruta final del JSON
+      delegate_to: localhost
+      run_once: true
+      debug:
+        msg: "✅ Archivo JSON generado en: {{ output_json }}"
+
+    # 1️⃣1️⃣ Ejecutar el script Python para convertir el JSON a Excel
+    - name: 1️⃣1️⃣ Ejecutar script Python para generar Excel
+      delegate_to: localhost
+      run_once: true
+      shell: |
+        if [ -f "{{ python_script }}" ]; then
+          echo "🚀 Ejecutando script Python..."
+          python3 "{{ python_script }}"
+        else
+          echo "⚠️  No se encontró el script {{ python_script }}"
+        fi
+      args:
+        chdir: "{{ output_dir }}"
+      changed_when: false
