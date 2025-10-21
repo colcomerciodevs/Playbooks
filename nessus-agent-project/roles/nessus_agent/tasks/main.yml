@@ -388,7 +388,19 @@
         }}
       link_status: >-
         {{
-          (_agent_status_post.stdout | regex_search('Link status:\\s*(.*)', '\\1') | default('N/A')) | trim
+          (
+            _agent_status_post.stdout | default('')
+            | regex_findall('Link status:\\s*(.*)')
+            | first
+          )
+          or
+          (
+            _agent_status_post.stdout | default('')
+            | regex_findall('link status:\\s*(.*)')
+            | first
+          )
+          | default('N/A')
+          | trim
         }}
       manager_host: "{{ nessus_manager_host }}"
       manager_port: "{{ nessus_manager_port }}"
