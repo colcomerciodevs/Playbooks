@@ -268,7 +268,6 @@
   ansible.builtin.command: >
     {{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }} agent link
     --key={{ nessus_agent_key }}
-    --groups="{{ nessus_agent_groups }}"
     --host={{ nessus_manager_host }}
     --port={{ nessus_manager_port }}
   register: _link_result
