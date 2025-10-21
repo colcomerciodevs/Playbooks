@@ -262,7 +262,7 @@
   changed_when: false
   failed_when: false
 
-# 30# Vincular agente (opcional)
+# 30# Vincular agente
 - name: 30# Vincular agente (opcional)
   ansible.builtin.command: >
     {{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }} agent link
@@ -292,68 +292,109 @@
   changed_when: false
   failed_when: false
 
-# 32.1# Version del agente vía CLI
+# 32.1# Obtener versión del agente (nessuscli --version)
 - name: 32.1# Obtener versión del agente (nessuscli --version)
   ansible.builtin.command: "{{ nessus_cli_path }} --version"
   register: _cli_ver
   changed_when: false
   failed_when: false
 
-# 32.2# Version del agente vía RPM (fallback)
-- name: 32.2# Obtener versión del agente vía RPM
+# 32.2# Obtener versión del agente desde status (por si --version no sirve)
+- name: 32.2# Obtener estado del agente (post) si faltaba
+  ansible.builtin.command: "{{ nessus_cli_path }} agent status"
+  register: _agent_status_post
+  changed_when: false
+  failed_when: false
+  when: _agent_status_post is not defined
+
+# 32.3# Obtener versión del agente vía RPM (solo EL/OL/Fedora)
+- name: 32.3# Obtener versión del agente vía RPM
   ansible.builtin.command: "rpm -q --qf '%{VERSION}-%{RELEASE}\n' {{ nessus_pkg_name | default('NessusAgent') }}"
   register: _rpm_ver
   changed_when: false
   failed_when: false
   when: ansible_os_family in ['RedHat','OracleLinux','Fedora']
 
-# 33# Construir resultado por host
+# 32.4# Normalizar versión: extraer de --version (regex_findall)
+- name: 32.4# Normalizar version desde --version
+  ansible.builtin.set_fact:
+    _agent_ver_cli: >-
+      {{
+        (_cli_ver.stdout | default('') | regex_findall('([0-9]+(?:\\.[0-9]+)+)') | first)
+        | default('')
+      }}
+
+# 32.5# Normalizar versión desde status (fallback)
+- name: 32.5# Normalizar version desde status
+  ansible.builtin.set_fact:
+    _agent_ver_status: >-
+      {{
+        (_agent_status_post.stdout | default('') | regex_findall('Agent\\s+version:\\s+([0-9A-Za-z._-]+)') | first)
+        | default('')
+      }}
+
+# 32.6# Escoger mejor versión disponible (cli > status > rpm)
+- name: 32.6# Escoger mejor version
+  ansible.builtin.set_fact:
+    _agent_version_final: >-
+      {{
+        _agent_ver_cli if (_agent_ver_cli | length > 0)
+        else (_agent_ver_status if (_agent_ver_status | length > 0)
+        else (_rpm_ver.stdout | default('') | trim))
+      }}
+
+# 32.7# Determinar salida de link (stdout del link o línea "Linked to:" del status)
+- name: 32.7# Determinar link_output
+  ansible.builtin.set_fact:
+    _link_output_final: >-
+      {{
+        (_link_result.stdout | default('') | trim)
+        if (_link_result is defined and (_link_result.stdout | default('') | trim | length > 0))
+        else (
+          (_agent_status_post.stdout | default('') | regex_search('Linked to:\\s*.*'))
+          | default('')
+        )
+      }}
+
+# 32.8# Determinar error de link (stderr si lo hubo)
+- name: 32.8# Determinar error de link
+  ansible.builtin.set_fact:
+    _link_error_final: >-
+      {{
+        (_link_result.stderr | default('') | trim)
+        if (_link_result is defined and (_link_result.stderr | default('') | trim | length > 0))
+        else ''
+      }}
+
+# 33# Construir resultado por host (SEGURO)
 - name: 33# Construir resultado por host
   ansible.builtin.set_fact:
     nessus_result:
       host: "{{ inventory_hostname }}"
       os_family: "{{ ansible_os_family }}"
-      os_name: "{{ ansible_distribution }}"                 # ← nombre real (Oracle Linux, etc.)
+      os_name: "{{ ansible_distribution }}"
       os_version: "{{ ansible_distribution_version | default('') }}"
-      agent_version: >-
-        {{
-          # 1) de nessuscli --version (e.g. "Nessus Agent 11.0.1")
-          (_cli_ver.stdout | default('') | regex_search('([0-9]+(?:\\.[0-9]+)+)'))
-          or
-          # 2) de 'Agent version:' en status
-          ((_agent_status_post.stdout | default('')) | regex_search('Agent\\s+version:\\s+([0-9A-Za-z._-]+)', '\\1'))
-          or
-          # 3) de rpm -q
-          (_rpm_ver.stdout | default('') | trim)
-          or
-          ''
-        }}
+      agent_version: "{{ _agent_version_final | default('') }}"
       installed: "{{ (_svc_active.stdout | default('') | trim) == 'active' }}"
       service_active: "{{ (_svc_active.stdout | default('') | trim) == 'active' }}"
       linked: >-
         {{
-          ('Linked to' in (_agent_status_post.stdout | default('')))
-          or ('Successfully linked' in (_link_result.stdout | default('')))
-          or ('already linked' in (_link_result.stdout | default('')))
+          ('Linked to' in (_agent_status_post.stdout | default(''))) or
+          (_link_result is defined and (
+            'Successfully linked' in (_link_result.stdout | default('')) or
+            'already linked' in (_link_result.stdout | default('')) or
+            'Linked to' in (_link_result.stdout | default(''))
+          ))
+        }}
+      link_status: >-
+        {{
+          (_agent_status_post.stdout | regex_search('Link status:\\s*(.*)', '\\1') | default('N/A')) | trim
         }}
       manager_host: "{{ nessus_manager_host }}"
       manager_port: "{{ nessus_manager_port }}"
       groups: "{{ nessus_agent_groups }}"
-      # Si _link_result no tiene salida, intenta extraer "Linked to ..." del status
-      link_output: >-
-        {{
-          (_link_result.stdout | default('') | trim)
-          if (_link_result is defined) and (_link_result.stdout | default('') | trim | length > 0)
-          else (
-            ((_agent_status_post.stdout | default('')) | regex_search('Linked to:\\s*(.*)', '\\1')) | default('')
-          )
-        }}
-      error: >-
-        {{
-          (_link_result.stderr | default('') | trim)
-          if (_link_result is defined) and (_link_result.stderr | default('') | trim | length > 0)
-          else ''
-        }}
+      link_output: "{{ _link_output_final | default('') }}"
+      error: "{{ _link_error_final | default('') }}"
       timestamp: "{{ ansible_date_time.iso8601 }}"
 
 
