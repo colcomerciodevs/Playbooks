@@ -103,11 +103,14 @@
   failed_when: false
   changed_when: "'Successfully unlinked' in (_unlink_res.stdout | default('')) or (_unlink_res.rc | default(0)) == 0"
 
-# 15# Quitar paquete (rpm/deb/zypper)
-- name: 15# Quitar paquete nessus-agent
+# 15# Quitar paquete Nessus Agent (cubre mayúsculas/minúsculas)
+- name: 15# Quitar paquete Nessus Agent
   ansible.builtin.package:
-    name: nessus-agent
+    name: "{{ item }}"
     state: absent
+  loop:
+    - NessusAgent
+    - nessus-agent
   register: _pkg_removed
   failed_when: false
 
@@ -129,13 +132,11 @@
     - /etc/systemd/system/nessusagent.service.d
   register: _purge_files
   failed_when: false
-  notify: Reload systemd daemon   # ← dispara el handler
-
+  notify: Reload systemd daemon
 
 # 17# Ejecutar handlers pendientes antes de continuar
 - name: 17# Flush handlers
   ansible.builtin.meta: flush_handlers
-
 
 # 18# Reset failed si existía la unit
 - name: 18# Reset failed si existía la unit
@@ -144,84 +145,125 @@
   changed_when: false
   failed_when: false
 
-# 19# Instalar Nessus Agent (EL/OL/Amazon con módulo dnf)
-- name: 19# Instalar Nessus Agent (RedHat/Oracle/Amazon)
-  ansible.builtin.dnf:
-    name: "{{ _installer_path }}"
-    state: present
-    disable_gpg_check: true
-    disable_excludes: all
-  when:
-    - ansible_os_family in ['RedHat','OracleLinux']
-      or ansible_distribution in ['Amazon','Amazon Linux']
-    - not (_nessuscli_stat.stat.exists | default(false))
+# 19# Mostrar _installer_path (debug)
+- name: 19# Debug instalador
+  ansible.builtin.debug:
+    msg: "Usando instalador: {{ _installer_path }}"
 
-#    Si NECESITAS --allowerasing, reemplaza la task anterior por:
-# - name: 19# Instalar Nessus Agent (EL con --allowerasing)
-#   ansible.builtin.shell: |
-#     set -euo pipefail
-#     if command -v dnf >/dev/null 2>&1; then
-#       dnf -y install "{{ _installer_path }}" --disablerepo="*" --allowerasing --setopt=install_weak_deps=False
-#     else
-#       yum -y localinstall "{{ _installer_path }}" --disablerepo="*" --setopt=install_weak_deps=False
-#     fi
-#   args:
-#     executable: /bin/bash
-#     creates: "{{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }}"
-#   register: _install_rpm_shell
-#   changed_when: _install_rpm_shell.rc == 0
-#   failed_when: _install_rpm_shell.rc != 0
-#   when:
-#     - ansible_os_family in ['RedHat','OracleLinux'] or ansible_distribution in ['Amazon','Amazon Linux']
-#     - not (_nessuscli_stat.stat.exists | default(false))
+# 20# Validar que el instalador existe
+- name: 20# Validar ruta del instalador
+  ansible.builtin.stat:
+    path: "{{ _installer_path }}"
+  register: _inst_stat
 
-# 20# Instalar Nessus Agent (SUSE)
-- name: 20# Instalar Nessus Agent (SUSE)
-  community.general.zypper:
-    name: "{{ _installer_path }}"
-    state: present
-    disable_gpg_check: true
-  when:
-    - ansible_os_family == 'Suse'
-    - not (_nessuscli_stat.stat.exists | default(false))
+- name: 20.1# Fallar si el instalador no existe
+  ansible.builtin.fail:
+    msg: "No existe el instalador en {{ _installer_path }}. Revisa el mapping {{ _nessus_pkg_subdir }}."
+  when: not _inst_stat.stat.exists
 
-# 21# Instalar Nessus Agent (Debian/Ubuntu)
-- name: 21# Instalar Nessus Agent (Debian/Ubuntu)
-  ansible.builtin.apt:
-    deb: "{{ _installer_path }}"
-    state: present
-  when:
-    - ansible_os_family in ['Debian','Ubuntu']
-    - not (_nessuscli_stat.stat.exists | default(false))
+# 21# Detectar nombre real del paquete desde el RPM
+- name: 21# Detectar nombre del paquete (rpm -qp)
+  ansible.builtin.command: "rpm -qp --queryformat %{NAME} {{ _installer_path }}"
+  register: _rpm_name
+  changed_when: false
+  failed_when: false
+  when: _installer_path | regex_search('\\.rpm$')
 
-# 22# Habilitar y arrancar servicio
-- name: 22# Habilitar y arrancar servicio
-  ansible.builtin.service:
-    name: nessusagent
+- name: 21.1# Set fact con nombre del paquete
+  ansible.builtin.set_fact:
+    nessus_pkg_name: "{{ (_rpm_name.stdout | trim) if (_rpm_name.stdout | default('') | length > 0) else 'NessusAgent' }}"
+
+# 22# Instalar con CLI según familia (idempotente por creates)
+- name: 22.1# Instalar en EL/OL/Fedora (dnf install RPM)
+  ansible.builtin.shell: "dnf -y install '{{ _installer_path }}'"
+  args:
+    executable: /bin/bash
+    creates: "{{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }}"
+  when: ansible_os_family in ['RedHat','OracleLinux','Fedora']
+
+- name: 22.2# Instalar en EL7/AmazonLinux (yum localinstall)
+  ansible.builtin.shell: "yum -y localinstall '{{ _installer_path }}'"
+  args:
+    executable: /bin/bash
+    creates: "{{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }}"
+  when: ansible_pkg_mgr == 'yum'
+
+- name: 22.3# Instalar en SUSE (zypper install)
+  ansible.builtin.shell: "zypper --non-interactive --no-gpg-checks install '{{ _installer_path }}'"
+  args:
+    executable: /bin/bash
+    creates: "{{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }}"
+  when: ansible_os_family == 'Suse'
+
+- name: 22.4# Instalar en Debian/Ubuntu (dpkg -i)
+  ansible.builtin.shell: "dpkg -i '{{ _installer_path }}'"
+  args:
+    executable: /bin/bash
+    creates: "{{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }}"
+  when: ansible_os_family in ['Debian','Ubuntu']
+
+# 23# Verificar instalación real (rpm/deb)
+- name: 23.1# Verificar instalación con rpm -q
+  ansible.builtin.command: "rpm -q {{ nessus_pkg_name | default('NessusAgent') }}"
+  register: _rpmq_after
+  changed_when: false
+  failed_when: _rpmq_after.rc != 0
+  when: ansible_os_family in ['RedHat','OracleLinux','Fedora']
+
+- name: 23.2# Verificar instalación con dpkg -s
+  ansible.builtin.command: "dpkg -s {{ (nessus_pkg_name | default('nessus-agent')) }}"
+  register: _dpkg_after
+  changed_when: false
+  failed_when: _dpkg_after.rc != 0
+  when: ansible_os_family in ['Debian','Ubuntu']
+
+# 24# Refrescar service_facts tras instalar
+- name: 24# Refrescar service_facts
+  ansible.builtin.service_facts:
+
+# 25# Detectar unit creada (nessusagent vs nessus-agent)
+- name: 25# Calcular unit de Nessus tras instalación
+  ansible.builtin.set_fact:
+    nessus_unit: >-
+      {{
+        'nessusagent' if 'nessusagent.service' in ansible_facts.services
+        else (
+          'nessus-agent' if 'nessus-agent.service' in ansible_facts.services
+          else ''
+        )
+      }}
+
+# 26# Fallo claro si no hay unit
+- name: 26# Validar unit creada
+  ansible.builtin.fail:
+    msg: "Paquete {{ nessus_pkg_name | default('NessusAgent') }} instalado, pero no aparece unit nessusagent/nessus-agent."
+  when: nessus_unit | length == 0
+
+# 27# Habilitar y arrancar servicio detectado
+- name: 27# Habilitar y arrancar servicio
+  ansible.builtin.systemd:
+    name: "{{ nessus_unit }}"
     enabled: true
     state: started
-  register: _svc_start
-  changed_when: _svc_start is changed
 
-# 23# Esperar a que el servicio esté active
-- name: 23# Esperar a que el servicio esté active
-  ansible.builtin.command: systemctl is-active nessusagent
+# 28# Esperar a que esté active
+- name: 28# Esperar a que el servicio esté active
+  ansible.builtin.command: "systemctl is-active {{ nessus_unit }}"
   register: _svc_active_check
   retries: 10
   delay: 3
   until: _svc_active_check.stdout is defined and (_svc_active_check.stdout | trim) == 'active'
   changed_when: false
-  failed_when: false
 
-# 24# Estado del agente (pre-link)
-- name: 24# Estado del agente (pre-link)
+# 29# Estado del agente (pre-link)
+- name: 29# Estado del agente (pre-link)
   ansible.builtin.command: "{{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }} agent status"
   register: _agent_status_pre
   changed_when: false
   failed_when: false
 
-# 25# Vincular agente (opcional)
-- name: 25# Vincular agente (opcional)
+# 30# Vincular agente (opcional)
+- name: 30# Vincular agente (opcional)
   ansible.builtin.command: >
     {{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }} agent link
     --key={{ nessus_agent_key }}
@@ -236,58 +278,94 @@
   failed_when: false
   when: nessus_try_link | bool and ('Linked to' not in (_agent_status_pre.stdout | default('')))
 
-# 26# Servicio activo (verificación final)
-- name: 26# Servicio activo (verificación final)
-  ansible.builtin.command: systemctl is-active nessusagent
+# 31# Servicio activo (verificación final)
+- name: 31# Servicio activo (verificación final)
+  ansible.builtin.command: "systemctl is-active {{ nessus_unit }}"
   register: _svc_active
   changed_when: false
   failed_when: false
 
-# 27# Estado del agente (post-link)
-- name: 27# Estado del agente (post-link)
+# 32# Estado del agente (post-link)
+- name: 32# Estado del agente (post-link)
   ansible.builtin.command: "{{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }} agent status"
   register: _agent_status_post
   changed_when: false
   failed_when: false
 
-# 28# Fact por host (derivado de estado real)
-- name: 28# Construir resultado por host
+# 32.1# Version del agente vía CLI
+- name: 32.1# Obtener versión del agente (nessuscli --version)
+  ansible.builtin.command: "{{ nessus_cli_path }} --version"
+  register: _cli_ver
+  changed_when: false
+  failed_when: false
+
+# 32.2# Version del agente vía RPM (fallback)
+- name: 32.2# Obtener versión del agente vía RPM
+  ansible.builtin.command: "rpm -q --qf '%{VERSION}-%{RELEASE}\n' {{ nessus_pkg_name | default('NessusAgent') }}"
+  register: _rpm_ver
+  changed_when: false
+  failed_when: false
+  when: ansible_os_family in ['RedHat','OracleLinux','Fedora']
+
+# 33# Construir resultado por host
+- name: 33# Construir resultado por host
   ansible.builtin.set_fact:
     nessus_result:
       host: "{{ inventory_hostname }}"
       os_family: "{{ ansible_os_family }}"
+      os_name: "{{ ansible_distribution }}"                 # ← nombre real (Oracle Linux, etc.)
       os_version: "{{ ansible_distribution_version | default('') }}"
       agent_version: >-
         {{
-          (_agent_status_post.stdout | default(''))
-          | regex_findall('Agent\\s+version:\\s+([0-9A-Za-z._-]+)')
-          | first
-          | default('')
+          # 1) de nessuscli --version (e.g. "Nessus Agent 11.0.1")
+          (_cli_ver.stdout | default('') | regex_search('([0-9]+(?:\\.[0-9]+)+)'))
+          or
+          # 2) de 'Agent version:' en status
+          ((_agent_status_post.stdout | default('')) | regex_search('Agent\\s+version:\\s+([0-9A-Za-z._-]+)', '\\1'))
+          or
+          # 3) de rpm -q
+          (_rpm_ver.stdout | default('') | trim)
+          or
+          ''
         }}
-      installed: "{{ (_svc_start is defined) or ((_svc_active.stdout | default('') | trim) == 'active') }}"
+      installed: "{{ (_svc_active.stdout | default('') | trim) == 'active' }}"
       service_active: "{{ (_svc_active.stdout | default('') | trim) == 'active' }}"
       linked: >-
         {{
-          ('Linked to' in (_agent_status_post.stdout | default(''))) or
-          ('Successfully linked' in (_link_result.stdout | default(''))) or
-          ('already linked' in (_link_result.stdout | default('')))
+          ('Linked to' in (_agent_status_post.stdout | default('')))
+          or ('Successfully linked' in (_link_result.stdout | default('')))
+          or ('already linked' in (_link_result.stdout | default('')))
         }}
       manager_host: "{{ nessus_manager_host }}"
       manager_port: "{{ nessus_manager_port }}"
       groups: "{{ nessus_agent_groups }}"
-      link_output: "{{ _link_result.stdout | default('') }}"
-      error: "{{ _link_result.stderr | default('') }}"
+      # Si _link_result no tiene salida, intenta extraer "Linked to ..." del status
+      link_output: >-
+        {{
+          (_link_result.stdout | default('') | trim)
+          if (_link_result is defined) and (_link_result.stdout | default('') | trim | length > 0)
+          else (
+            ((_agent_status_post.stdout | default('')) | regex_search('Linked to:\\s*(.*)', '\\1')) | default('')
+          )
+        }}
+      error: >-
+        {{
+          (_link_result.stderr | default('') | trim)
+          if (_link_result is defined) and (_link_result.stderr | default('') | trim | length > 0)
+          else ''
+        }}
       timestamp: "{{ ansible_date_time.iso8601 }}"
 
-# 29# Consolidar lista global (run_once en controlador)
-- name: 29# Agregar a lista global
+
+# 34# Consolidar lista global (run_once en controlador)
+- name: 34# Agregar a lista global
   ansible.builtin.set_fact:
     _nessus_all: "{{ (_nessus_all | default([])) + [hostvars[item].nessus_result] }}"
   loop: "{{ ansible_play_hosts }}"
   run_once: true
 
-# 30# Crear directorio de salida en el controlador
-- name: 30# Crear directorio de salida en el controlador
+# 35# Crear directorio de salida en el controlador
+- name: 35# Crear directorio de salida en el controlador
   ansible.builtin.file:
     path: "{{ nessus_output_dir }}"
     state: directory
@@ -295,8 +373,8 @@
   run_once: true
   delegate_to: localhost
 
-# 31# Guardar JSON consolidado en el controlador
-- name: 31# Guardar JSON consolidado
+# 36# Guardar JSON consolidado en el controlador
+- name: 36# Guardar JSON consolidado
   ansible.builtin.copy:
     content: "{{ _nessus_all | to_nice_json }}"
     dest: "{{ nessus_output_dir }}/nessus_results.json"
@@ -304,16 +382,16 @@
   run_once: true
   delegate_to: localhost
 
-# 32# (Opcional) Verificar dependencia openpyxl en el controlador
-- name: 32# Verificar openpyxl en el controlador
+# 37# (Opcional) Verificar dependencia openpyxl en el controlador
+- name: 37# Verificar openpyxl en el controlador
   ansible.builtin.command: python3 -c "import openpyxl"
   changed_when: false
   failed_when: false
   run_once: true
   delegate_to: localhost
 
-# 33# Generar Excel (controlador)
-- name: 33# Generar Excel (controlador)
+# 38# Generar Excel (controlador)
+- name: 38# Generar Excel (controlador)
   ansible.builtin.command: >
     python3 scripts/nessus_excel_report.py
     {{ nessus_output_dir }}/nessus_results.json
