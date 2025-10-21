@@ -1,3 +1,4 @@
+---
 # 01# Reunir facts
 - name: 01# Reunir facts
   ansible.builtin.setup:
@@ -93,7 +94,7 @@
 - name: 13# Aviso - no hay servicio Nessus cargado
   ansible.builtin.debug:
     msg: "Nessus Agent no instalado o sin unit registrada; no hay servicio que detener."
-  when: nessus_unit is not defined or nessus_unit | length == 0
+  when: nessus_unit | length == 0
 
 # 14# Desvincular (unlink) si había agente previamente
 - name: 14# Desvincular agente (best effort)
@@ -132,9 +133,9 @@
     - /etc/systemd/system/nessusagent.service.d
   register: _purge_files
   failed_when: false
-  notify: Reload systemd daemon
+  notify: Reload systemd daemon  # usa un handler real
 
-# 17# Ejecutar handlers pendientes antes de continuar
+# 17# Ejecutar handlers (daemon-reload) antes de seguir
 - name: 17# Flush handlers
   ansible.builtin.meta: flush_handlers
 
@@ -173,30 +174,30 @@
   ansible.builtin.set_fact:
     nessus_pkg_name: "{{ (_rpm_name.stdout | trim) if (_rpm_name.stdout | default('') | length > 0) else 'NessusAgent' }}"
 
-# 22# Instalar con CLI según familia (idempotente por creates)
+# 22# Instalar por familia (CLI; idempotente por creates)
 - name: 22.1# Instalar en EL/OL/Fedora (dnf install RPM)
-  ansible.builtin.shell: "dnf -y install '{{ _installer_path }}'"
+  ansible.builtin.shell: "set -o pipefail; dnf -y install '{{ _installer_path }}'"
   args:
     executable: /bin/bash
     creates: "{{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }}"
   when: ansible_os_family in ['RedHat','OracleLinux','Fedora']
 
 - name: 22.2# Instalar en EL7/AmazonLinux (yum localinstall)
-  ansible.builtin.shell: "yum -y localinstall '{{ _installer_path }}'"
+  ansible.builtin.shell: "set -o pipefail; yum -y localinstall '{{ _installer_path }}'"
   args:
     executable: /bin/bash
     creates: "{{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }}"
   when: ansible_pkg_mgr == 'yum'
 
 - name: 22.3# Instalar en SUSE (zypper install)
-  ansible.builtin.shell: "zypper --non-interactive --no-gpg-checks install '{{ _installer_path }}'"
+  ansible.builtin.shell: "set -o pipefail; zypper --non-interactive --no-gpg-checks install '{{ _installer_path }}'"
   args:
     executable: /bin/bash
     creates: "{{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }}"
   when: ansible_os_family == 'Suse'
 
 - name: 22.4# Instalar en Debian/Ubuntu (dpkg -i)
-  ansible.builtin.shell: "dpkg -i '{{ _installer_path }}'"
+  ansible.builtin.shell: "set -o pipefail; dpkg -i '{{ _installer_path }}'"
   args:
     executable: /bin/bash
     creates: "{{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }}"
@@ -262,8 +263,8 @@
   changed_when: false
   failed_when: false
 
-# 30# Vincular agente
-- name: 30# Vincular agente (opcional)
+# 30# Vincular agente si aún no lo está (Linked to: None)
+- name: 30# Vincular agente (si no está)
   ansible.builtin.command: >
     {{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }} agent link
     --key={{ nessus_agent_key }}
@@ -276,7 +277,7 @@
   until: _link_result.stdout is search('Successfully linked|Linked to|already linked')
   changed_when: _link_result.stdout is search('Successfully linked')
   failed_when: false
-  when: nessus_try_link | bool and ('Linked to' not in (_agent_status_pre.stdout | default('')))
+  when: nessus_try_link | bool and (_agent_status_pre.stdout | default('')) is search('Linked to:\\s*None')
 
 # 31# Servicio activo (verificación final)
 - name: 31# Servicio activo (verificación final)
@@ -285,140 +286,120 @@
   changed_when: false
   failed_when: false
 
-# 32# Estado del agente (post-link)
+# 32# Estado del agente (post-link) — salida cruda (stdout+stderr)
 - name: 32# Estado del agente (post-link)
-  ansible.builtin.command: "{{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }} agent status"
-  register: _agent_status_post
+  ansible.builtin.shell: "{{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }} agent status 2>&1"
+  args:
+    executable: /bin/bash
+  register: _status_cmd
+  changed_when: false
+  failed_when: false
+  environment:
+    LC_ALL: C
+
+# 33# Extraer Link status con shell (tolerante a CR/LF)
+- name: 33# Extraer Link status (shell)
+  ansible.builtin.shell: |
+    set -o pipefail
+    {{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }} agent status 2>&1 \
+    | tr -d '\r' \
+    | grep -i '^Link[[:space:]]\+status[[:space:]]*:' -m1 \
+    | sed -E 's/^[Ll]ink[[:space:]]+status[[:space:]]*:[[:space:]]*//'
+  args:
+    executable: /bin/bash
+  register: _ls_cmd
   changed_when: false
   failed_when: false
 
-# 32.1# Obtener versión del agente (nessuscli --version)
-- name: 32.1# Obtener versión del agente (nessuscli --version)
-  ansible.builtin.command: "{{ nessus_cli_path }} --version"
-  register: _cli_ver
+# 34# Extraer Linked to con shell y normalizar
+- name: 34# Extraer Linked to (shell)
+  ansible.builtin.shell: |
+    set -o pipefail
+    {{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }} agent status 2>&1 \
+    | tr -d '\r' \
+    | grep -i '^Linked[[:space:]]\+to[[:space:]]*:' -m1 \
+    | sed -E 's/^[Ll]inked[[:space:]]+to[[:space:]]*:[[:space:]]*//'
+  args:
+    executable: /bin/bash
+  register: _lt_cmd
   changed_when: false
   failed_when: false
 
-# 32.2# Obtener versión del agente desde status (por si --version no sirve)
-- name: 32.2# Obtener estado del agente (post) si faltaba
-  ansible.builtin.command: "{{ nessus_cli_path }} agent status"
-  register: _agent_status_post
-  changed_when: false
-  failed_when: false
-  when: _agent_status_post is not defined
+# 35# Normalizar indicadores (versión y flags)
+- name: 35# Normalizar indicadores
+  ansible.builtin.set_fact:
+    _link_status_final: "{{ (_ls_cmd.stdout | default('') | trim) | default('N/A') }}"
+    _linked_bool: >-
+      {{
+        (
+          (_lt_cmd.stdout | default('') | trim | length > 0)
+          and ((_lt_cmd.stdout | lower | trim) != 'none')
+        )
+        or (
+          _link_result is defined and (
+            'Successfully linked' in (_link_result.stdout | default(''))
+            or 'already linked' in (_link_result.stdout | default(''))
+          )
+        )
+      }}
 
-# 32.3# Obtener versión del agente vía RPM (solo EL/OL/Fedora)
-- name: 32.3# Obtener versión del agente vía RPM
+# 36# Versión del agente (preferencia: rpm -q | cli --version | status)
+- name: 36# Obtener versión del agente (rpm -q)
   ansible.builtin.command: "rpm -q --qf '%{VERSION}-%{RELEASE}\n' {{ nessus_pkg_name | default('NessusAgent') }}"
   register: _rpm_ver
   changed_when: false
   failed_when: false
   when: ansible_os_family in ['RedHat','OracleLinux','Fedora']
 
-# 32.4# Normalizar versión: extraer de --version (regex_findall)
-- name: 32.4# Normalizar version desde --version
-  ansible.builtin.set_fact:
-    _agent_ver_cli: >-
-      {{
-        (_cli_ver.stdout | default('') | regex_findall('([0-9]+(?:\\.[0-9]+)+)') | first)
-        | default('')
-      }}
+- name: 36.1# Obtener versión del agente (--version)
+  ansible.builtin.command: "{{ nessus_cli_path }} --version"
+  register: _cli_ver
+  changed_when: false
+  failed_when: false
 
-# 32.5# Normalizar versión desde status (fallback)
-- name: 32.5# Normalizar version desde status
-  ansible.builtin.set_fact:
-    _agent_ver_status: >-
-      {{
-        (_agent_status_post.stdout | default('') | regex_findall('Agent\\s+version:\\s+([0-9A-Za-z._-]+)') | first)
-        | default('')
-      }}
-
-# 32.6# Escoger mejor versión disponible (cli > status > rpm)
-- name: 32.6# Escoger mejor version
+- name: 36.2# Normalizar version final
   ansible.builtin.set_fact:
     _agent_version_final: >-
       {{
-        _agent_ver_cli if (_agent_ver_cli | length > 0)
-        else (_agent_ver_status if (_agent_ver_status | length > 0)
-        else (_rpm_ver.stdout | default('') | trim))
-      }}
-
-# 32.7# Determinar salida de link (stdout del link o línea "Linked to:" del status)
-- name: 32.7# Determinar link_output
-  ansible.builtin.set_fact:
-    _link_output_final: >-
-      {{
-        (_link_result.stdout | default('') | trim)
-        if (_link_result is defined and (_link_result.stdout | default('') | trim | length > 0))
+        (_rpm_ver.stdout | default('') | trim)
+        if (ansible_os_family in ['RedHat','OracleLinux','Fedora'] and (_rpm_ver.stdout | default('') | trim | length > 0))
         else (
-          (_agent_status_post.stdout | default('') | regex_search('Linked to:\\s*.*'))
-          | default('')
+          (
+            (_cli_ver.stdout | default('') | regex_findall('([0-9]+(?:\\.[0-9]+)+)') | default([]))
+            | first | default('')
+          )
         )
       }}
 
-# 32.8# Determinar error de link (stderr si lo hubo)
-- name: 32.8# Determinar error de link
-  ansible.builtin.set_fact:
-    _link_error_final: >-
-      {{
-        (_link_result.stderr | default('') | trim)
-        if (_link_result is defined and (_link_result.stderr | default('') | trim | length > 0))
-        else ''
-      }}
-
-# 33# Construir resultado por host (SEGURO)
-- name: 33# Construir resultado por host
+# 37# Construir resultado por host (final)
+- name: 37# Construir resultado por host
   ansible.builtin.set_fact:
     nessus_result:
       host: "{{ inventory_hostname }}"
-      os_family: "{{ ansible_os_family }}"
       os_name: "{{ ansible_distribution }}"
+      os_family: "{{ ansible_os_family }}"
       os_version: "{{ ansible_distribution_version | default('') }}"
       agent_version: "{{ _agent_version_final | default('') }}"
       installed: "{{ (_svc_active.stdout | default('') | trim) == 'active' }}"
       service_active: "{{ (_svc_active.stdout | default('') | trim) == 'active' }}"
-      linked: >-
-        {{
-          ('Linked to' in (_agent_status_post.stdout | default(''))) or
-          (_link_result is defined and (
-            'Successfully linked' in (_link_result.stdout | default('')) or
-            'already linked' in (_link_result.stdout | default('')) or
-            'Linked to' in (_link_result.stdout | default(''))
-          ))
-        }}
-      link_status: >-
-        {{
-          (
-            _agent_status_post.stdout | default('')
-            | regex_findall('Link status:\\s*(.*)')
-            | first
-          )
-          or
-          (
-            _agent_status_post.stdout | default('')
-            | regex_findall('link status:\\s*(.*)')
-            | first
-          )
-          | default('N/A')
-          | trim
-        }}
+      linked: "{{ _linked_bool | bool }}"
+      link_status: "{{ _link_status_final }}"
       manager_host: "{{ nessus_manager_host }}"
       manager_port: "{{ nessus_manager_port }}"
       groups: "{{ nessus_agent_groups }}"
-      link_output: "{{ _link_output_final | default('') }}"
-      error: "{{ _link_error_final | default('') }}"
+      link_output: "{{ (_link_result.stdout | default('') | trim) }}"
+      error: "{{ (_link_result.stderr | default('') | trim) }}"
       timestamp: "{{ ansible_date_time.iso8601 }}"
 
-
-# 34# Consolidar lista global (run_once en controlador)
-- name: 34# Agregar a lista global
+# 38# Consolidar lista global (run_once en controlador)
+- name: 38# Agregar a lista global
   ansible.builtin.set_fact:
     _nessus_all: "{{ (_nessus_all | default([])) + [hostvars[item].nessus_result] }}"
   loop: "{{ ansible_play_hosts }}"
   run_once: true
 
-# 35# Crear directorio de salida en el controlador
-- name: 35# Crear directorio de salida en el controlador
+# 39# Crear directorio de salida en el controlador
+- name: 39# Crear directorio de salida en el controlador
   ansible.builtin.file:
     path: "{{ nessus_output_dir }}"
     state: directory
@@ -426,8 +407,8 @@
   run_once: true
   delegate_to: localhost
 
-# 36# Guardar JSON consolidado en el controlador
-- name: 36# Guardar JSON consolidado
+# 40# Guardar JSON consolidado en el controlador
+- name: 40# Guardar JSON consolidado
   ansible.builtin.copy:
     content: "{{ _nessus_all | to_nice_json }}"
     dest: "{{ nessus_output_dir }}/nessus_results.json"
@@ -435,16 +416,8 @@
   run_once: true
   delegate_to: localhost
 
-# 37# (Opcional) Verificar dependencia openpyxl en el controlador
-- name: 37# Verificar openpyxl en el controlador
-  ansible.builtin.command: python3 -c "import openpyxl"
-  changed_when: false
-  failed_when: false
-  run_once: true
-  delegate_to: localhost
-
-# 38# Generar Excel (controlador)
-- name: 38# Generar Excel (controlador)
+# 41# Generar Excel (controlador)
+- name: 41# Generar Excel (controlador)
   ansible.builtin.command: >
     python3 scripts/nessus_excel_report.py
     {{ nessus_output_dir }}/nessus_results.json

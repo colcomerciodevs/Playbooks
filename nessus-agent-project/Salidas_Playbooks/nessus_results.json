@@ -1,0 +1,19 @@
+[
+    {
+        "agent_version": "11.0.1-el9",
+        "error": "",
+        "groups": "corbeta",
+        "host": "ansible_test",
+        "installed": true,
+        "link_output": "[info] [agent] Successfully linked to 10.181.8.192:8834\n[warn] [agent] The agent failed to join the following requested groups: corbeta",
+        "link_status": "connection has not been attempted",
+        "linked": true,
+        "manager_host": "10.181.8.192",
+        "manager_port": 8834,
+        "os_family": "RedHat",
+        "os_name": "OracleLinux",
+        "os_version": "9.5",
+        "service_active": true,
+        "timestamp": "2025-10-21T19:36:07Z"
+    }
+]
