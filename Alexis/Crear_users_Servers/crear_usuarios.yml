@@ -1,0 +1,75 @@
+---
+- name: 0# Crear usuarios por zona
+  hosts: inventario
+  become: yes
+
+  # 0.1# Zona seleccionada (se debe pasar SIEMPRE con -e "zona=...")
+  vars:
+    zona: "{{ zona }}"
+    grupo_base: "soporte"
+    # Recomendado: proteger con ansible-vault
+    default_password_hash: "{{ 'Soporte2025$' | password_hash('sha512') }}"
+
+  pre_tasks:
+    # 1# Validar que exista el archivo de variables de la zona en el controlador
+    - name: 1# Validar que exista el archivo de variables de la zona (en el controlador)
+      ansible.builtin.stat:
+        path: "{{ playbook_dir }}/vars/usuarios_{{ zona }}.yml"
+      register: zona_vars_file
+      delegate_to: localhost
+      run_once: true
+
+    # 1.1# Mostrar resultado del stat para depuración
+    - name: 1.1# Debug resultado del stat
+      ansible.builtin.debug:
+        var: zona_vars_file
+      delegate_to: localhost
+      run_once: true
+
+    # 2# Fallar si el archivo no existe
+    - name: 2# Fallar si no existe el archivo de variables para la zona
+      ansible.builtin.fail:
+        msg: "No existe {{ playbook_dir }}/vars/usuarios_{{ zona }}.yml. Crea el archivo o cambia la zona con -e 'zona=...'."
+      when: not zona_vars_file.stat.exists
+      delegate_to: localhost
+      run_once: true
+
+    # 3# Incluir archivo de variables de la zona
+    - name: 3# Incluir variables de la zona (lista 'usuarios')
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/vars/usuarios_{{ zona }}.yml"
+      delegate_to: localhost
+      run_once: true
+
+  tasks:
+    # 4# Crear grupo base
+    - name: 4# Asegurarse de que el grupo '{{ grupo_base }}' existe
+      ansible.builtin.group:
+        name: "{{ grupo_base }}"
+        state: present
+      tags: [grupo]
+
+    # 5# Crear usuarios según la zona
+    - name: 5# Crear usuarios de {{ zona }} con descripción, home, grupo y shell
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        comment: "{{ item.comment }}"
+        home: "/home/{{ item.name }}"
+        group: "{{ grupo_base }}"
+        create_home: yes
+        shell: /bin/bash
+        password: "{{ default_password_hash }}"
+        update_password: on_create
+      loop: "{{ usuarios }}"
+      loop_control:
+        label: "{{ item.name }}"
+      tags: [usuarios, crear]
+
+    # 6# Forzar cambio de contraseña en primer inicio de sesión
+    - name: 6# Forzar cambio de contraseña al iniciar sesión
+      ansible.builtin.command: "chage -d 0 {{ item.name }}"
+      loop: "{{ usuarios }}"
+      loop_control:
+        label: "{{ item.name }}"
+      changed_when: true
+      tags: [usuarios, password]

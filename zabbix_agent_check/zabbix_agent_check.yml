@@ -70,7 +70,7 @@
     - name: Falla si el sistema operativo no es compatible
       ansible.builtin.fail:
         msg: "Sistema no soportado: {{ ansible_distribution }} {{ ansible_distribution_major_version }}"
-      when: zabbix_repo_url == ''
+      when: zabbix_repo_url | length == 0
 
     # 10) Remover Zabbix Agent 1 en familia RedHat con DNF, sin consultar repos
     - name: Remover zabbix-agent en RHEL/CentOS/Oracle (DNF) sin consultar repos
@@ -178,8 +178,8 @@
         name: zabbix-local
         description: Repositorio local Zabbix Agent2
         baseurl: "{{ zabbix_repo_url }}"
-        enabled: yes
-        gpgcheck: no
+        enabled: true
+        gpgcheck: false
       when: ansible_os_family == "RedHat"
 
     # 19) Crear repo temporal en SLES escribiendo .repo con gpgcheck=0/repo_gpgcheck=0
@@ -208,7 +208,7 @@
     # 21) (Solo SLES) Lockdown de repos: deshabilitar TODOS los repos y habilitar SOLO el local
     - name: SLES | Deshabilitar TODOS los repos
       ansible.builtin.command: zypper mr -d -all
-      register: sles_mr_disable_all 
+      register: sles_mr_disable_all
       changed_when: >
         'Nothing to change' not in (sles_mr_disable_all.stdout | default('')) or
         'Nothing to change' not in (sles_mr_disable_all.stderr | default(''))
@@ -231,7 +231,7 @@
         state: present
         enablerepo: zabbix-local
         disablerepo: "*"
-        disable_gpg_check: yes
+        disable_gpg_check: true
       when:
         - ansible_os_family == "RedHat"
         - reinstall_required
@@ -269,7 +269,7 @@
         state: present
         enablerepo: zabbix-local
         disablerepo: "*"
-        disable_gpg_check: yes
+        disable_gpg_check: true
       loop: "{{ zbx_plugins_list }}"
       when:
         - ansible_os_family == 'RedHat'
@@ -292,7 +292,37 @@
         ('Nothing to do.' not in (zbx_plugins_align_sles.stdout | default(''))) or
         ('Installing:' in ((zbx_plugins_align_sles.stdout | default('')) + (zbx_plugins_align_sles.stderr | default(''))))
 
-    # 29) (Opcional, airbag) Si no se pudo alinear, desactivar plugins conflictivos (MongoDB/PostgreSQL)
+    # 28.2 Calcula si hubo fallos en la alineación (RHEL/SLES)
+    - name: Calcular flag de alineación fallida de plugins
+      ansible.builtin.set_fact:
+        zbx_plugins_align_failed: >-
+          {{
+            (
+              zbx_plugins_align_rhel is defined and (
+                zbx_plugins_align_rhel is failed or
+                (
+                  zbx_plugins_align_rhel.results | default([])
+                  | map(attribute='failed')
+                  | select('equalto', true)
+                  | list | length > 0
+                )
+              )
+            )
+            or
+            (
+              zbx_plugins_align_sles is defined and (
+                zbx_plugins_align_sles is failed or
+                (
+                  zbx_plugins_align_sles.results | default([])
+                  | map(attribute='failed')
+                  | select('equalto', true)
+                  | list | length > 0
+                )
+              )
+            )
+          }}
+
+    # 29) (Opcional, airbag) Si no se pudo alinear, desactivar plugins conflictivos
     - name: Deshabilitar plugins conflictivos por configuración (MongoDB/PostgreSQL) si persisten errores
       ansible.builtin.copy:
         dest: /etc/zabbix/zabbix_agent2.d/plugins.d/disable-db.conf
@@ -302,12 +332,8 @@
           Plugins.PostgreSQL.Enabled=false
       when:
         - zbx_plugins_list | length > 0
-        - >
-          (
-            (zbx_plugins_align_rhel is defined and (zbx_plugins_align_rhel is failed or (zbx_plugins_align_rhel.results | selectattr('failed', 'defined') | selectattr('failed') | list | length > 0)))
-            or
-            (zbx_plugins_align_sles is defined and (zbx_plugins_align_sles is failed))
-          )
+        - zbx_plugins_align_failed
+
 
     # 30) Desplegar el template de configuración del Agent 2 (solo si hubo instalación/reinstalación)
     - name: Configurar /etc/zabbix/zabbix_agent2.conf
@@ -323,7 +349,7 @@
       ansible.builtin.systemd:
         name: zabbix-agent2
         state: started
-        enabled: yes
+        enabled: true
 
     # 32) Limpieza: eliminar repo temporal en familia RedHat
     - name: Eliminar repositorio temporal (RHEL/CentOS/Oracle)
@@ -392,7 +418,6 @@
       vars:
         query: "*[].resultados_zabbix[]"
       run_once: true
-      
 
     # 38) Ejecutar script Python que genera Excel (si lo usas)
     - name: Ejecutar script Python para generar Excel
@@ -401,4 +426,3 @@
         chdir: "{{ playbook_dir }}"
       run_once: true
       changed_when: false
-      

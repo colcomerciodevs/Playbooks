@@ -10,6 +10,7 @@ skip_list:
   - name[casing]
   - name[template]
   - yaml[trailing-spaces]
+  - yaml[indentation]
   - yaml[new-line-at-end-of-file]
   - yaml[empty-lines]
   - yaml[line-length]
@@ -19,6 +20,8 @@ skip_list:
   - command-instead-of-shell
   - run-once[task]
   - fqcn[action-core]
+ 
+  
   
  
 

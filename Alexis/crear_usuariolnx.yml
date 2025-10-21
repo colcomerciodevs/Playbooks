@@ -10,9 +10,9 @@
 
     - name: Crear el usuario  con descripcion, home, grupo y shell por defecto
       user:
-        name: arodriguez 
-        comment: "Alexander C Rodriguez "
-        home: /home/arodriguez
+        name: seti 
+        comment: "Usuario administracion  DBA "
+        home: /home/seti
         group: soporte
         create_home: yes
         shell: /bin/bash
@@ -20,4 +20,4 @@
         update_password: on_create
 
     - name: Forzar cambio de contraseña al iniciar sesion    
-      command: chage -d 0 arodriguez
+      command: chage -d 0 seti

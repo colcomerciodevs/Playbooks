@@ -156,7 +156,7 @@
   ansible.builtin.systemd:
     name: ds_agent
     state: started
-    enabled: yes
+    enabled: true
   failed_when: false
 
 # 14# Habilitar y arrancar tmxbc (sensor)
@@ -164,7 +164,7 @@
   ansible.builtin.systemd:
     name: tmxbc
     state: started
-    enabled: yes
+    enabled: true
   failed_when: false
 
 # 15# Consultar versión/release finales de ds_agent (rpm)

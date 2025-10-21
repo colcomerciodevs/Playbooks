@@ -3,4 +3,7 @@
 
 
 [inventario]
-fomon-n0 ansible_host=10.31.3.7
+#fomon-n0 ansible_host=10.31.3.7
+corbemovil__test ansible_host=10.181.11.10
+corbemovil_ini9803_ ansible_host=10.181.11.11
+newmercad_app_qa ansible_host=10.181.11.111

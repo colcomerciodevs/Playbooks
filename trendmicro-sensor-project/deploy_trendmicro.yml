@@ -1,6 +1,6 @@
 ---
 - name: Despliegue y validación Trend Micro (ServerAgent + Sensor)
-  hosts: reflo-n0
+  hosts: prueba
   serial: 50
   become: true
   gather_facts: true

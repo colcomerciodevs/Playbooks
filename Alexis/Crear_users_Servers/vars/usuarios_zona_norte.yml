@@ -1,0 +1,17 @@
+---
+usuarios:
+  - { name: "rbarrios",     comment: "Rodrigo Cotto Barrios (Geocom)" }
+  - { name: "bromero",  comment: "Braian Emanuel Romero Cabrera (Geocom)" }
+  - { name: "scantero",      comment: "Santiago Cantero (Geocom)" }
+  - { name: "jmedero",       comment: "JoaquíMedero Renard (Geocom)" }
+  - { name: "ggonzalez",      comment: "Guillermo Gonzalez (Geocom)" }
+  - { name: "yfigueroa",   comment: "Yorday Figueroa" }
+  - { name: "gburgos",   comment: "German Burgos" }
+  - { name: "mpuebla",   comment: "Manuel Puebla" }
+  - { name: "ytan",   comment: "Yorjander Tan" }
+  - { name: "llariccia",   comment: "Luciano Lariccia" }
+  - { name: "smu.iz",   comment: "Sebastian Mu.iz" }
+  - { name: "ddalto",   comment: "Damian Dalto" }
+  - { name: "jpereira",   comment: "Javier Pereira" }
+    ---
+

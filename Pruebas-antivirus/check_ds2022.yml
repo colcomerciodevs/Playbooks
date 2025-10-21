@@ -5,8 +5,9 @@
 # OBJETIVO:
 #   - Verificar si los agentes de Trend Micro requieren enrolar
 #     el certificado DS2022.der (u otras variantes como DS20_v2.der)
-#   - Generar un archivo JSON con los resultados
-#   - Ejecutar automáticamente un script Python para convertirlo a Excel
+#   - Reiniciar ds_agent en cada host (stop -> wait -> start)
+#   - Capturar estados de ds_agent y tmxbc (active/enabled)
+#   - Generar un JSON y convertirlo a Excel
 # SALIDAS:
 #   ./Salidas_Playbooks/ds2022_result.json
 #   ./Salidas_Playbooks/ds2022_result.xlsx
@@ -15,7 +16,7 @@
 # ============================================================
 
 - name: 1️⃣ Verificar necesidad de enrolar DS2022 en Trend Micro
-  hosts: INFRA2_0
+  hosts: all
   gather_facts: true
   become: true
 
@@ -36,7 +37,7 @@
         state: directory
         mode: "0755"
 
-    # 1.2 🧾 Inicializar JSON vacío
+    # 1.2 🧾 Inicializar JSON vacío si no existe
     - name: 1.2 🧾 Inicializar JSON vacío si no existe
       delegate_to: localhost
       run_once: true
@@ -46,29 +47,53 @@
       changed_when: false
 
   tasks:
-    # 2️⃣ Revisar logs del servicio ds_agent
-    - name: 2️⃣ Revisar logs del servicio ds_agent
+    # 2️⃣ Reiniciar ds_agent de forma controlada en cada host
+    - name: 2️⃣.1 Detener ds_agent si está activo
+      ansible.builtin.service:
+        name: ds_agent
+        state: stopped
+      register: ds_agent_stop
+      failed_when: false
+
+    - name: 2️⃣.2 Esperar a que termine el proceso ds_agent (máx 30s)
+      ansible.builtin.shell: >
+        timeout 30 bash -c 'while pgrep -x ds_agent >/dev/null; do sleep 1; done'
+      changed_when: false
+
+    - name: 2️⃣.3 Iniciar ds_agent
+      ansible.builtin.service:
+        name: ds_agent
+        state: started
+      register: ds_agent_start
+      failed_when: false
+
+    - name: 2️⃣.4 Marcar si el reinicio fue exitoso
+      set_fact:
+        ds_agent_restart_ok: "{{ (ds_agent_start.failed | default(false) | bool) == false }}"
+
+    # 3️⃣ Revisar logs del servicio ds_agent
+    - name: 3️⃣ Revisar logs del servicio ds_agent
       shell: |
         journalctl -u ds_agent --no-pager -n 2000 2>/dev/null | \
         egrep -i "missing key|DS20|DS2022|tmhook failed" || true
       register: journal_ds
       changed_when: false
 
-    # 3️⃣ Buscar errores en dmesg
-    - name: 3️⃣ Buscar errores en dmesg
+    # 4️⃣ Buscar errores en dmesg
+    - name: 4️⃣ Buscar errores en dmesg
       shell: |
         dmesg -T 2>/dev/null | egrep -i "missing key|DS20|DS2022|tmhook|ds_am" || true
       register: dmesg_ds
       changed_when: false
 
-    # 4️⃣ Verificar si el módulo tmhook está cargado
-    - name: 4️⃣ Verificar si el módulo tmhook está cargado
+    # 5️⃣ Verificar si el módulo tmhook está cargado
+    - name: 5️⃣ Verificar si el módulo tmhook está cargado
       shell: "lsmod | egrep -w '^tmhook' || true"
       register: tmhook_mod
       changed_when: false
 
-    # 5️⃣ Consultar estado del agente con dsa_query (opcional)
-    - name: 5️⃣ Consultar estado del agente con dsa_query (opcional)
+    # 6️⃣ Consultar estado del agente con dsa_query (opcional)
+    - name: 6️⃣ Consultar estado del agente con dsa_query (opcional)
       shell: |
         if [ -x /opt/ds_agent/dsa_query ]; then
           /opt/ds_agent/dsa_query --cmd GetAgentStatus -t xml || true
@@ -76,8 +101,8 @@
       register: dsa_query_status
       changed_when: false
 
-    # 6️⃣ Evaluar si el host requiere enrolar DS2022
-    - name: 6️⃣ Evaluar si requiere enrolar DS2022
+    # 7️⃣ Evaluar si el host requiere enrolar DS2022
+    - name: 7️⃣ Evaluar si requiere enrolar DS2022
       set_fact:
         requiere_enrolar: >-
           {{
@@ -96,31 +121,55 @@
             ((tmhook_mod.stdout | default('') | trim | length) == 0)
           }}
 
-
-    # 7️⃣.1 Calcular IP del inventario
-    - name: 7️⃣.1 Calcular IP del inventario
+    # 8️⃣ Obtener IP del inventario
+    - name: 8️⃣ Calcular IP del inventario
       set_fact:
         ip_inventario: "{{ hostvars[inventory_hostname].ansible_host | default(ansible_default_ipv4.address | default('')) }}"
 
-    # 7️⃣.2 Armar objeto JSON del host
-    - name: 7️⃣.2 Armar objeto JSON del host
+    # 9️⃣ Consultar estados finales de servicios (active/enabled)
+    - name: 9️⃣.1 Estado ds_agent (is-active)
+      shell: "systemctl is-active ds_agent || true"
+      register: ds_agent_active
+      changed_when: false
+
+    - name: 9️⃣.2 Habilitación ds_agent (is-enabled)
+      shell: "systemctl is-enabled ds_agent || true"
+      register: ds_agent_enabled
+      changed_when: false
+
+    - name: 9️⃣.3 Estado tmxbc (is-active)
+      shell: "systemctl is-active tmxbc || true"
+      register: tmxbc_active
+      changed_when: false
+
+    - name: 9️⃣.4 Habilitación tmxbc (is-enabled)
+      shell: "systemctl is-enabled tmxbc || true"
+      register: tmxbc_enabled
+      changed_when: false
+
+    # 🔟 Armar objeto JSON del host
+    - name: 🔟 Armar objeto JSON del host
       set_fact:
         json_item:
           IP_INVENTARIO: "{{ ip_inventario }}"
-          HOSTNAME_INVENTARIO: "{{ inventory_hostname }}"   # <-- corregido (antes: HOSTANME_INVENTARIO)
+          HOSTNAME_INVENTARIO: "{{ inventory_hostname }}"
           HOSTNAME: "{{ ansible_hostname }}"
           REQUIERE_ENROLAR_DS2022: "{{ 'SI' if requiere_enrolar else 'NO' }}"
+          DS_AGENT_REINICIO_OK: "{{ 'SI' if ds_agent_restart_ok else 'NO' }}"
+          DS_AGENT_ACTIVE: "{{ (ds_agent_active.stdout | default('') | trim) }}"
+          DS_AGENT_ENABLED: "{{ (ds_agent_enabled.stdout | default('') | trim) }}"
+          TMXBC_ACTIVE: "{{ (tmxbc_active.stdout | default('') | trim) }}"
+          TMXBC_ENABLED: "{{ (tmxbc_enabled.stdout | default('') | trim) }}"
 
-
-    # 8️⃣ Guardar resultado temporal del host
-    - name: 8️⃣ Guardar resultado temporal del host
+    # 1️⃣1️⃣ Guardar resultado temporal del host
+    - name: 1️⃣1️⃣ Guardar resultado temporal del host
       delegate_to: localhost
       copy:
         content: "{{ json_item | to_nice_json }}"
         dest: "/tmp/{{ inventory_hostname }}_ds2022.tmp.json"
 
-    # 9️⃣ Insertar resultado en JSON global
-    - name: 9️⃣ Insertar resultado en JSON global
+    # 1️⃣2️⃣ Insertar resultado en JSON global
+    - name: 1️⃣2️⃣ Insertar resultado en JSON global
       delegate_to: localhost
       throttle: 1
       shell: |
@@ -131,16 +180,16 @@
         executable: /bin/bash
       changed_when: false
 
-
   post_tasks:
-    # 🔟 Mostrar ruta final del JSON generado
-    - name: 🔟 Mostrar ruta final del JSON
+    # 1️⃣3️⃣ Mostrar ruta final del JSON generado
+    - name: 1️⃣3️⃣ Mostrar ruta final del JSON
       delegate_to: localhost
       run_once: true
       debug:
         msg: "✅ Archivo JSON generado en: {{ output_json }}"
 
-    - name: 1️⃣1️⃣ Ejecutar script Python para generar Excel
+    # 1️⃣4️⃣ Ejecutar script Python para generar Excel
+    - name: 1️⃣4️⃣ Ejecutar script Python para generar Excel
       delegate_to: localhost
       run_once: true
       shell: |
