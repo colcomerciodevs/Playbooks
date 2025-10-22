@@ -1,7 +1,7 @@
 ---
 - name: Validar uso y versión de rsync
   hosts: INFRA2_0
-  gather_facts: yes
+  gather_facts: true
   become: true
 
   vars:
@@ -11,7 +11,11 @@
   tasks:
 
     - name: Crear directorio de salida local si no existe
-      local_action: file path="{{ salida_dir }}" state=directory mode=0755
+      ansible.builtin.file:
+        path: "{{ salida_dir }}"
+        state: directory
+        mode: '0755'
+      delegate_to: localhost
       run_once: true
 
     - name: Verificar versión de rsync
@@ -42,14 +46,14 @@
 
 
     - name: Guardar información en archivo JSON local
-      local_action:
-        module: copy
+      ansible.builtin.copy:
         content: |
           {
             "{{ inventory_hostname }}": {
               "ip": "{{ ansible_default_ipv4.address | default('Desconocida') }}",
               "rsync_output": "{{ rsync_output.stdout | replace('\"', '') }}",
-              "uso_detectado_en": [{% set usos = [] %}
+              "uso_detectado_en": [
+                {% set usos = [] %}
                 {% if cron_uso.stdout != '' %}{% set _ = usos.append('\"cron\"') %}{% endif %}
                 {% if proc_uso.stdout != '' %}{% set _ = usos.append('\"proceso\"') %}{% endif %}
                 {% if script_uso.stdout != '' %}{% set _ = usos.append('\"scripts\"') %}{% endif %}
@@ -61,17 +65,17 @@
             }
           }
         dest: "{{ salida_dir }}/rsync_host_{{ inventory_hostname }}.json"
+        mode: '0644'
       delegate_to: localhost
-
+      run_once: false
 
 
 - name: Unificar resultados y generar Excel
   hosts: localhost
-  gather_facts: no
+  gather_facts: false
   vars:
     salida_dir: "{{ playbook_dir }}/Salidas_Playbooks"
     resultado_json: "{{ salida_dir }}/rsync_versions.json"
-  
 
   tasks:
 
@@ -80,15 +84,16 @@
         jq -s 'reduce .[] as $item ({}; . * $item)' {{ salida_dir }}/rsync_host_*.json > {{ resultado_json }}
       args:
         executable: /bin/bash
+      changed_when: false
 
     - name: Ejecutar script Python para generar Excel
       command: python3 exportar_rsync_versionesV2.py
       args:
         chdir: "{{ playbook_dir }}"
+      changed_when: false
 
     - name: Eliminar archivos JSON temporales
       ansible.builtin.file:
         path: "{{ item }}"
         state: absent
       loop: "{{ lookup('fileglob', salida_dir + '/rsync_host_*.json', wantlist=True) }}"
-

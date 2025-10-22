@@ -43,3 +43,4 @@
       ansible.builtin.command: python3 exportar_rsync_versiones.py
       args:
         chdir: "{{ playbook_dir }}"
+      changed_when: false

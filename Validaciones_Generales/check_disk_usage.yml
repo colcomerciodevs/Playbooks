@@ -1,8 +1,8 @@
 ---
 - name: Verificar uso de disco y exportar a CSV
   hosts: SERVERS_LINUX
-  gather_facts: yes            # para obtener la IP
-  become: yes
+  gather_facts: true            # para obtener la IP
+  become: true
   vars:
     threshold: 70             # % umbral
     output_file: "{{ playbook_dir }}/Salidas_Playbooks/disk_usage_report.csv"
@@ -44,7 +44,7 @@
         path: "{{ output_file }}"
         line: "{{ inventory_hostname }},{{ host_ip }},{{ item.split(',')[0] }},{{ item.split(',')[1] }},{{ item.split(',')[2] }}"
         insertafter: EOF
-        create: yes
+        create: true
       loop: "{{ high_usage_csv.stdout_lines }}"
       when: high_usage_csv.stdout | length > 0
       delegate_to: localhost

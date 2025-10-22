@@ -102,4 +102,4 @@
         cmd: "python3 {{ playbook_dir }}/scripts/convert_json_to_excel.py"
       delegate_to: localhost
       run_once: true
-
+      changed_when: false

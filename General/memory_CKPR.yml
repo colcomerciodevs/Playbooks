@@ -5,8 +5,9 @@
   tasks:
     - name: Ejecutar comando para obtener información de Slab
       ansible.builtin.shell: |
-        dcli -g dbs_group -l root cat /proc/meminfo | grep Slab
+        dcli -g dbs_group -l root "cat /proc/meminfo | grep Slab"
       register: slab_info
+      changed_when: false
 
     - name: Guardar la información de Slab en un archivo
       ansible.builtin.copy:
