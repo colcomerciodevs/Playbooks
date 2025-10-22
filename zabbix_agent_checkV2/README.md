@@ -6,7 +6,7 @@ Se separaron **variables** y **handlers** dentro del rol, y **los scripts** qued
 ## Estructura
 ```
 zabbix_agent_check/
-├── site.yml
+├── zabbix_agent_check..yml
 ├── README.md
 ├── Salidas_Playbooks/            # Carpeta de salidas (JSON/XLSX)
 │   └── .gitkeep
@@ -41,9 +41,9 @@ Asegura que tu inventario define el grupo/host `prueba2` apuntando a tus SLES/RH
 ## Ejecución
 Desde la carpeta `zabbix_agent_check`:
 ```bash
-ansible-playbook -i <tu_inventario> site.yml
+ansible-playbook zabbix_agent_check.yml
 ```
-- El primer play ejecuta el rol `zabbix_agent2` en los hosts `prueba2`.
+- El primer play ejecuta el rol `zabbix_agent2` en los hosts del inventario.
 - El segundo play (localhost) crea la carpeta `Salidas_Playbooks/`, exporta `zabbix_auditoria.json`
   y luego ejecuta el script `scripts/generar_excel_zabbix.py` para generar un Excel dentro de esa misma carpeta.
 
@@ -52,5 +52,5 @@ ansible-playbook -i <tu_inventario> site.yml
   revisa que el repositorio local incluya exactamente `zabbix-agent2 = {{ zabbix_desired_version }}` para tu distro
   (`sles15/`, `sles12/`, `el8/`, etc.).
 - El rol hace *lockdown* de repos en SLES para forzar instalación solo desde el repo local.
-- El template `templates/zabbix_agent2.conf.template` es un ejemplo; ajústalo a tu entorno y credenciales.
+- El template `templates/zabbix_agent2.conf.template` es la configuracion de zabbix
 ```
