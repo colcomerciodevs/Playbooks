@@ -1,0 +1,6 @@
+---
+# H1) Reinicio del servicio si cambia el template de configuración
+- name: Reiniciar zabbix-agent2
+  ansible.builtin.systemd:
+    name: zabbix-agent2
+    state: restarted

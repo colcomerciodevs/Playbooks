@@ -1,0 +1,34 @@
+---
+# Ejecuta instalación/verificación del Zabbix Agent 2 y genera reporte local
+- name: Verificar e instalar Zabbix Agent 2 desde repositorio HTTP local
+  hosts: prueba2
+  become: true
+  roles:
+    - role: zabbix_agent2
+
+# ==== PLAY 2: Compilar reporte y generar Excel ====
+- name: Compilar reporte y generar Excel
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Asegurar directorio de salidas
+      ansible.builtin.file:
+        path: "{{ playbook_dir }}/Salidas_Playbooks"
+        state: directory
+        mode: '0755'
+
+    - name: Exportar JSON con resultados
+      ansible.builtin.copy:
+        content: "{{ hostvars | json_query(query) | to_nice_json }}"
+        dest: "{{ playbook_dir }}/Salidas_Playbooks/zabbix_auditoria.json"
+        mode: '0644'
+      vars:
+        query: "*[].resultados_zabbix[]"
+      run_once: true
+
+    - name: Ejecutar script Python para generar Excel
+      ansible.builtin.command: python3 scripts/generar_excel_zabbix.py
+      args:
+        chdir: "{{ playbook_dir }}"
+      run_once: true
+      changed_when: false

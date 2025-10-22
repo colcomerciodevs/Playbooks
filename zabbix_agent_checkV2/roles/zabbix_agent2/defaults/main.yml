@@ -1,0 +1,6 @@
+---
+# Versión exacta deseada para Agent 2
+zabbix_desired_version: "7.0.18"
+
+# URL base del repo HTTP local
+repo_base_url: "http://10.181.8.209:8080/repos/localrepo/zabbix2"

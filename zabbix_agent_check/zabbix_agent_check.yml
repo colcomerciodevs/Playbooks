@@ -182,7 +182,7 @@
         gpgcheck: false
       when: ansible_os_family == "RedHat"
 
-    # 19) Crear repo temporal en SLES escribiendo .repo con gpgcheck=0/repo_gpgcheck=0
+    # 19) Crear repo Zabbix local en SLES (sin firmas)
     - name: Crear repo Zabbix local en SLES (sin firmas)
       ansible.builtin.copy:
         dest: /etc/zypp/repos.d/zabbix-local.repo
@@ -191,40 +191,44 @@
           [zabbix-local]
           name=Repositorio local Zabbix Agent2
           enabled=1
-          autorefresh=1
+          autorefresh=0
           baseurl={{ zabbix_repo_url }}
           type=rpm-md
           gpgcheck=0
           repo_gpgcheck=0
       when: ansible_os_family == "Suse"
 
-    # 20) Refrescar solo el repo SLES recién creado (no interactivo)
-    - name: Refrescar repo SLES (no interactivo)
-      ansible.builtin.command: zypper --non-interactive refresh zabbix-local
-      register: sles_refresh_repo
-      changed_when: "'Nothing to do.' not in (sles_refresh_repo.stdout + sles_refresh_repo.stderr)"
+    # 20) SLES | Deshabilitar TODOS los services (SCC) -> HAZLO ANTES que el manejo de repos
+    - name: SLES | Deshabilitar TODOS los services (SCC)
+      ansible.builtin.command: zypper ms -d -all
+      register: sles_ms_disable_all
+      changed_when: "'successfully disabled' in ((sles_ms_disable_all.stdout | default('')) + (sles_ms_disable_all.stderr | default('')))"
       when: ansible_os_family == "Suse"
 
-    # 21) (Solo SLES) Lockdown de repos: deshabilitar TODOS los repos y habilitar SOLO el local
+    # 21) SLES | Deshabilitar TODOS los repos (esto apagará también zabbix-local)
     - name: SLES | Deshabilitar TODOS los repos
       ansible.builtin.command: zypper mr -d -all
       register: sles_mr_disable_all
-      changed_when: >
-        'Nothing to change' not in (sles_mr_disable_all.stdout | default('')) or
-        'Nothing to change' not in (sles_mr_disable_all.stderr | default(''))
+      changed_when: "'successfully disabled' in ((sles_mr_disable_all.stdout | default('')) + (sles_mr_disable_all.stderr | default('')))"
       when: ansible_os_family == "Suse"
 
-    # 22) (Solo SLES) Re-habilitar SOLO el repo local para que toda instalación venga de allí
+    # 22) SLES | Re-habilitar SOLO el repo local (hacerlo DESPUÉS del ms -d -all)
     - name: SLES | Re-habilitar SOLO zabbix-local
       ansible.builtin.command: zypper mr -e zabbix-local
       register: sles_mr_enable_local
-      changed_when: >
-        'is already enabled' not in (sles_mr_enable_local.stdout | default('')) and
-        'enabled' in ((sles_mr_enable_local.stdout | default('')) + (sles_mr_enable_local.stderr | default('')))
+      changed_when: "'successfully enabled' in ((sles_mr_enable_local.stdout | default('')) + (sles_mr_enable_local.stderr | default('')))"
       failed_when: false
       when: ansible_os_family == "Suse"
 
-    # 23) Instalar Agent 2 versión exacta en familia RedHat (RHEL/CentOS/Oracle) solo desde repo local
+    # 23) (Opcional) Refresh del repo local ya habilitado
+    - name: Refrescar repo SLES (solo zabbix-local)
+      ansible.builtin.command: zypper --non-interactive refresh zabbix-local
+      register: sles_refresh_repo
+      changed_when: "'refreshed' in ((sles_refresh_repo.stdout | default('')) + (sles_refresh_repo.stderr | default('')))"
+      when: ansible_os_family == "Suse"
+
+
+    # 24) Instalar Agent 2 versión exacta en familia RedHat (RHEL/CentOS/Oracle) solo desde repo local
     - name: Instalar Zabbix Agent 2 versión exacta (RHEL/CentOS/Oracle)
       ansible.builtin.yum:
         name: "zabbix-agent2-{{ zabbix_desired_version }}*"
@@ -236,11 +240,11 @@
         - ansible_os_family == "RedHat"
         - reinstall_required
 
-    # 24) Instalar Agent 2 versión exacta en SLES, forzando origen repositorio local
+    # 25) Instalar Zabbix Agent 2 versión exacta (SLES) desde repo 'zabbix-local' sin refresh
     - name: Instalar Zabbix Agent 2 versión exacta (SLES) desde repo 'zabbix-local'
       ansible.builtin.command: >
-        zypper --non-interactive --no-gpg-checks
-        install -y -r zabbix-local
+        zypper --non-interactive --no-gpg-checks --no-refresh
+        install -y --from zabbix-local
         zabbix-agent2={{ zabbix_desired_version }}
       register: zypper_install_v2
       changed_when: >
@@ -251,18 +255,19 @@
         - ansible_os_family == "Suse"
         - reinstall_required
 
-    # 25) Detectar plugins de Agent2 instalados (para alinearlos a la misma versión)
+
+    # 26) Detectar plugins de Agent2 instalados (para alinearlos a la misma versión)
     - name: Detectar plugins instalados de zabbix-agent2
       ansible.builtin.shell: "rpm -qa --qf '%{NAME}\n' 'zabbix-agent2-plugin*' || true"
       register: zbx_plugins_installed
       changed_when: false
 
-    # 26) Preparar lista normalizada de plugins (solo nombres que empiezan por zabbix-agent2-plugin)
+    # 27) Preparar lista normalizada de plugins (solo nombres que empiezan por zabbix-agent2-plugin)
     - name: Preparar lista de plugins instalados
       ansible.builtin.set_fact:
         zbx_plugins_list: "{{ (zbx_plugins_installed.stdout_lines | default([])) | select('match', '^zabbix-agent2-plugin') | list }}"
 
-    # 27) (RHEL-like) Alinear versión de plugins = {{ zabbix_desired_version }} desde repo local
+    # 28) (RHEL-like) Alinear versión de plugins = {{ zabbix_desired_version }} desde repo local
     - name: Alinear versión de plugins (RHEL/CentOS/Oracle)
       ansible.builtin.yum:
         name: "{{ item }}-{{ zabbix_desired_version }}*"
@@ -277,7 +282,7 @@
       register: zbx_plugins_align_rhel
       failed_when: false
 
-    # 28) (SLES) Alinear versión de plugins = {{ zabbix_desired_version }} desde repo local
+    # 29) (SLES) Alinear versión de plugins = {{ zabbix_desired_version }} desde repo local
     - name: Alinear versión de plugins (SLES) usando zypper y repo zabbix-local
       ansible.builtin.command: >
         zypper --non-interactive --no-gpg-checks
@@ -292,7 +297,7 @@
         ('Nothing to do.' not in (zbx_plugins_align_sles.stdout | default(''))) or
         ('Installing:' in ((zbx_plugins_align_sles.stdout | default('')) + (zbx_plugins_align_sles.stderr | default(''))))
 
-    # 28.2 Calcula si hubo fallos en la alineación (RHEL/SLES)
+    # 30 Calcula si hubo fallos en la alineación (RHEL/SLES)
     - name: Calcular flag de alineación fallida de plugins
       ansible.builtin.set_fact:
         zbx_plugins_align_failed: >-
@@ -322,7 +327,7 @@
             )
           }}
 
-    # 29) (Opcional, airbag) Si no se pudo alinear, desactivar plugins conflictivos
+    # 31) (Opcional, airbag) Si no se pudo alinear, desactivar plugins conflictivos
     - name: Deshabilitar plugins conflictivos por configuración (MongoDB/PostgreSQL) si persisten errores
       ansible.builtin.copy:
         dest: /etc/zabbix/zabbix_agent2.d/plugins.d/disable-db.conf
@@ -335,7 +340,7 @@
         - zbx_plugins_align_failed
 
 
-    # 30) Desplegar el template de configuración del Agent 2 (solo si hubo instalación/reinstalación)
+    # 32) Desplegar el template de configuración del Agent 2 (solo si hubo instalación/reinstalación)
     - name: Configurar /etc/zabbix/zabbix_agent2.conf
       ansible.builtin.template:
         src: files/zabbix_agent2.conf.template
@@ -344,34 +349,34 @@
       notify: Reiniciar zabbix-agent2
       when: reinstall_required
 
-    # 31) Asegurar que el servicio quede iniciado y habilitado (arranque automático)
+    # 33) Asegurar que el servicio quede iniciado y habilitado (arranque automático)
     - name: Iniciar y habilitar zabbix-agent2
       ansible.builtin.systemd:
         name: zabbix-agent2
         state: started
         enabled: true
 
-    # 32) Limpieza: eliminar repo temporal en familia RedHat
+    # 34) Limpieza: eliminar repo temporal en familia RedHat
     - name: Eliminar repositorio temporal (RHEL/CentOS/Oracle)
       ansible.builtin.yum_repository:
         name: zabbix-local
         state: absent
       when: ansible_os_family == "RedHat"
 
-    # 33) Limpieza: eliminar repo temporal en SLES (borrar archivo .repo)
+    # 35) Limpieza: eliminar repo temporal en SLES (borrar archivo .repo)
     - name: Eliminar repositorio temporal (SLES)
       ansible.builtin.file:
         path: /etc/zypp/repos.d/zabbix-local.repo
         state: absent
       when: ansible_os_family == "Suse"
 
-    # 34) Verificación: estado final del servicio (solo lectura)
+    # 36) Verificación: estado final del servicio (solo lectura)
     - name: Verificar estado final del servicio
       ansible.builtin.shell: systemctl is-active zabbix-agent2
       register: final_status
       changed_when: false
 
-    # 35) Reporte: agregar registro de resultados por host
+    # 37) Reporte: agregar registro de resultados por host
     - name: Guardar resultados por host
       ansible.builtin.set_fact:
         resultados_zabbix: >-

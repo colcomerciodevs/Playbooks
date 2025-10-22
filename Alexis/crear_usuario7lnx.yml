@@ -1,0 +1,38 @@
+---
+- name: Crear usuarios en servidores Linux
+  hosts: FSC_TEMP
+  become: yes
+  vars:
+    users:
+      - name: seti
+        comment: "Usuario administrador DBA (SETI)"
+        home: /home/rbarrios
+        group: soporte
+        shell: /bin/bash
+        password: "Soporte2025$"
+
+  tasks:
+    - name: Asegurarse de que los grupos necesarios existen
+      ansible.builtin.group:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ users | map(attribute='group') | unique | list }}"
+
+    - name: Crear usuarios desde la lista
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        comment: "{{ item.comment | default(omit) }}"
+        home: "{{ item.home | default(omit) }}"
+        group: "{{ item.group | default(omit) }}"
+        create_home: yes
+        shell: "{{ item.shell | default('/bin/bash') }}"
+        password: "{{ item.password | password_hash('sha512') }}"
+        update_password: on_create
+      loop: "{{ users }}"
+      no_log: true
+
+      loop: "{{ users }}"
+
+    - name: Forzar cambio de contrase.a al iniciar sesión
+      ansible.builtin.command: chage -d 0 "{{ item.name }}"
+      loop: "{{ users }}"

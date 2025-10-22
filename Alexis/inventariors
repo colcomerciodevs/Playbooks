@@ -287,4 +287,5 @@ newmercad_app_qa ansible_host=10.181.11.111 ansible_user=tux
 #corbemovil__test ansible_host=10.181.11.10 user=root
 #corbemovil_ini9803_ ansible_host=10.181.11.11 user=root
 #newmercad_app_qa ansible_host=10.181.11.111 user=root
-geopos-oci-qa ansible_host=172.25.19.29 user=root
+#geopos-oci-qa ansible_host=172.25.19.29 user=root
+moviltracknew ansible_host=10.181.11.134 user=tux
