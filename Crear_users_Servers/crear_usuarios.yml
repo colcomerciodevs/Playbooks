@@ -1,7 +1,7 @@
 ---
 - name: 0# Crear usuarios por zona
   hosts: inventario
-  become: yes
+  become: true
 
   # 0.1# Zona seleccionada (se debe pasar SIEMPRE con -e "zona=...")
   vars:
@@ -56,7 +56,7 @@
         comment: "{{ item.comment }}"
         home: "/home/{{ item.name }}"
         group: "{{ grupo_base }}"
-        create_home: yes
+        create_home: true
         shell: /bin/bash
         password: "{{ default_password_hash }}"
         update_password: on_create

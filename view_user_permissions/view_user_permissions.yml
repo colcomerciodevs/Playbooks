@@ -13,6 +13,7 @@
       ansible.builtin.shell: |
         awk -F: '$3 >= 1000 && $1 ~ /^[a-zA-Z0-9._-]+$/ && $1 !~ /^(nobody|nfsnobody|apache|postfix|sshd|zabbix|proactiva)$/' /etc/passwd | cut -d: -f1
       register: usuarios
+      changed_when: false
 
     # Recolectar info de cada usuario: id, sudo, shell, passwd -S
     - name: Recolectar datos de usuarios
@@ -27,6 +28,7 @@
         passwd -S "$usuario" 2>/dev/null || echo "UNKNOWN_STATUS"
       loop: "{{ usuarios.stdout_lines }}"
       register: info_usuarios
+      changed_when: false
 
     # Guardar resultados en variable por host
     - name: Consolidar datos por host
@@ -68,3 +70,4 @@
       ansible.builtin.command: python3 Generar_Excel_Users.py
       args:
         chdir: "{{ playbook_dir }}"
+      changed_when: false

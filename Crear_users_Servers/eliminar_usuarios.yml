@@ -1,7 +1,7 @@
 ---
 - name: 0# Eliminar usuarios por zona
   hosts: inventario
-  become: yes
+  become: true
 
   # 0.1# Zona seleccionada (se debe pasar SIEMPRE con -e "zona=...")
   vars:
@@ -45,7 +45,7 @@
       ansible.builtin.user:
         name: "{{ item.name }}"
         state: absent
-        remove: yes         # elimina también home y mail spool
+        remove: true         # elimina también home y mail spool
       loop: "{{ usuarios }}"
       loop_control:
         label: "{{ item.name }}"

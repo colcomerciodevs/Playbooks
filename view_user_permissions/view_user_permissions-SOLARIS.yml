@@ -13,6 +13,7 @@
       ansible.builtin.shell: |
         awk -F: '$3 >= 100 && $3 < 60000' /etc/passwd | cut -d: -f1
       register: usuarios
+      changed_when: false
 
     # Obtener id, sudo, shell y estado de passwd -s
     - name: Recolectar datos del usuario
@@ -26,6 +27,7 @@
         passwd -s {{ item }} 2>/dev/null || echo "UNKNOWN_STATUS"
       loop: "{{ usuarios.stdout_lines }}"
       register: info_usuarios
+      changed_when: false
 
     # Guardar datos en reporte_usuarios
     - name: Consolidar resultados
@@ -70,3 +72,4 @@
       command: python3 Generar_Excel_Users_Solaris.py
       args:
         chdir: "{{ playbook_dir }}"
+      changed_when: false
