@@ -1,22 +1,29 @@
----
 # ============================================================
-# Playbook: Generar JSON con hostname, IP (inventario) y S.O. completo
-# Objetivo: Construir un JSON con: hostname real, IP tomada del inventario y
-# la versión completa del sistema operativo. El JSON se guardará en
-# Salidas_Playbooks/ en la raíz del proyecto.
+# Playbook: Generar JSON con hostname, IP (inventario), nombre del inventario y versión del S.O.
+# Autor: Infraestructura Linux
+# Descripción:
+#   Recolecta información de cada host gestionado:
+#     - Nombre definido en inventario (inventory_hostname)
+#     - Hostname real del sistema operativo (ansible_hostname)
+#     - Dirección IP tomada del inventario (ansible_host)
+#     - Versión completa del sistema operativo (de ansible_facts)
+#
+#   Luego consolida todo en un archivo JSON y lo convierte a Excel.
 # ============================================================
 
-- name: Generar JSON con hostname, IP (inventario) y S.O. completo
-  hosts: INVENTARIO
+- name: Generar JSON con hostname, IP (inventario), nombre inventario y versión del S.O.
+  hosts: PPU
   gather_facts: true
   vars:
-    # 0# Ruta de salida en la raíz del proyecto
+    # 0# Ruta de salida del JSON y Excel en la raíz del proyecto
     out_dir: "{{ playbook_dir }}/Salidas_Playbooks"
     json_file: "{{ out_dir }}/version_sistemas.json"
 
   pre_tasks:
-    # 1# Crear carpeta de salidas (solo una vez, en localhost)
-    - name: 1# Crear carpeta de salidas en la raíz del proyecto
+    # ============================================================
+    # 1# Crear la carpeta de salida en localhost (una sola vez)
+    # ============================================================
+    - name: 1# Crear carpeta de salidas
       ansible.builtin.file:
         path: "{{ out_dir }}"
         state: directory
@@ -24,58 +31,71 @@
       delegate_to: localhost
       run_once: true
 
-    # 2# Inicializar variable por host para recolectar datos
+    # ============================================================
+    # 2# Inicializar la estructura por host donde guardaremos los datos
+    # ============================================================
     - name: 2# Inicializar estructura de datos por host
       ansible.builtin.set_fact:
         host_entry: {}
 
   tasks:
-    # 3# Leer /etc/os-release del host remoto (S.O. modernos)
-    - name: 3# Leer contenido de /etc/os-release
-      ansible.builtin.slurp:
-        src: /etc/os-release
-      register: os_release_raw
-      ignore_errors: true
-
-    # 4# Separar líneas de os-release (si existe)
-    - name: 4# Separar líneas del archivo os-release
+    # 3.1# Mapa simple de nombres de distribución (normalizados)
+    - name: 3.1# Normalizar nombre de distribución (mapa extendido)
       ansible.builtin.set_fact:
-        os_release_lines: "{{ os_release_raw.content | b64decode | regex_findall('.*') }}"
-      when: os_release_raw is defined and os_release_raw.content is defined
+        distro_map:
+          OracleLinux: "Oracle Linux"
+          Oracle Linux Server: "Oracle Linux"
+          RedHat: "Red Hat Enterprise Linux"
+          Red Hat: "Red Hat Enterprise Linux"
+          CentOS Linux: "CentOS"
+          CentOS: "CentOS"
+          Rocky: "Rocky Linux"
+          AlmaLinux: "AlmaLinux"
+          Ubuntu: "Ubuntu"
+          Debian: "Debian"
+          Amazon: "Amazon Linux"
+          AmazonLinux: "Amazon Linux"
+          SUSE: "SUSE Linux Enterprise Server"
+          openSUSE: "openSUSE Leap"
 
-    # 5# Determinar versión completa del S.O. (PRETTY_NAME o distribución/versión)
-    - name: 5# Determinar versión completa del sistema operativo
+    # 3.2# Determinar versión completa del S.O. (simple, limpia y robusta)
+    - name: 3.2# Determinar versión completa del S.O. (sin 'NA', versión clara)
       ansible.builtin.set_fact:
         os_full_version: >-
-          {{
-            (
-              os_release_lines | default([])
-              | select('match', '^PRETTY_NAME=')
-              | list
-              | first
-              | default('')
-              | regex_replace('^PRETTY_NAME=\"?(.*?)\"?$', '\g<1>')
-            )
-            if (os_release_lines | default([]) | select('match', '^PRETTY_NAME=' ) | list | length) > 0
-            else (ansible_distribution ~ ' ' ~ ansible_distribution_version)
-          }}
+          {% if ansible_lsb is defined and ansible_lsb.description is defined
+                and (ansible_lsb.description | trim | length) > 0 %}
+            {{ ansible_lsb.description }}
+          {% else %}
+            {% set distro = distro_map.get(ansible_distribution, ansible_distribution | default('Desconocido')) %}
+            {% set ver    = (ansible_distribution_version | default('')) %}
+            {% set rel    = (ansible_distribution_release | default('')) %}
+            {% set rel_ok = (rel | lower not in ['na', 'n/a', '', 'none']) %}
+            {{ distro }}{% if ver %} {{ ver }}{% endif %}{% if rel_ok %} ({{ rel }}){% endif %}
+          {% endif %}
 
-    # 6# Tomar IP desde inventario (ansible_host) con fallback a inventory_hostname
-    - name: 6# Definir IP desde inventario (fallback)
+    # ============================================================
+    # 4# Tomar IP desde el inventario con fallback al nombre de host
+    # ============================================================
+    - name: 4# Definir IP desde inventario (fallback)
       ansible.builtin.set_fact:
         ip_from_inventory: "{{ hostvars[inventory_hostname].ansible_host | default(inventory_hostname) }}"
 
-    # 7# Construir entrada final por host
-    - name: 7# Construir diccionario por host (hostname, ip, os_full_version)
+    # ============================================================
+    # 5# Construir entrada final por host con todos los campos requeridos
+    # ============================================================
+    - name: 5# Construir diccionario por host
       ansible.builtin.set_fact:
         host_entry:
-          hostname: "{{ ansible_hostname | default(inventory_hostname) }}"
-          ip: "{{ ip_from_inventory }}"
-          os_full_version: "{{ os_full_version }}"
+          inventory_name: "{{ inventory_hostname }}"          # nombre definido en el inventario
+          hostname: "{{ ansible_hostname | default(inventory_hostname) }}"  # nombre real del sistema operativo
+          ip: "{{ ip_from_inventory }}"                       # IP definida o fallback
+          os_full_version: "{{ os_full_version }}"             # versión completa del S.O.
 
   post_tasks:
-    # 8# Construir lista agregada de todos los hosts (filtrar None)
-    - name: 8# Construir lista agregada de todos los hosts
+    # ============================================================
+    # 6# Consolidar toda la información de los hosts en una lista única
+    # ============================================================
+    - name: 6# Construir lista agregada de todos los hosts
       ansible.builtin.set_fact:
         aggregated_entries: >-
           {{
@@ -87,8 +107,10 @@
           }}
       run_once: true
 
-    # 9# Guardar JSON consolidado (lista pura)
-    - name: 9# Guardar JSON consolidado
+    # ============================================================
+    # 7# Guardar la lista consolidada en un archivo JSON
+    # ============================================================
+    - name: 7# Guardar JSON consolidado
       ansible.builtin.copy:
         dest: "{{ json_file }}"
         content: "{{ aggregated_entries | to_json }}"
@@ -96,8 +118,11 @@
       delegate_to: localhost
       run_once: true
 
-    # 10# Ejecutar script convert_json_to_excel.py
-    - name: 10# Ejecutar script convert_json_to_excel.py
+    # ============================================================
+    # 8# Ejecutar script Python que convierte el JSON a Excel
+    #     - Asegúrate que exista: scripts/convert_json_to_excel.py
+    # ============================================================
+    - name: 8# Ejecutar script convert_json_to_excel.py
       ansible.builtin.command:
         cmd: "python3 {{ playbook_dir }}/scripts/convert_json_to_excel.py"
       delegate_to: localhost
