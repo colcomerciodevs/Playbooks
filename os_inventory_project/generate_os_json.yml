@@ -12,7 +12,7 @@
 # ============================================================
 
 - name: Generar JSON con hostname, IP (inventario), nombre inventario y versión del S.O.
-  hosts: PPU
+  hosts: FSC_Solaris
   gather_facts: true
   vars:
     # 0# Ruta de salida del JSON y Excel en la raíz del proyecto
@@ -58,19 +58,33 @@
           SUSE: "SUSE Linux Enterprise Server"
           openSUSE: "openSUSE Leap"
 
-    # 3.2# Determinar versión completa del S.O. (simple, limpia y robusta)
-    - name: 3.2# Determinar versión completa del S.O. (sin 'NA', versión clara)
+    # 3.2# Determinar versión completa del S.O. (simple, SLES bonito)
+    - name: 3.2# Determinar versión completa del S.O. (sin 'NA' y SLES con SP)
       ansible.builtin.set_fact:
         os_full_version: >-
           {% if ansible_lsb is defined and ansible_lsb.description is defined
                 and (ansible_lsb.description | trim | length) > 0 %}
-            {{ ansible_lsb.description }}
+            {{ ansible_lsb.description | regex_replace('\s+\([^)]+\)$', '') | trim }}
           {% else %}
-            {% set distro = distro_map.get(ansible_distribution, ansible_distribution | default('Desconocido')) %}
-            {% set ver    = (ansible_distribution_version | default('')) %}
-            {% set rel    = (ansible_distribution_release | default('')) %}
-            {% set rel_ok = (rel | lower not in ['na', 'n/a', '', 'none']) %}
-            {{ distro }}{% if ver %} {{ ver }}{% endif %}{% if rel_ok %} ({{ rel }}){% endif %}
+            {% set distro_raw = (ansible_distribution | default('Desconocido')) | trim %}
+            {% set distro     = (distro_map.get(distro_raw, distro_raw)) | trim %}
+            {% set ver        = (ansible_distribution_version | default('')) | trim %}
+            {% set rel        = (ansible_distribution_release | default('')) | trim %}
+            {% set rel_ok     = (rel | lower not in ['na', 'n/a', '', 'none']) %}
+
+            {{ (
+              (
+                'SUSE Linux Enterprise Server '
+                ~ (ver.split('.')[0] if (distro in ['SUSE Linux Enterprise Server', 'SLES'] and ver|length > 0) else '')
+                ~ ((' SP' ~ rel) if (distro in ['SUSE Linux Enterprise Server', 'SLES'] and rel_ok) else '')
+              )
+              if distro in ['SUSE Linux Enterprise Server', 'SLES']
+              else (
+                distro
+                ~ ((' ' ~ ver) if ver else '')
+                ~ ((' (' ~ rel ~ ')') if rel_ok else '')
+              )
+            ) | regex_replace('\s+', ' ') | trim }}
           {% endif %}
 
     # ============================================================
