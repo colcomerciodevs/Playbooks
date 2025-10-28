@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Top 5 procesos por consumo de memoria
+echo -e "PROCESO\t\t%MEM\tMEMORIA"
+ps -eo pmem,rss,comm --sort=-pmem | awk 'NR>1 {printf "%-20s %5s%% %5d MB\n",$3,$1,int($2/1024)}' | head -n 5

@@ -325,7 +325,7 @@
 # 30) Desplegar el template de configuración del Agent 2 (solo si hubo instalación/reinstalación)
 - name: Configurar /etc/zabbix/zabbix_agent2.conf
   ansible.builtin.template:
-    src: zabbix_agent2.conf.template
+    src: zabbix_agent2.conf.j2
     dest: /etc/zabbix/zabbix_agent2.conf
     mode: '0644'
   notify: Reiniciar zabbix-agent2

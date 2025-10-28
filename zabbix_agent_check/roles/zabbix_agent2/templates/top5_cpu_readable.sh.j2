@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Top 5 procesos por consumo de CPU
+echo -e "PROCESO\t\t%CPU\tTIEMPO"
+ps -eo pcpu,time,comm --sort=-pcpu | awk 'NR>1 {printf "%-20s %5s%% %s\n",$3,$1,$2}' | head -n 5
