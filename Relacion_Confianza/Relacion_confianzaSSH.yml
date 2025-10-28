@@ -1,20 +1,30 @@
 ---
+# Play: Tarea para crear relación de confianza SSH con llaves públicas
+# Notas:
+# - Las claves se leen desde archivos locales del controlador (lookup('file', ...)).
+# - Se crea el usuario, se ajustan sudoers y se cargan las claves en authorized_keys.
+# - Cada tarea está numerada y comentada para auditoría.
+
 - name: Tarea para crear relación de confianza SSH con llaves públicas
-  hosts: inventario
+  hosts: prueba
   become: true
 
   vars:
+    # Lista de usuarios y rutas de sus claves .pub en el controlador
     usuarios_ansible:
       - name: iacolcoauto
-        key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC3NzBHvokb0EmAMlqgXVgUMYBlsVVjM6e28dzqhW7ykRfjrjEx4jV+0H3I/yvPqIga/iBUmg3CKBnL9rm1+9vW7f5B2JiCH0tPAJAfLDZ7As7KHuL3TeV5VTGursQ7HgU2fWVfoqP/yzGsrCxdQizTlDd9QpB8skqjXIf9nIV+CZJqEHxy0/EHXdm/KuBZbBd+7u/3ZxVMU7zTfJMC48ZV0Et8eu5pzn3mCJjETpfULrnBIoPoJ8otcX19xfygEcuF8Iv6eqnjoRoIEcDhQZi/ayTKiTz7Ezjf1idpBois+iwGlSkLCQ4j6Y2cRYyI/b+fVPnUq+89i2si4/J2J6yt10I3heO6iWvNFi0hgloyMegZiQtnWUyLfay1s7FYtmw6HV4cvJX215j66ETURpSIeg1vFqqf6BO2DxHampjjVfBrGyKuuWXqMiKiLMrM7CVzkOoX3PevPL+rdOU85M/lhNFAY/ioblqjea1kjVYxn/7iLGvWcjbp60MMVGVAEGkn2WubLbAh2xZYS0RFG1lrpBTtb1Alu6CN4kx2zfFhLbIEAM/2WKOWSZMo7CH0ynUbzlNKkuImDuAdxIZaluHPjQ0YCYs5I4rOKFm1ixes16zk25vQnZQ2kfEI4WhAnI1D1M7GmmHbkRAFlxpReDG9JwykHuQSPzld5pqGJoQH1Q== iacolcoauto@ansibleawx"
+        keys:
+          - "files/ssh-keys/iacolcoauto.pub"
       - name: ansible_test
-        key:
-          - "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBPW8I6d7AAAkfrObeWMBdayjEHP9pzCfR5/KGVNkq4nBCK2Sb7dohPLsateMZfaQD0DCBI7YJDrKUw4P9ZOCXbM= root@Ansible"
-          - "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDNk/rh7Az+JERjDcOtiM4Ee9EwlKfnS8BpKOHD97l95Clm9jQB1XViHdVo+NNDOttf+yzs/wXcnUd4Q/APXUt3M0LLahDtMjJRVwj0bOimdpI5NQeqws2FlRfpbcvd0fC7P2De2QiO+0/AJd03W8MeBVGFpx3kCxpoRiImBHurUVnUAa/QogQjxbnDgCR39w9VLvsxjDqKzQzAkomHKrJVpwOHdv9nHyxzsFphEXpEVa2UuNon3yffGTeuKPZQVgaBBL+aSm3CN6iBGvScTtc8Kfybght7izQWoOJtPTunL7ltgiQAo5smO0LLEmBMRFzGnb/ovrzWRf94BxqjGNnEYZdJbAhIp+qEDqSzjbORAO904jXPInAzsKjL+zCPy2r7cuLfKoQyLtiBIPblPiwsyI1Vq5Z4NwoOMhwmthBGhylt+wKXp0+gLWz44MtfK17in+WsGgUwJ7wsochmxsiia+y5Mr9ub/VRiOgQaHvE7KULc1nqWJDH7J9JJKe+vPc= root@localhost.localdomain"
+        keys:
+          - "files/ssh-keys/ansible_test_ecdsa.pub"
+          - "files/ssh-keys/ansible_test_rsa.pub"
 
   tasks:
 
-    - name: Deshabilitar Defaults requiretty en sudoers si existe
+    # 01) Seguridad sudoers: deshabilitar requiretty si está presente
+    - name: 01) Deshabilitar Defaults requiretty en sudoers si existe
+      # Evita que sudo requiera TTY en ejecuciones no interactivas
       ansible.builtin.lineinfile:
         path: /etc/sudoers
         regexp: '^Defaults\s+requiretty'
@@ -22,13 +32,15 @@
         state: present
         validate: visudo -cf %s
 
-    - name: Incluir tareas para eliminar usuarios
-      include_tasks: ./Tasks/eliminar_usuario.yml
+    # 02) Limpieza opcional: incluir subtareas para eliminar usuarios previos (si aplica)
+    - name: 02) Incluir tareas para eliminar usuarios previos (opcional)
+      ansible.builtin.include_tasks: ./Tasks/eliminar_usuario.yml
       loop: "{{ usuarios_ansible }}"
       loop_control:
         loop_var: item
 
-    - name: Crear usuario sin contraseña (solo para autenticación SSH)
+    # 03) Crear usuarios sin contraseña (uso exclusivo por SSH-keys)
+    - name: 03) Crear usuario sin contraseña (solo autenticación SSH)
       ansible.builtin.user:
         name: "{{ item.name }}"
         shell: /bin/bash
@@ -37,7 +49,8 @@
         update_password: on_create
       loop: "{{ usuarios_ansible }}"
 
-    - name: Obtener grupo primario del usuario
+    # 04) Resolver grupo primario del usuario (para asignación de owner:group)
+    - name: 04) Obtener grupo primario del usuario
       ansible.builtin.command: "id -gn {{ item.name }}"
       register: resultado_grupo
       changed_when: false
@@ -45,14 +58,16 @@
       loop_control:
         label: "{{ item.name }}"
 
-    - name: Establecer grupo primario como variable para cada usuario
+    # 05) Publicar el grupo primario como variable hostvar dedicada por usuario
+    - name: 05) Establecer grupo primario como variable para cada usuario
       ansible.builtin.set_fact:
         "grupo_{{ item.item.name }}": "{{ item.stdout }}"
       loop: "{{ resultado_grupo.results }}"
       loop_control:
         label: "{{ item.item.name }}"
 
-    - name: Asegurar que #includedir /etc/sudoers.d está presente en /etc/sudoers
+    # 06) Asegurar include de /etc/sudoers.d para reglas por-usuario
+    - name: 06) Asegurar que includedir /etc/sudoers.d está presente en /etc/sudoers
       ansible.builtin.lineinfile:
         path: /etc/sudoers
         line: '#includedir /etc/sudoers.d'
@@ -60,7 +75,8 @@
         insertafter: EOF
         validate: visudo -cf %s
 
-    - name: Permitir sudo sin contraseña a los usuarios
+    # 07) Conceder sudo NOPASSWD a cada usuario administrado
+    - name: 07) Permitir sudo sin contraseña a los usuarios
       ansible.builtin.lineinfile:
         path: "/etc/sudoers.d/{{ item.name }}"
         line: "{{ item.name }} ALL=(ALL) NOPASSWD: ALL"
@@ -71,7 +87,8 @@
         validate: visudo -cf %s
       loop: "{{ usuarios_ansible }}"
 
-    - name: Crear directorio .ssh
+    # 08) Crear ~/.ssh con permisos estrictos (0700)
+    - name: 08) Crear directorio .ssh
       ansible.builtin.file:
         path: "/home/{{ item.name }}/.ssh"
         state: directory
@@ -80,34 +97,34 @@
         mode: '0700'
       loop: "{{ usuarios_ansible }}"
 
-    - name: Instalar llave pública en authorized_keys
-      ansible.builtin.copy:
-        dest: "/home/{{ item.name }}/.ssh/authorized_keys"
-        content: |
-          {% if item.key is string %}
-          {{ item.key }}
-          {% else %}
-          {{ item.key | join('\n') }}
-          {% endif %}
-        owner: "{{ item.name }}"
-        group: "{{ hostvars[inventory_hostname]['grupo_' ~ item.name] }}"
-        mode: '0600'
-      loop: "{{ usuarios_ansible }}"
+    # 09) Instalar claves públicas en authorized_keys (desde archivos .pub)
+    - name: 09) Instalar llaves en authorized_keys (desde archivos .pub)
+      # Se usa authorized_key para idempotencia; 'manage_dir: false' porque ya creamos ~/.ssh
+      ansible.posix.authorized_key:
+        user: "{{ item.0.name }}"
+        state: present
+        key: "{{ lookup('file', item.1) }}"
+        manage_dir: false
+        exclusive: false         # Cambia a true si quieres forzar solo estas llaves
+        path: "/home/{{ item.0.name }}/.ssh/authorized_keys"
+      loop: "{{ usuarios_ansible | subelements('keys') }}"
 
-    - name: Eliminar requerimiento de cambio de contraseña y expiraciones
+    # 10) Ajustar políticas de expiración y cambio de password
+    - name: 10) Eliminar requerimiento de cambio de contraseña y expiraciones
       ansible.builtin.command: >
         chage -d -1 -I -1 -m 0 -M 99999 -E -1 {{ item.name }}
       loop: "{{ usuarios_ansible }}"
       changed_when: false
 
-    - name: Verificar si existe el grupo 'ssh_access'
+    # 11) Comprobar si existe el grupo 'ssh_access' (control de acceso por grupo)
+    - name: 11) Verificar si existe el grupo 'ssh_access'
       ansible.builtin.shell: getent group ssh_access
       register: grupo_ssh_access
       failed_when: false
       changed_when: false
 
-
-    - name: Incluir usuarios en el grupo 'ssh_access' si existe
+    # 12) Agregar usuarios al grupo 'ssh_access' solo si existe
+    - name: 12) Incluir usuarios en el grupo 'ssh_access' si existe
       ansible.builtin.user:
         name: "{{ item.name }}"
         groups: ssh_access
