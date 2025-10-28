@@ -6,22 +6,22 @@ Se separaron **variables** y **handlers** dentro del rol, y **los scripts** qued
 ## Estructura
 ```
 zabbix_agent_check/
-├── zabbix_agent_check..yml
+├── zabbix_deploy_agent2.yml
 ├── README.md
 ├── Salidas_Playbooks/            # Carpeta de salidas (JSON/XLSX)
 │   └── .gitkeep
 ├── scripts/                      # Scripts fuera del rol
-│   └── generar_excel_zabbix.py
+│   └── export_deploy_agent2_excel.py
 └── roles/
     └── zabbix_agent2/
         ├── defaults/
-        │   └── main.yml          # Variables (zabbix_desired_version, repo_base_url)
+        │   └── main.yml                       # Variables (zabbix_desired_version, repo_base_url)
         ├── handlers/
-        │   └── main.yml          # Reinicio del servicio
+        │   └── main.yml                        # Reinicio del servicio
         ├── tasks/
-        │   └── main.yml          # Lógica principal (idéntica a tu playbook)
+        │   └── Deploy_ZabbixAgent2.yml         # Lógica principal (idéntica a tu playbook)
         └── templates/
-            └── zabbix_agent2.conf.template
+            └── zabbix_agent2.conf.j2
 ```
 
 ## Variables (roles/zabbix_agent2/defaults/main.yml)
@@ -35,22 +35,16 @@ zabbix_agent_check/
   pip install xlsxwriter
   ```
 
-## Inventario
-Asegura que tu inventario define el grupo/host `prueba2` apuntando a tus SLES/RHEL/etc.
-
-## Ejecución
-Desde la carpeta `zabbix_agent_check`:
-```bash
-ansible-playbook zabbix_agent_check.yml
-```
-- El primer play ejecuta el rol `zabbix_agent2` en los hosts del inventario.
-- El segundo play (localhost) crea la carpeta `Salidas_Playbooks/`, exporta `zabbix_auditoria.json`
-  y luego ejecuta el script `scripts/generar_excel_zabbix.py` para generar un Excel dentro de esa misma carpeta.
-
 ## Notas
+
 - Si el servicio `zabbix-agent2` no existe tras la instalación (por ejemplo porque el paquete no está en el repo),
   revisa que el repositorio local incluya exactamente `zabbix-agent2 = {{ zabbix_desired_version }}` para tu distro
   (`sles15/`, `sles12/`, `el8/`, etc.).
 - El rol hace *lockdown* de repos en SLES para forzar instalación solo desde el repo local.
-- El template `templates/zabbix_agent2.conf.template` es la configuracion de zabbix
-```
+- El template `templates/zabbix_agent2.conf.j2` es la configuracion de zabbix
+
+
+## Autor
+
+Infraestructura Linux – Colombiana de Comercio S.A. (Corbeta / Alkosto)
+Última actualización: Octubre 2025

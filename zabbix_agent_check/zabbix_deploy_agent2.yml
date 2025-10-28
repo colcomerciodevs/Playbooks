@@ -33,7 +33,7 @@
       run_once: true
 
     - name: Ejecutar script Python para generar Excel
-      ansible.builtin.command: python3 scripts/export_install_excel.py
+      ansible.builtin.command: python3 scripts/export_deploy_agent2_excel.py
       args:
         chdir: "{{ playbook_dir }}"
       run_once: true

@@ -1,0 +1,11 @@
+---
+- name: Auditoría Zabbix Agent1/Agent2 (independiente)
+  hosts: prueba2
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Ejecutar para desplegar el monitor de procesos de CPU y Memoria
+      ansible.builtin.include_role:
+        name: zabbix_agent2
+        tasks_from: deploy_monitor_process.yml

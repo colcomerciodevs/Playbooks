@@ -39,7 +39,7 @@
     group: zabbix
     mode: '0750'
   register: mem_change
-  notify: restart zabbix-agent2
+  notify: Reiniciar zabbix-agent2
 
 - name: 03.1# Copiar script top5_cpu_readable.sh
   ansible.builtin.template:
@@ -49,7 +49,7 @@
     group: zabbix
     mode: '0750'
   register: cpu_change
-  notify: restart zabbix-agent2
+  notify: Reiniciar zabbix-agent2
 
 - name: 03.2# Crear UserParameter config
   ansible.builtin.template:
@@ -59,7 +59,7 @@
     group: zabbix
     mode: '0640'
   register: conf_change
-  notify: restart zabbix-agent2
+  notify: Reiniciar zabbix-agent2
 
 # 04) Aplicar reinicio si hubo cambios
 - name: 04# Sincronizar reinicio
@@ -104,7 +104,7 @@
   ansible.builtin.command:
     argv:
       - python3
-      - scripts/report_top5_excel.py
+      - scripts/report_monitor_process_excel.py
       - Salidas_Playbooks/zbx_monitores_top5.json
       - Salidas_Playbooks/zbx_monitores_top5.xlsx
   register: py_result
