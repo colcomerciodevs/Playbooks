@@ -1,8 +1,0 @@
----
-- name: Despliegue y validación Trend Micro (ServerAgent + Sensor)
-  hosts: prueba
-  serial: 50
-  become: true
-  gather_facts: true
-  roles:
-    - trendmicro

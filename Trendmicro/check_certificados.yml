@@ -1,0 +1,19 @@
+---
+# ============================================================
+# PLAYBOOK: check_ds2022_json.yml
+# AUTOR: Infraestructura Linux
+# OBJETIVO: Importar el rol con la task certificados.yml
+# USO: ansible-playbook -i inventario_ansible.ini check_ds2022_json.yml
+# ============================================================
+
+- name: 1️⃣ Verificar necesidad de enrolar DS2022 en Trend Micro (via rol)
+  hosts: all
+  gather_facts: true
+  become: true
+
+  tasks:
+    - name: Incluir rol ds2022_certificados -> task certificados.yml
+      ansible.builtin.import_role:
+        name: trendmicro
+        tasks_from: certificados.yml
+      tags: [ds2022, certificados]

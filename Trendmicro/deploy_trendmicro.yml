@@ -1,0 +1,14 @@
+---
+- name: Despliegue y validación Trend Micro (ServerAgent + Sensor)
+  hosts: prueba
+  serial: 50
+  become: true
+  gather_facts: true
+  roles:
+    - trendmicro
+
+  tasks:
+    - name: Ejecutar solo la auditoría del rol zabbix_agent2
+      ansible.builtin.include_role:
+        name: trendmicro
+        tasks_from: deploy.yml

@@ -1,0 +1,19 @@
+
+
+
+
+
+
+
+
+##### PLAYBOOK VALIDACION DE CERTIFICADOS #####
+---
+# Directorio de salida para resultados
+output_dir: "./Salidas_Playbooks"
+
+# Archivo JSON final
+output_json: "{{ output_dir }}/ds2022_result.json"
+
+# Ruta del script Python que convierte JSON -> Excel
+# Nota: usa playbook_dir para resolver relativo al playbook
+python_script: "{{ playbook_dir }}/Scripts/json_to_excel_ds2022.py"

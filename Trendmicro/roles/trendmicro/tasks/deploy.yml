@@ -298,6 +298,6 @@
   run_once: true
   changed_when: false
   ansible.builtin.command: >
-    python3 scripts/generate_excel.py
+    python3 scripts/trendmicro_deploy_excel.py
     {{ report_dir_local }}/{{ json_report_filename }}
     {{ report_dir_local }}/{{ excel_report_filename }}
