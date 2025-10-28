@@ -1,34 +1,88 @@
 ---
-# Ejecuta instalación/verificación del Zabbix Agent 2 y genera reporte local
-- name: Verificar e instalar Zabbix Agent 2 desde repositorio HTTP local
-  hosts: prueba2
-  become: true
-  roles:
-    - role: zabbix_agent2
+# =============================================================================
+# audit_zabbix.yml — Playbook independiente de auditoría (solo lectura)
+#
+# Ejecución:
+#   ansible-playbook -i inventario.ini audit_zabbix.yml
+#   ansible-playbook -i inventario.ini audit_zabbix.yml -e "zbx_audit_out_json=Salidas_Playbooks/audit_custom.json"
+#
+# Estructura:
+#   • PLAY 1 → Ejecuta el rol zabbix_agent2 (solo tareas de auditoría)
+#   • PLAY 2 → Consolida resultados, genera JSON y ejecuta Python → Excel
+# =============================================================================
 
-# ==== PLAY 2: Compilar reporte y generar Excel ====
-- name: Compilar reporte y generar Excel
+# ==== PLAY 1: Recolectar facts de auditoría por host ====
+- name: 01) Auditoría Zabbix Agent1/Agent2 (recolección por host)
+  hosts: all
+  become: true
+  gather_facts: true
+
+
+  # ⚠️ Importante: usamos include_role con tasks_from=audit.yml
+  # para NO ejecutar el main.yml (instalación/desinstalación)
+  tasks:
+    - name: Ejecutar solo las tareas de auditoría del rol zabbix_agent2
+      ansible.builtin.include_role:
+        name: zabbix_agent2
+        tasks_from: audit.yml
+
+
+# ==== PLAY 2: Consolidar resultados y generar reporte final ====
+- name: 02) Consolidar auditoría y generar reportes
   hosts: localhost
   gather_facts: false
+  vars:
+    zbx_audit_out_json: "Salidas_Playbooks/audit_zabbix_extended.json"
+    zbx_audit_out_excel: "Salidas_Playbooks/Auditoria_Zabbix_Agentes.xlsx"
+
   tasks:
-    - name: Asegurar directorio de salidas
-      ansible.builtin.file:
-        path: "{{ playbook_dir }}/Salidas_Playbooks"
-        state: directory
-        mode: '0755'
 
-    - name: Exportar JSON con resultados
+    # 12️⃣ Consolidar todas las filas en el controlador
+    - name: 12) Consolidar filas de auditoría desde los hostvars
+      ansible.builtin.set_fact:
+        all_rows: >-
+          {{
+            groups['all']
+            | map('extract', hostvars, '_zbx_audit_row')
+            | select('defined')
+            | list
+          }}
+
+    # 12.1️⃣ Validar que existan filas recolectadas
+    - name: 12.1) Validar que existan filas recolectadas
+      ansible.builtin.assert:
+        that:
+          - all_rows | length > 0
+        fail_msg: "❌ No se recolectaron filas de auditoría."
+        success_msg: "✅ Se recolectaron {{ all_rows | length }} filas."
+
+    # 12.2️⃣ Guardar JSON consolidado
+    - name: 12.2) Guardar archivo JSON consolidado
       ansible.builtin.copy:
-        content: "{{ hostvars | json_query(query) | to_nice_json }}"
-        dest: "{{ playbook_dir }}/Salidas_Playbooks/zabbix_auditoria.json"
-        mode: '0644'
-      vars:
-        query: "*[].resultados_zabbix[]"
-      run_once: true
-
-    - name: Ejecutar script Python para generar Excel
-      ansible.builtin.command: python3 scripts/generar_excel_zabbix.py
-      args:
-        chdir: "{{ playbook_dir }}"
-      run_once: true
+        dest: "{{ zbx_audit_out_json }}"
+        mode: "0644"
+        content: "{{ all_rows | to_nice_json }}"
       changed_when: false
+
+    # 12.3️⃣ Mostrar ruta del JSON generado
+    - name: 12.3) Mostrar ruta del JSON generado
+      ansible.builtin.debug:
+        msg: "📁 Archivo JSON generado: {{ zbx_audit_out_json }}"
+
+    # 13️⃣ Ejecutar el script Python de exportación a Excel
+    - name: 13) Ejecutar script export_audit_excel.py (convertir JSON → Excel)
+      ansible.builtin.command: >
+        python3 scripts/export_audit_excel.py
+        {{ zbx_audit_out_json }}
+        {{ zbx_audit_out_excel }}
+      register: export_excel
+      changed_when: "'Exportado' in export_excel.stdout or '✅' in export_excel.stdout"
+      failed_when: export_excel.rc != 0
+
+    # 14️⃣ Mostrar resultado final del proceso completo
+    - name: 14) Mostrar resumen final de la auditoría
+      ansible.builtin.debug:
+        msg:
+          - "✅ Auditoría completada correctamente"
+          - "📄 JSON: {{ zbx_audit_out_json }}"
+          - "📊 Excel: {{ zbx_audit_out_excel }}"

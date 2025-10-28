@@ -1,0 +1,25 @@
+---
+# =============================================================================
+# audit_zabbix.yml — Playbook independiente de auditoría (solo lectura)
+#
+# Ejecuta únicamente las tareas de auditoría definidas en:
+# roles/zabbix_agent2/tasks/audit.yml
+#
+# Uso:
+#   ansible-playbook -i inventario.ini audit_zabbix.yml
+#   ansible-playbook -i inventario.ini audit_zabbix.yml -e "zbx_audit_out_json=Salidas_Playbooks/audit_custom.json"
+# =============================================================================
+
+- name: Auditoría Zabbix Agent1/Agent2 (independiente)
+  hosts: prueba2
+  become: true
+  gather_facts: true
+
+
+  # ⚠️ Importante: se usa include_role con tasks_from=audit.yml
+  # para NO ejecutar el main.yml de la desinstalacion/instalacion.
+  tasks:
+    - name: Ejecutar solo la auditoría del rol zabbix_agent2
+      ansible.builtin.include_role:
+        name: zabbix_agent2
+        tasks_from: audit.yml

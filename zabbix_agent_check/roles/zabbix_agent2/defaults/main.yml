@@ -4,3 +4,11 @@ zabbix_desired_version: "7.0.18"
 
 # URL base del repo HTTP local
 repo_base_url: "http://10.181.8.209:8080/repos/localrepo/zabbix2"
+
+
+## Incluir Sistema Operativo en la Auditoria
+zbx_audit_include_os_facts: true
+
+# Rutas de salida para auditoria (puedes sobreescribir con -e)
+zbx_audit_out_json: "Salidas_Playbooks/audit_zabbix_extended.json"
+zbx_audit_out_excel: "Salidas_Playbooks/Auditoria_Zabbix_Agentes.xlsx"
