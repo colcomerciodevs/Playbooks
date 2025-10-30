@@ -32,19 +32,64 @@
     creates: "{{ output_json }}"
   changed_when: false
 
-# 2️⃣ Reiniciar ds_agent de forma controlada en cada host
-- name: 2️⃣.1 Detener ds_agent si está activo
+# 2️⃣ Reinicio robusto de ds_agent (stop -> wait -> force-kill si aplica -> start)
+
+# 2️⃣.0 Inicializar bandera de fuerza
+- name: 2️⃣.0 Bandera de kill forzado (inicial)
+  ansible.builtin.set_fact:
+    ds_agent_force_kill: false
+
+# 2️⃣.1 Intentar detener ds_agent vía systemd
+- name: 2️⃣.1 Detener ds_agent si está activo (graceful)
   ansible.builtin.service:
     name: ds_agent
     state: stopped
   register: ds_agent_stop
   failed_when: false
 
-- name: 2️⃣.2 Esperar a que termine el proceso ds_agent (máx 30s)
-  ansible.builtin.shell: >
-    timeout 30 bash -c 'while pgrep -x ds_agent >/dev/null; do sleep 1; done'
+# 2️⃣.2 Esperar a que el PID principal termine (hasta 30s)
+- name: 2️⃣.2 Esperar a que ds_agent termine (máx 30s, no fallar)
+  ansible.builtin.shell: |
+    set -eo pipefail
+    PID="$(systemctl show -p MainPID --value ds_agent 2>/dev/null || echo 0)"
+    # Si no hay PID principal, considerar detenido
+    if [ -z "$PID" ] || [ "$PID" = "0" ]; then exit 0; fi
+    # Espera activa hasta 30s
+    for i in $(seq 1 30); do
+      if ! kill -0 "$PID" 2>/dev/null; then exit 0; fi
+      sleep 1
+    done
+    # Si sigue vivo, devolver 1 (no fatal)
+    exit 1
+  register: wait_graceful
   changed_when: false
+  failed_when: false
 
+# 2️⃣.2b Si sigue vivo, enviar TERM y luego KILL
+- name: 2️⃣.2b Forzar stop de ds_agent (TERM -> KILL) si siguió vivo
+  ansible.builtin.shell: |
+    # Intento de TERM a la unidad completa
+    systemctl kill -s SIGTERM ds_agent || true
+    sleep 3
+    # Si aún hay procesos con ese nombre, SIGKILL
+    if pgrep -x ds_agent >/dev/null; then
+      systemctl kill -s SIGKILL ds_agent || true
+      # Espera corta a que desaparezca
+      for i in $(seq 1 10); do
+        pgrep -x ds_agent >/dev/null || exit 0
+        sleep 1
+      done
+    fi
+    exit 0
+  when: wait_graceful.rc != 0
+  changed_when: true
+
+- name: 2️⃣.2c Marcar que se usó kill forzado (si aplicó)
+  ansible.builtin.set_fact:
+    ds_agent_force_kill: true
+  when: wait_graceful.rc != 0
+
+# 2️⃣.3 Iniciar ds_agent
 - name: 2️⃣.3 Iniciar ds_agent
   ansible.builtin.service:
     name: ds_agent
@@ -52,9 +97,11 @@
   register: ds_agent_start
   failed_when: false
 
+# 2️⃣.4 Marcar si el reinicio fue exitoso
 - name: 2️⃣.4 Marcar si el reinicio fue exitoso
   ansible.builtin.set_fact:
     ds_agent_restart_ok: "{{ (ds_agent_start.failed | default(false) | bool) == false }}"
+
 
 # 3️⃣ Revisar logs del servicio ds_agent
 - name: 3️⃣ Revisar logs del servicio ds_agent
@@ -140,10 +187,12 @@
       HOSTNAME: "{{ ansible_hostname }}"
       REQUIERE_ENROLAR_DS2022: "{{ 'SI' if requiere_enrolar else 'NO' }}"
       DS_AGENT_REINICIO_OK: "{{ 'SI' if ds_agent_restart_ok else 'NO' }}"
+      DS_AGENT_FORCE_KILL: "{{ 'SI' if (ds_agent_force_kill | default(false)) else 'NO' }}"
       DS_AGENT_ACTIVE: "{{ (ds_agent_active.stdout | default('') | trim) }}"
       DS_AGENT_ENABLED: "{{ (ds_agent_enabled.stdout | default('') | trim) }}"
       TMXBC_ACTIVE: "{{ (tmxbc_active.stdout | default('') | trim) }}"
       TMXBC_ENABLED: "{{ (tmxbc_enabled.stdout | default('') | trim) }}"
+
 
 # 1️⃣1️⃣ Guardar resultado temporal del host
 - name: 1️⃣1️⃣ Guardar resultado temporal del host
@@ -171,15 +220,17 @@
   ansible.builtin.debug:
     msg: "✅ Archivo JSON generado en: {{ output_json }}"
 
-# 1️⃣4️⃣ Ejecutar script Python para generar Excel
-- name: 1️⃣4️⃣ Ejecutar script Python para generar Excel
+# 1️⃣4️⃣ Generar Excel final (pasa JSON y XLSX como argumentos)
+- name: 1️⃣4️⃣ Generar Excel final
   delegate_to: localhost
   run_once: true
-  ansible.builtin.shell: |
-    if [ -f "{{ python_script }}" ]; then
-      echo "🚀 Ejecutando script Python..."
+  ansible.builtin.command:
+    cmd: >
       python3 "{{ python_script }}"
-    else
-      echo "⚠️  No se encontró el script {{ python_script }}"
-    fi
-  changed_when: false
+      "{{ output_json }}"
+      "{{ output_dir }}/ds2022_result.xlsx"
+  args:
+    chdir: "{{ playbook_dir }}"
+  register: excel_cmd
+  changed_when: excel_cmd.rc == 0
+

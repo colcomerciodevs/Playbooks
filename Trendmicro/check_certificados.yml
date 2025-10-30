@@ -7,7 +7,7 @@
 # ============================================================
 
 - name: 1️⃣ Verificar necesidad de enrolar DS2022 en Trend Micro (via rol)
-  hosts: all
+  hosts: prueba
   gather_facts: true
   become: true
 

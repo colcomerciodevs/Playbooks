@@ -1,0 +1,107 @@
+---
+- name: Crear usuarios en servidores Linux
+  hosts: FSC_TEMP
+  become: yes
+
+  vars:
+    users:
+      - name: lvguartechea
+        comment: "Luciana Valeria Guartechea Carrera(Geocom) "
+        home: /home/lvguartechea
+        group: soporte
+        shell: /bin/bash
+        password: "Soporte2025$"
+
+      - name: pferraz 
+        comment: "Pablo Ferraz (Geocom)"
+        home: /home/pferraz
+        group: soporte
+        shell: /bin/bash
+        password: "Soporte2025$"
+
+          #  - name: scantero
+          #comment: "Santiago Cantero (Geocom)"
+          #home: /home/scantero
+          #group: soporte
+          #shell: /bin/bash
+          #password: "Soporte2025$"
+
+          # - name: jmedero
+          #comment: "Joaquin Medero Renard (Geocom)"
+          #home: /home/jmedero
+          # group: soporte
+          #shell: /bin/bash
+          #password: "Soporte2025$"
+
+          #- name: ggonzalez
+          #comment: "Gabriel Gonzalez (Geocom)"
+          #home: /home/ggonzalez
+          #group: soporte
+          #shell: /bin/bash
+          #password: "Soporte2025$"
+
+          #- name: yfigueroa
+          #comment: "Yorday Figueroa"
+          #home: /home/yfigueroa
+          #group: soporte
+          #shell: /bin/bash
+          #password: "Soporte2025$"
+
+          #- name: gburgos
+          #comment: "German Burgos"
+          #home: /home/gburgos
+          # group: soporte
+          #shell: /bin/bash
+          #password: "Soporte2025$"
+
+          #- name: mpuebla
+          #comment: "Manuel Puebla"
+          #home: /home/mpuebla
+          #group: soporte
+          #shell: /bin/bash
+          #password: "Soporte2025$"
+
+          #- name: ytan
+          #comment: "Yorjander Tan"
+          #home: /home/ytan
+          #group: soporte
+          #shell: /bin/bash
+          #password: "Soporte2025$"
+
+          #- name: llariccia
+          #comment: "Luciano Lariccia"
+          #home: /home/llariccia
+          #group: soporte
+          #shell: /bin/bash
+          #password: "Soporte2025$"
+
+          #- name: jpereira
+          #comment: "Javier Pereira"
+          #home: /home/jpereira
+          #group: soporte
+          #shell: /bin/bash
+          #password: "Soporte2025$"
+
+  tasks:
+    - name: Asegurarse de que los grupos necesarios existen
+      ansible.builtin.group:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ users | map(attribute='group') | unique | list }}"
+
+    - name: Crear usuarios desde la lista
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        comment: "{{ item.comment | default(omit) }}"
+        home: "{{ item.home | default(omit) }}"
+        group: "{{ item.group | default(omit) }}"
+        create_home: yes
+        shell: "{{ item.shell | default('/bin/bash') }}"
+        password: "{{ item.password | password_hash('sha512') }}"
+        update_password: on_create
+      loop: "{{ users }}"
+      no_log: true
+    - name: Forzar cambio de contrasena al iniciar sesion
+      ansible.builtin.command: chage -d 0 "{{ item.name }}"
+      loop: "{{ users }}"
+

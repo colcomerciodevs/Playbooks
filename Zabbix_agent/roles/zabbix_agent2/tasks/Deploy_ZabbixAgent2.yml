@@ -287,28 +287,29 @@
       {{
         (
           zbx_plugins_align_rhel is defined and (
-            zbx_plugins_align_rhel is failed or
+            (zbx_plugins_align_rhel is failed) or
             (
-              zbx_plugins_align_rhel.results | default([])
-              | map(attribute='failed')
-              | select('equalto', true)
+              zbx_plugins_align_rhel.results | default([]) 
+              | selectattr('rc','defined') 
+              | selectattr('rc','ne', 0) 
               | list | length > 0
             )
           )
-        )
+        ) 
         or
         (
           zbx_plugins_align_sles is defined and (
-            zbx_plugins_align_sles is failed or
+            (zbx_plugins_align_sles is failed) or
             (
-              zbx_plugins_align_sles.results | default([])
-              | map(attribute='failed')
-              | select('equalto', true)
+              zbx_plugins_align_sles.results | default([]) 
+              | selectattr('rc','defined') 
+              | selectattr('rc','ne', 0) 
               | list | length > 0
             )
           )
         )
       }}
+
 
 # 29) (Opcional) Desactivar plugins conflictivos
 - name: Deshabilitar plugins conflictivos por configuración (MongoDB/PostgreSQL) si persisten errores

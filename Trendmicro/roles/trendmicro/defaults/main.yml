@@ -34,4 +34,4 @@ output_json: "{{ output_dir }}/ds2022_result.json"
 
 # Ruta del script Python que convierte JSON -> Excel
 # Nota: usa playbook_dir para resolver relativo al playbook
-python_script: "{{ playbook_dir }}/Scripts/check_certificados_excel.py"
+python_script: "{{ playbook_dir }}/scripts/check_certificados_excel.py"
