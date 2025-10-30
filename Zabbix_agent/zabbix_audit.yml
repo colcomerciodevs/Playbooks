@@ -11,7 +11,7 @@
 # =============================================================================
 
 - name: Auditoría Zabbix Agent1/Agent2 (independiente)
-  hosts: PPU-GEOPOS
+  hosts: PEOPLE
   become: true
   gather_facts: true
 
