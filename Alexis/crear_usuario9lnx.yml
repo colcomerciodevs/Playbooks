@@ -5,19 +5,34 @@
 
   vars:
     users:
-      - name: lvguartechea
-        comment: "Luciana Valeria Guartechea Carrera(Geocom) "
-        home: /home/lvguartechea
+      #- name: rcotto
+      #  comment: "Rodrigo Cotto Barrios (Geocom)"
+      #  home: /home/rcotto
+      #  group: soporte
+      #  shell: /bin/bash
+      #  password: "Soporte2025$"
+      #
+      #- name: bgugliotta  
+      #  comment: "Belen Gugliotta"
+      #  home: /home/bgugliotta
+      #  group: soporte
+      #  shell: /bin/bash
+      #  password: "Soporte2025$"
+      # 
+      #- name: ddalto
+      #  comment: "Damian Dalto"
+      #  home: /home/ddalto
+      #  group: soporte
+      #  shell: /bin/bash
+      #  password: "Soporte2025$"
+      #
+      - name: smuniz
+        comment: "Sebastian Muniz"
+        home: /home/smuniz
         group: soporte
         shell: /bin/bash
         password: "Soporte2025$"
 
-      - name: pferraz 
-        comment: "Pablo Ferraz (Geocom)"
-        home: /home/pferraz
-        group: soporte
-        shell: /bin/bash
-        password: "Soporte2025$"
 
           #  - name: scantero
           #comment: "Santiago Cantero (Geocom)"
