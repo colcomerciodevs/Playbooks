@@ -233,4 +233,3 @@
     chdir: "{{ playbook_dir }}"
   register: excel_cmd
   changed_when: excel_cmd.rc == 0
-
