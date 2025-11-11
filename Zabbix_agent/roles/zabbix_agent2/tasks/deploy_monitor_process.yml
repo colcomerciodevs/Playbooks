@@ -13,15 +13,6 @@
   ansible.builtin.meta: end_host
   when: not zbx_agent2_exists.stat.exists
 
-# 02) Crear rutas necesarias
-- name: 02# Crear carpeta de scripts
-  ansible.builtin.file:
-    path: /usr/local/bin
-    state: directory
-    owner: root
-    group: zabbix
-    mode: '0750'
-
 - name: 02.1# Crear carpeta de configuración
   ansible.builtin.file:
     path: /etc/zabbix/zabbix_agent2.d
