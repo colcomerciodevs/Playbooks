@@ -118,6 +118,11 @@
   ansible.builtin.set_fact:
     nessus_result:
       host: "{{ inventory_hostname }}"
+      ip_address: >-
+        {{
+          hostvars[inventory_hostname].ansible_host
+            | default(inventory_hostname)
+        }}
       os_name: "{{ ansible_distribution }}"
       os_family: "{{ ansible_os_family }}"
       os_version: "{{ ansible_distribution_version | default('') }}"

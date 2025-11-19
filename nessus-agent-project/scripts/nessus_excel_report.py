@@ -58,6 +58,7 @@ ws.title = "Reporte Nessus Agent"
 # 5) Encabezados y estilos
 headers = [
     "Host",
+    "IP (Inventario)",    
     "OS Name",
     "OS Family",
     "Versión",
@@ -99,6 +100,7 @@ for host in data_sorted:
 
     row = [
         nz(host.get("host"), ""),
+        nz(host.get("ip_address")),             
         nz(host.get("os_name")),
         nz(host.get("os_family")),
         nz(host.get("os_version")),
