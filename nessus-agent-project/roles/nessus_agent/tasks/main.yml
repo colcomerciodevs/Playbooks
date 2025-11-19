@@ -175,14 +175,14 @@
     nessus_pkg_name: "{{ (_rpm_name.stdout | trim) if (_rpm_name.stdout | default('') | length > 0) else 'NessusAgent' }}"
 
 # 22# Instalar por familia (CLI; idempotente por creates)
-- name: 22.1# Instalar en EL/OL/Fedora (dnf install RPM)
+- name: 22.1# Instalar con dnf (EL/OL/Fedora >=8)
   ansible.builtin.shell: "set -o pipefail; dnf -y install '{{ _installer_path }}'"
   args:
     executable: /bin/bash
     creates: "{{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }}"
-  when: ansible_os_family in ['RedHat','OracleLinux','Fedora']
+  when: ansible_pkg_mgr == 'dnf'
 
-- name: 22.2# Instalar en EL7/AmazonLinux (yum localinstall)
+- name: 22.2# Instalar con yum (EL7 / AmazonLinux)
   ansible.builtin.shell: "set -o pipefail; yum -y localinstall '{{ _installer_path }}'"
   args:
     executable: /bin/bash
@@ -202,6 +202,7 @@
     executable: /bin/bash
     creates: "{{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }}"
   when: ansible_os_family in ['Debian','Ubuntu']
+
 
 # 23# Verificar instalación real (rpm/deb)
 - name: 23.1# Verificar instalación con rpm -q
