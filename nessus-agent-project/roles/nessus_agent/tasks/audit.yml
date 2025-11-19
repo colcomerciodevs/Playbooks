@@ -149,7 +149,7 @@
 - name: 15# Guardar JSON consolidado
   ansible.builtin.copy:
     content: "{{ _nessus_all | to_nice_json }}"
-    dest: "{{ nessus_audit_json }}"
+    dest: "{{ nessus_output_dir }}/nessus_auditoria_results.json"
     mode: "0644"
   run_once: true
   delegate_to: localhost
@@ -160,7 +160,7 @@
   ansible.builtin.command: >
     python3 scripts/nessus_excel_report.py
     {{ nessus_output_dir }}/nessus_auditoria_results.json
-    {{ nessus_output_dir }}/nessus_auditoria_reporte.xlsx"
+    {{ nessus_output_dir }}/nessus_auditoria_reporte.xlsx
   register: myoutput
   changed_when: false
   failed_when: myoutput.rc != 0

@@ -2,6 +2,9 @@
 - name: Despliegue y validación Nessus Agent
   hosts: PPU
   gather_facts: true
-  become: true
-  roles:
-    - nessus_agent
+
+  tasks:
+    - name: Ejecutar deploy de Nessus Agent
+      ansible.builtin.import_role:
+        name: nessus_agent
+        tasks_from: deploy.yml
