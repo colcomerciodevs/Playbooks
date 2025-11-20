@@ -2,3 +2,9 @@
 - name: Reload systemd daemon
   ansible.builtin.systemd:
     daemon_reload: true
+
+- name: Reiniciar Nessus Agent
+  ansible.builtin.systemd:
+    name: "{{ nessus_unit | default('nessusagent') }}"
+    enabled: true
+    state: restarted

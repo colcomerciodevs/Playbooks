@@ -131,6 +131,8 @@
     - /etc/systemd/system/multi-user.target.wants/nessusagent.service
     - /etc/systemd/system.control/nessusagent.service.d
     - /etc/systemd/system/nessusagent.service.d
+    - /etc/tenable_tag
+    - /etc/machine_id
   register: _purge_files
   failed_when: false
   notify: Reload systemd daemon  # usa un handler real
@@ -174,34 +176,60 @@
   ansible.builtin.set_fact:
     nessus_pkg_name: "{{ (_rpm_name.stdout | trim) if (_rpm_name.stdout | default('') | length > 0) else 'NessusAgent' }}"
 
-# 22# Instalar por familia (CLI; idempotente por creates)
-- name: 22.1# Instalar con dnf (EL/OL/Fedora >=8)
-  ansible.builtin.shell: "set -o pipefail; dnf -y install '{{ _installer_path }}'"
+# 22# Instalar por familia (usando comandos Tenable)
+# 22.1# Red Hat 8+ / Oracle Linux 8+ / Fedora 34+
+- name: 22.1# Instalar NessusAgent (RHEL8+/OL8+/Fedora34+ - dnf install NessusAgent-<...>.rpm)
+  ansible.builtin.shell: |
+    set -o pipefail
+    cd "{{ nessus_installer_dest_dir }}"
+    dnf -y install "{{ _installer_path | basename }}"
   args:
     executable: /bin/bash
     creates: "{{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }}"
-  when: ansible_pkg_mgr == 'dnf'
+  when:
+    - ansible_os_family in ['RedHat','OracleLinux','Fedora']
+    - >
+      (ansible_distribution == 'Fedora' and (ansible_distribution_major_version | int) >= 34)
+      or (ansible_distribution != 'Fedora' and (ansible_distribution_major_version | int) >= 8)
+  notify: Reiniciar Nessus Agent
 
-- name: 22.2# Instalar con yum (EL7 / AmazonLinux)
-  ansible.builtin.shell: "set -o pipefail; yum -y localinstall '{{ _installer_path }}'"
+# 22.2# Red Hat 7- / Oracle Linux 7-  (rpm -ivh NessusAgent-<...>el7.x86_64.rpm)
+- name: 22.2# Instalar NessusAgent (RHEL7-/OL7- - rpm -ivh NessusAgent-<...>el7.x86_64.rpm)
+  ansible.builtin.shell: |
+    set -o pipefail
+    cd "{{ nessus_installer_dest_dir }}"
+    rpm -ivh "{{ _installer_path | basename }}"
   args:
     executable: /bin/bash
     creates: "{{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }}"
-  when: ansible_pkg_mgr == 'yum'
+  when:
+    - ansible_os_family in ['RedHat','OracleLinux']
+    - (ansible_distribution_major_version | int) < 8
+  notify: Reiniciar Nessus Agent
 
-- name: 22.3# Instalar en SUSE (zypper install)
-  ansible.builtin.shell: "set -o pipefail; zypper --non-interactive --no-gpg-checks install '{{ _installer_path }}'"
+# 22.3# SUSE (zypper install NessusAgent-<versión>suse12.x86_64.rpm)
+- name: 22.3# Instalar NessusAgent (SUSE - zypper install NessusAgent-<...>suse12.x86_64.rpm)
+  ansible.builtin.shell: |
+    set -o pipefail
+    cd "{{ nessus_installer_dest_dir }}"
+    zypper --non-interactive --no-gpg-checks install "{{ _installer_path | basename }}"
   args:
     executable: /bin/bash
     creates: "{{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }}"
   when: ansible_os_family == 'Suse'
+  notify: Reiniciar Nessus Agent
 
-- name: 22.4# Instalar en Debian/Ubuntu (dpkg -i)
-  ansible.builtin.shell: "set -o pipefail; dpkg -i '{{ _installer_path }}'"
+# 22.4# Debian / Ubuntu (dpkg -i NessusAgent-<...>.deb)
+- name: 22.4# Instalar NessusAgent (Debian/Ubuntu - dpkg -i NessusAgent-<...>.deb)
+  ansible.builtin.shell: |
+    set -o pipefail
+    cd "{{ nessus_installer_dest_dir }}"
+    dpkg -i "{{ _installer_path | basename }}"
   args:
     executable: /bin/bash
     creates: "{{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }}"
   when: ansible_os_family in ['Debian','Ubuntu']
+  notify: Reiniciar Nessus Agent
 
 
 # 23# Verificar instalación real (rpm/deb)
@@ -241,12 +269,9 @@
     msg: "Paquete {{ nessus_pkg_name | default('NessusAgent') }} instalado, pero no aparece unit nessusagent/nessus-agent."
   when: nessus_unit | length == 0
 
-# 27# Habilitar y arrancar servicio detectado
-- name: 27# Habilitar y arrancar servicio
-  ansible.builtin.systemd:
-    name: "{{ nessus_unit }}"
-    enabled: true
-    state: started
+# 27# Forzar ejecución de handlers (reinicio Nessus por handler)
+- name: 27# Ejecutar handlers pendientes (Nessus Agent)
+  ansible.builtin.meta: flush_handlers
 
 # 28# Esperar a que esté active
 - name: 28# Esperar a que el servicio esté active
