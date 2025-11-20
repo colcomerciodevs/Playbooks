@@ -2,6 +2,7 @@
 - name: Despliegue y validación Nessus Agent
   hosts: PPU
   gather_facts: true
+  become: true
 
   tasks:
     - name: Ejecutar deploy de Nessus Agent

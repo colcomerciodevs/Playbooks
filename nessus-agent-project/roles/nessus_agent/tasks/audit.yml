@@ -1,6 +1,6 @@
 ---
 # =========================================================
-#  FASE 0 - DETECCIÓN BÁSICA PARA ACCIONES (LINK / RESTART)
+#  FASE 0 - DETECCIÓN BÁSICA Y ACCIONES (RESTART -> LINK)
 # =========================================================
 
 # 01# Obtener service_facts iniciales
@@ -25,30 +25,61 @@
     path: "{{ nessus_cli_path }}"
   register: _nessuscli_stat
 
-# 04# Consultar estado actual del agente (status pre-acciones)
-- name: 04# Ejecutar nessuscli agent status (pre-acciones)
+# DEBUG opcional para ver condiciones de reinicio
+- name: DEBUG - Condiciones para reinicio
+  ansible.builtin.debug:
+    msg:
+      nessus_unit: "{{ nessus_unit }}"
+      restart_var: "{{ nessus_audit_restart_service }}"
+      restart_var_bool: "{{ nessus_audit_restart_service | bool }}"
+  when: ansible_verbosity | default(0) | int >= 1
+
+# 04# Reiniciar Nessus Agent (opcional, PRIMERO)
+- name: 04# Reiniciar Nessus Agent (opcional)
+  ansible.builtin.systemd:
+    name: "{{ nessus_unit }}"
+    state: restarted
+  when:
+    - nessus_unit is defined
+    - nessus_unit | trim != ''
+    - nessus_audit_restart_service | bool
+  register: _restart_res
+  failed_when: false
+
+# 05# Flag de reinicio durante auditoría
+- name: 05# Marcar flag de reinicio durante auditoría
+  ansible.builtin.set_fact:
+    _restarted_during_audit: >-
+      {{
+        _restart_res is defined
+        and (_restart_res is not skipped)
+      }}
+  when: nessus_unit | trim != ''
+
+# 06# Ejecutar nessuscli agent status (tras el reinicio)
+- name: 06# Ejecutar nessuscli agent status (post-reinicio)
   ansible.builtin.shell: "{{ nessus_cli_path }} agent status 2>&1"
   args:
     executable: /bin/bash
-  register: _status_pre
+  register: _status_post_restart
   changed_when: false
   failed_when: false
   when: _nessuscli_stat.stat.exists | default(false)
   environment:
     LC_ALL: C
 
-# 05# Determinar si actualmente NO está linkeado (Linked to: None)
-- name: 05# Evaluar si el agente no está linkeado (pre-acciones)
+# 07# Evaluar si el agente no está linkeado (Linked to: None) tras el reinicio
+- name: 07# Evaluar si el agente no está linkeado (post-reinicio)
   ansible.builtin.set_fact:
     _pre_not_linked: >-
       {{
-        _status_pre.stdout is defined
-        and (_status_pre.stdout | default('')) is search('Linked to:\\s*None')
+        _status_post_restart.stdout is defined
+        and (_status_post_restart.stdout | default('')) is search('Linked to:\\s*None')
       }}
-  when: _status_pre is defined
+  when: _status_post_restart is defined
 
-# 06# Intentar linkear Nessus Agent si no está linkeado
-- name: 06# Linkear Nessus Agent (si no está linkeado)
+# 08# Linkear Nessus Agent (si no está linkeado) DESPUÉS del reinicio
+- name: 08# Linkear Nessus Agent (si no está linkeado)
   ansible.builtin.command: >
     {{ nessus_cli_path }} agent link
     --key={{ nessus_agent_key }}
@@ -64,8 +95,8 @@
   failed_when: false
   changed_when: "'Successfully linked' in (_link_result.stdout | default('')) or 'already linked' in (_link_result.stdout | default(''))"
 
-# 07# Flag de link durante auditoría
-- name: 07# Marcar flag de link durante auditoría
+# 09# Flag de link durante auditoría
+- name: 09# Marcar flag de link durante auditoría
   ansible.builtin.set_fact:
     _linked_during_audit: >-
       {{
@@ -76,27 +107,6 @@
         )
       }}
   when: _link_result is defined
-
-# 08# Reiniciar Nessus Agent (opcional, después del link)
-- name: 08# Reiniciar Nessus Agent (opcional)
-  ansible.builtin.systemd:
-    name: "{{ nessus_unit }}"
-    state: restarted
-  when:
-    - nessus_unit | length > 0
-    - nessus_audit_restart_service | bool
-  register: _restart_res
-  failed_when: false
-
-# 09# Flag de reinicio durante auditoría
-- name: 09# Marcar flag de reinicio durante auditoría
-  ansible.builtin.set_fact:
-    _restarted_during_audit: >-
-      {{
-        _restart_res is defined
-        and (_restart_res is not skipped)
-      }}
-  when: nessus_unit | length > 0
 
 # =========================================================
 #  FASE 1 - RE-OBTENER ESTADO REAL DESPUÉS DE LINK/RESTART
@@ -168,7 +178,7 @@
   failed_when: false
   when: _nessuscli_stat.stat.exists | default(false)
 
-# 16# Normalizar indicadores finales (link_status y linked_bool)
+# 16# Normalizar indicadores finales de link
 - name: 16# Normalizar indicadores finales de link
   ansible.builtin.set_fact:
     _link_status_final: "{{ (_ls_cmd.stdout | default('') | trim) | default('N/A') }}"

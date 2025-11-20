@@ -2,6 +2,7 @@
 - name: Auditoría de Nessus Agent (solo lectura)
   hosts: PPU
   gather_facts: true
+  become: true
 
   tasks:
     - name: Ejecutar auditoría de Nessus Agent

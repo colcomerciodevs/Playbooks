@@ -1,8 +1,8 @@
 [
     {
         "estado_servicio_final": "active",
-        "hostname": "akflo-n0",
-        "ip": "172.16.124.5",
+        "hostname": "akper-n1",
+        "ip": "172.16.9.3",
         "nueva_version_instalada": "7.0.18",
         "version_zabbix_agent1": "6.0.24",
         "version_zabbix_agent2": "7.0.18"
