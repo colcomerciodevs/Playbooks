@@ -1,13 +1,31 @@
 ---
 # =========================================================
-#  FASE 0 - DETECCIÓN BÁSICA Y ACCIONES (RESTART -> LINK)
+#  ROL: nessus_audit
+#  Objetivo:
+#   1) Detectar unit y existencia de nessuscli
+#   2) (Opcional) reiniciar servicio
+#   3) Validar si está linkeado
+#   4) (Opcional) linkear si no lo está
+#   5) Revalidar servicio/estado/link
+#   6) Obtener versión
+#   7) Consolidar resultados y generar reporte
 # =========================================================
 
-# 01# Obtener service_facts iniciales
+
+# =========================================================
+#  FASE 0 - DETECCIÓN BÁSICA + ACCIONES (RESTART -> LINK)
+# =========================================================
+
+# 00# Normalizar ruta de nessuscli (fallback universal)
+- name: 00# Normalizar nessus_cli_path
+  ansible.builtin.set_fact:
+    nessus_cli_path: "{{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }}"
+
+# 01# Obtener service_facts iniciales (para detectar unit)
 - name: 01# Obtener service_facts iniciales
   ansible.builtin.service_facts:
 
-# 02# Calcular unit de Nessus (si existe)
+# 02# Calcular unit Nessus si existe (nessusagent vs nessus-agent)
 - name: 02# Calcular unit de Nessus (si existe)
   ansible.builtin.set_fact:
     nessus_unit: >-
@@ -25,16 +43,17 @@
     path: "{{ nessus_cli_path }}"
   register: _nessuscli_stat
 
-# DEBUG opcional para ver condiciones de reinicio
+# DEBUG opcional
 - name: DEBUG - Condiciones para reinicio
   ansible.builtin.debug:
     msg:
       nessus_unit: "{{ nessus_unit }}"
-      restart_var: "{{ nessus_audit_restart_service }}"
-      restart_var_bool: "{{ nessus_audit_restart_service | bool }}"
+      restart_var: "{{ nessus_audit_restart_service | default(false) }}"
+      restart_var_bool: "{{ (nessus_audit_restart_service | default(false)) | bool }}"
   when: ansible_verbosity | default(0) | int >= 1
 
 # 04# Reiniciar Nessus Agent (opcional, PRIMERO)
+# - Solo si hay unit y flag habilitado.
 - name: 04# Reiniciar Nessus Agent (opcional)
   ansible.builtin.systemd:
     name: "{{ nessus_unit }}"
@@ -42,7 +61,7 @@
   when:
     - nessus_unit is defined
     - nessus_unit | trim != ''
-    - nessus_audit_restart_service | bool
+    - (nessus_audit_restart_service | default(false)) | bool
   register: _restart_res
   failed_when: false
 
@@ -56,7 +75,7 @@
       }}
   when: nessus_unit | trim != ''
 
-# 06# Ejecutar nessuscli agent status (tras el reinicio)
+# 06# Ejecutar status tras reinicio
 - name: 06# Ejecutar nessuscli agent status (post-reinicio)
   ansible.builtin.shell: "{{ nessus_cli_path }} agent status 2>&1"
   args:
@@ -68,7 +87,7 @@
   environment:
     LC_ALL: C
 
-# 07# Evaluar si el agente no está linkeado (Linked to: None) tras el reinicio
+# 07# Evaluar si NO está linkeado (busca "Linked to: None")
 - name: 07# Evaluar si el agente no está linkeado (post-reinicio)
   ansible.builtin.set_fact:
     _pre_not_linked: >-
@@ -78,7 +97,7 @@
       }}
   when: _status_post_restart is defined
 
-# 08# Linkear Nessus Agent (si no está linkeado) DESPUÉS del reinicio
+# 08# Linkear si no está linkeado (OPCIONAL)
 - name: 08# Linkear Nessus Agent (si no está linkeado)
   ansible.builtin.command: >
     {{ nessus_cli_path }} agent link
@@ -87,13 +106,15 @@
     --port={{ nessus_manager_port }}
   register: _link_result
   when:
-    - nessus_audit_try_link | bool
+    - (nessus_audit_try_link | default(false)) | bool
     - _nessuscli_stat.stat.exists | default(false)
     - _pre_not_linked | default(false)
-    - nessus_agent_key | length > 0
-    - nessus_manager_host | length > 0
+    - nessus_agent_key | default('') | length > 0
+    - nessus_manager_host | default('') | length > 0
   failed_when: false
-  changed_when: "'Successfully linked' in (_link_result.stdout | default('')) or 'already linked' in (_link_result.stdout | default(''))"
+  changed_when: >
+    'Successfully linked' in (_link_result.stdout | default('')) or
+    'already linked' in (_link_result.stdout | default(''))
 
 # 09# Flag de link durante auditoría
 - name: 09# Marcar flag de link durante auditoría
@@ -108,15 +129,16 @@
       }}
   when: _link_result is defined
 
+
 # =========================================================
-#  FASE 1 - RE-OBTENER ESTADO REAL DESPUÉS DE LINK/RESTART
+#  FASE 1 - RE-OBTENER ESTADO REAL DESPUÉS DE ACCIONES
 # =========================================================
 
-# 10# Refrescar service_facts después de las acciones
+# 10# Refrescar services post-acciones
 - name: 10# Refrescar service_facts (post-acciones)
   ansible.builtin.service_facts:
 
-# 11# Recalcular unit de Nessus (posibles cambios)
+# 11# Recalcular unit post-acciones
 - name: 11# Recalcular unit de Nessus (post-acciones)
   ansible.builtin.set_fact:
     nessus_unit: >-
@@ -128,7 +150,7 @@
         )
       }}
 
-# 12# Consultar systemctl is-active (estado final)
+# 12# systemctl is-active final
 - name: 12# Consultar systemctl is-active (estado final)
   ansible.builtin.command: "systemctl is-active {{ nessus_unit }}"
   register: _svc_active_final
@@ -136,7 +158,7 @@
   failed_when: false
   when: nessus_unit | length > 0
 
-# 13# Ejecutar nessuscli agent status (estado final)
+# 13# status final del agente
 - name: 13# Ejecutar nessuscli agent status (estado final)
   ansible.builtin.shell: "{{ nessus_cli_path }} agent status 2>&1"
   args:
@@ -148,7 +170,7 @@
   environment:
     LC_ALL: C
 
-# 14# Extraer Link status (estado final)
+# 14# Extraer Link status final
 - name: 14# Extraer Link status (estado final)
   ansible.builtin.shell: |
     set -o pipefail
@@ -163,7 +185,7 @@
   failed_when: false
   when: _nessuscli_stat.stat.exists | default(false)
 
-# 15# Extraer Linked to (estado final)
+# 15# Extraer Linked to final
 - name: 15# Extraer Linked to (estado final)
   ansible.builtin.shell: |
     set -o pipefail
@@ -178,7 +200,7 @@
   failed_when: false
   when: _nessuscli_stat.stat.exists | default(false)
 
-# 16# Normalizar indicadores finales de link
+# 16# Normalizar flags finales de link
 - name: 16# Normalizar indicadores finales de link
   ansible.builtin.set_fact:
     _link_status_final: "{{ (_ls_cmd.stdout | default('') | trim) | default('N/A') }}"
@@ -188,15 +210,18 @@
         and ((_lt_cmd.stdout | lower | trim) != 'none')
       }}
 
-# 17# Obtener versión del agente (rpm -q)
+# 17# Obtener versión por rpm si NO es apt (RHEL/OL/Fedora/SUSE/Amazon)
+# - Esto evita error en Debian/Ubuntu.
 - name: 17# Obtener versión del agente (rpm -q)
   ansible.builtin.command: "rpm -q --qf '%{VERSION}-%{RELEASE}\n' NessusAgent"
   register: _rpm_ver
   changed_when: false
   failed_when: false
-  when: ansible_os_family in ['RedHat','OracleLinux','Fedora']
+  when:
+    - _nessuscli_stat.stat.exists | default(false)
+    - ansible_facts.pkg_mgr != 'apt'
 
-# 18# Obtener versión del agente (--version)
+# 18# Obtener versión por cli (universal)
 - name: 18# Obtener versión del agente (--version)
   ansible.builtin.command: "{{ nessus_cli_path }} --version"
   register: _cli_ver
@@ -204,14 +229,13 @@
   failed_when: false
   when: _nessuscli_stat.stat.exists | default(false)
 
-# 19# Normalizar versión final
+# 19# Normalizar versión final (prioriza rpm si existe)
 - name: 19# Normalizar versión final
   ansible.builtin.set_fact:
     _agent_version_final: >-
       {{
         (_rpm_ver.stdout | default('') | trim)
-        if (ansible_os_family in ['RedHat','OracleLinux','Fedora']
-            and (_rpm_ver.stdout | default('') | trim | length > 0))
+        if ((_rpm_ver.stdout | default('') | trim | length) > 0)
         else (
           (
             (_cli_ver.stdout | default('') | regex_findall('([0-9]+(?:\\.[0-9]+)+)') | default([]))
@@ -220,21 +244,18 @@
         )
       }}
 
+
 # =========================================================
-#  FASE 2 - CONSTRUIR RESULTADO Y GENERAR REPORTE
+#  FASE 2 - CONSTRUIR RESULTADO + CONSOLIDAR + REPORTE
 # =========================================================
 
-# 20# Construir resultado por host (incluyendo IP inventario y flags)
+# 20# Resultado final por host
 - name: 20# Construir resultado por host
   ansible.builtin.set_fact:
     nessus_result:
       host: "{{ inventory_hostname }}"
-      hostname: "{{ ansible_hostname }}" 
-      ip_address: >-
-        {{
-          hostvars[inventory_hostname].ansible_host
-            | default(inventory_hostname)
-        }}
+      hostname: "{{ ansible_hostname }}"
+      ip_address: "{{ hostvars[inventory_hostname].ansible_host | default(inventory_hostname) }}"
       os_name: "{{ ansible_distribution }}"
       os_family: "{{ ansible_os_family }}"
       os_version: "{{ ansible_distribution_version | default('') }}"
@@ -258,14 +279,14 @@
       error: "{{ (_link_result.stderr | default('') | trim) if (_link_result is defined) else '' }}"
       timestamp: "{{ ansible_date_time.iso8601 }}"
 
-# 21# Agregar resultados a lista global (run_once en controlador)
+# 21# Consolidar lista global una sola vez en el controlador
 - name: 21# Agregar resultados a lista global
   ansible.builtin.set_fact:
     _nessus_all: "{{ (_nessus_all | default([])) + [hostvars[item].nessus_result] }}"
   loop: "{{ ansible_play_hosts }}"
   run_once: true
 
-# 22# Crear directorio de salida en el controlador
+# 22# Crear directorio de salida en controlador
 - name: 22# Crear directorio de salida en el controlador
   ansible.builtin.file:
     path: "{{ nessus_output_dir }}"
@@ -274,7 +295,7 @@
   run_once: true
   delegate_to: localhost
 
-# 23# Guardar JSON consolidado en el controlador
+# 23# Guardar JSON consolidado
 - name: 23# Guardar JSON consolidado
   ansible.builtin.copy:
     content: "{{ _nessus_all | to_nice_json }}"
@@ -283,7 +304,7 @@
   run_once: true
   delegate_to: localhost
 
-# 24# Generar Excel de auditoría en el controlador
+# 24# Generar Excel con tu script
 - name: 24# Generar Excel de auditoría (controlador)
   ansible.builtin.command: >
     python3 scripts/nessus_excel_report.py

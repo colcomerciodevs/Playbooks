@@ -1,6 +1,6 @@
 ---
 - name: Despliegue y validación Nessus Agent
-  hosts: prueba
+  hosts: alper-n1
   gather_facts: true
   become: true
 

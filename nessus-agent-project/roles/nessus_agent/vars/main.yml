@@ -35,5 +35,5 @@ nessus_pkg_dir_map:
 nessus_installer_dest_dir: "{{ ansible_env.HOME }}"
 
 # Control de acciones opcionales
-nessus_audit_restart_service: true       # Reinicia el servicio si existe
-nessus_audit_try_link: true          # Linkea si NO está vinculado
+nessus_audit_restart_service: false       # Reinicia el servicio si existe
+nessus_audit_try_link: false          # Linkea si NO está vinculado
