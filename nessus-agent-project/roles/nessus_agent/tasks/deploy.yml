@@ -208,16 +208,23 @@
   notify: Reiniciar Nessus Agent
 
 # 22.3# SUSE (zypper install NessusAgent-<versión>suse12.x86_64.rpm)
-- name: 22.3# Instalar NessusAgent (SUSE - zypper install NessusAgent-<...>suse12.x86_64.rpm)
-  ansible.builtin.shell: |
-    set -o pipefail
-    cd "{{ nessus_installer_dest_dir }}"
-    zypper --non-interactive --no-gpg-checks install "{{ _installer_path | basename }}"
-  args:
-    executable: /bin/bash
-    creates: "{{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }}"
-  when: ansible_os_family == 'Suse'
+- name: 22.3# Instalar NessusAgent (SUSE) sin refresh de repos
+  ansible.builtin.command: >
+    zypper --non-interactive --no-gpg-checks --no-refresh
+    install "{{ _installer_path }}"
+  register: _nessus_zypper
+  changed_when: >
+    ('Installing: NessusAgent' in _nessus_zypper.stdout) or
+    ('Installing: NessusAgent' in _nessus_zypper.stderr)
+  failed_when: _nessus_zypper.rc not in [0, 106]
   notify: Reiniciar Nessus Agent
+
+
+- name: 22.4# Validar que quedó instalado
+  ansible.builtin.command: rpm -q NessusAgent
+  register: _nessus_rpmq
+  changed_when: false
+  failed_when: _nessus_rpmq.rc != 0
 
 # 22.4# Debian / Ubuntu (dpkg -i NessusAgent-<...>.deb)
 - name: 22.4# Instalar NessusAgent (Debian/Ubuntu - dpkg -i NessusAgent-<...>.deb)
@@ -374,7 +381,8 @@
   register: _rpm_ver
   changed_when: false
   failed_when: false
-  when: ansible_os_family in ['RedHat','OracleLinux','Fedora']
+  when: _installer_path | regex_search('\\.rpm$')
+
 
 - name: 36.1# Obtener versión del agente (--version)
   ansible.builtin.command: "{{ nessus_cli_path }} --version"
@@ -387,7 +395,7 @@
     _agent_version_final: >-
       {{
         (_rpm_ver.stdout | default('') | trim)
-        if (ansible_os_family in ['RedHat','OracleLinux','Fedora'] and (_rpm_ver.stdout | default('') | trim | length > 0))
+        if ((_rpm_ver.stdout | default('') | trim | length) > 0)
         else (
           (
             (_cli_ver.stdout | default('') | regex_findall('([0-9]+(?:\\.[0-9]+)+)') | default([]))
@@ -395,6 +403,7 @@
           )
         )
       }}
+
 
 # 37# Construir resultado por host (final)
 - name: 37# Construir resultado por host
