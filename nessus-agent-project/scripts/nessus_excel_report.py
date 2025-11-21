@@ -58,6 +58,7 @@ ws.title = "Reporte Nessus Agent"
 # 5) Encabezados y estilos
 headers = [
     "Host",
+    "Hostname",  
     "IP (Inventario)",    
     "OS Name",
     "OS Family",
@@ -100,6 +101,7 @@ for host in data_sorted:
 
     row = [
         nz(host.get("host"), ""),
+        nz(host.get("hostname") or host.get("ansible_hostname"), ""),
         nz(host.get("ip_address")),             
         nz(host.get("os_name")),
         nz(host.get("os_family")),

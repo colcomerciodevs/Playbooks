@@ -5,97 +5,91 @@
 
   vars:
     users:
-      #- name: rcotto
-      #  comment: "Rodrigo Cotto Barrios (Geocom)"
-      #  home: /home/rcotto
-      #  group: soporte
-      #  shell: /bin/bash
-      #  password: "Soporte2025$"
-      #
-      #- name: bgugliotta  
-      #  comment: "Belen Gugliotta"
-      #  home: /home/bgugliotta
-      #  group: soporte
-      #  shell: /bin/bash
-      #  password: "Soporte2025$"
-      # 
-      #- name: ddalto
-      #  comment: "Damian Dalto"
-      #  home: /home/ddalto
-      #  group: soporte
-      #  shell: /bin/bash
-      #  password: "Soporte2025$"
-      #
-      - name: smuniz
-        comment: "Sebastian Muniz"
-        home: /home/smuniz
+      - name: rrodriguez
+        comment: "Rafael David Rodriguez Barrios"
+        home: /home/rrodriguez
+        group: soporte
+        shell: /bin/bash
+        password: "Soporte2025$"
+      
+     - name: jmgarcia  
+        comment: "Jose Miguel Garcia Rosado"
+        home: /home/jmgarcia
+        group: soporte
+        shell: /bin/bash
+        password: "Soporte2025$"
+       
+      - name: aperez
+        comment: "Andres David Perez Garcia"
+        home: /home/aperez
+        group: soporte
+        shell: /bin/bash
+        password: "Soporte2025$"
+      
+      - name: yguzman
+        comment: "Yuxemy Guzman Gonzalez"
+        home: /home/yguzman
         group: soporte
         shell: /bin/bash
         password: "Soporte2025$"
 
 
-          #  - name: scantero
-          #comment: "Santiago Cantero (Geocom)"
-          #home: /home/scantero
-          #group: soporte
-          #shell: /bin/bash
-          #password: "Soporte2025$"
+            - name: parias
+          comment: "Pablo Andres Arias Zapata"
+          home: /home/parias
+          group: soporte
+          shell: /bin/bash
+          password: "Soporte2025$"
 
-          # - name: jmedero
-          #comment: "Joaquin Medero Renard (Geocom)"
-          #home: /home/jmedero
-          # group: soporte
-          #shell: /bin/bash
-          #password: "Soporte2025$"
+           - name: jpinilla
+          comment: "javier Pinilla Guzman"
+          home: /home/jpinilla
+           group: soporte
+          shell: /bin/bash
+          password: "Soporte2025$"
 
-          #- name: ggonzalez
-          #comment: "Gabriel Gonzalez (Geocom)"
-          #home: /home/ggonzalez
-          #group: soporte
-          #shell: /bin/bash
-          #password: "Soporte2025$"
+          - name: nzuluaga 
+          comment: "Neider Zuluaga Zuluaga"
+          home: /home/nzuluaga
+          group: soporte
+          shell: /bin/bash
+          password: "Soporte2025$"
 
-          #- name: yfigueroa
-          #comment: "Yorday Figueroa"
-          #home: /home/yfigueroa
-          #group: soporte
-          #shell: /bin/bash
-          #password: "Soporte2025$"
+          - name: obenavidez
+          comment: "Oscar Flavio Benavidez Jimenez"
+          home: /home/obenavidez
+          group: soporte
+          shell: /bin/bash
+          password: "Soporte2025$"
 
-          #- name: gburgos
-          #comment: "German Burgos"
-          #home: /home/gburgos
-          # group: soporte
-          #shell: /bin/bash
-          #password: "Soporte2025$"
+          - name: ramezquita
+          comment: "Ronaldo Amezquita Ceron"
+          home: /home/ramezquita
+           group: soporte
+          shell: /bin/bash
+          password: "Soporte2025$"
 
-          #- name: mpuebla
-          #comment: "Manuel Puebla"
-          #home: /home/mpuebla
-          #group: soporte
-          #shell: /bin/bash
-          #password: "Soporte2025$"
+          - name: larias
+          comment: "Luis Felipe Arias Martinez"
+          home: /home/larias
+          group: soporte
+          shell: /bin/bash
+          password: "Soporte2025$"
 
-          #- name: ytan
-          #comment: "Yorjander Tan"
-          #home: /home/ytan
-          #group: soporte
-          #shell: /bin/bash
-          #password: "Soporte2025$"
+          - name: nromero
+          comment: "Nibaldo Enrique Romero Sanes"
+          home: /home/nromero
+          group: soporte
+          shell: /bin/bash
+          password: "Soporte2025$"
 
-          #- name: llariccia
-          #comment: "Luciano Lariccia"
-          #home: /home/llariccia
-          #group: soporte
-          #shell: /bin/bash
-          #password: "Soporte2025$"
+          - name:obustamante
+          comment: "Oscar Javier Bustamante Salgado"
+          home: /home/obustamante
+          group: soporte
+          shell: /bin/bash
+          password: "Soporte2025$"
 
-          #- name: jpereira
-          #comment: "Javier Pereira"
-          #home: /home/jpereira
-          #group: soporte
-          #shell: /bin/bash
-          #password: "Soporte2025$"
 
   tasks:
     - name: Asegurarse de que los grupos necesarios existen

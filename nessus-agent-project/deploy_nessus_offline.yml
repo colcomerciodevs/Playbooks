@@ -1,6 +1,6 @@
 ---
 - name: Despliegue y validación Nessus Agent
-  hosts: PPU
+  hosts: ak170-backup
   gather_facts: true
   become: true
 

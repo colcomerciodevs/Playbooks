@@ -229,6 +229,7 @@
   ansible.builtin.set_fact:
     nessus_result:
       host: "{{ inventory_hostname }}"
+      hostname: "{{ ansible_hostname }}" 
       ip_address: >-
         {{
           hostvars[inventory_hostname].ansible_host
