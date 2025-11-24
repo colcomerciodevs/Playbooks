@@ -1,0 +1,10 @@
+- name: Remover Nessus
+  hosts: PPU_UNINSTALL
+  gather_facts: true
+  become: true
+
+  tasks:
+    - name: Remover Nessus
+      ansible.builtin.import_role:
+        name: nessus_agent
+        tasks_from: uninstall.yml
