@@ -1,6 +1,6 @@
 ---
 - name: Auditoría de Nessus Agent (solo lectura)
-  hosts: ak170-marcar
+  hosts: PPU
   gather_facts: true
   become: true
 

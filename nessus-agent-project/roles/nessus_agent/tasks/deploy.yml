@@ -132,8 +132,6 @@
     state: absent
   loop:
     - /opt/nessus_agent
-    - /etc/nessus
-    - /var/nessus
     - /var/log/tenable
     - /etc/systemd/system/nessusagent.service
     - /usr/lib/systemd/system/nessusagent.service
@@ -142,10 +140,26 @@
     - /etc/systemd/system.control/nessusagent.service.d
     - /etc/systemd/system/nessusagent.service.d
     - /etc/tenable_tag
-    - /etc/machine_id
   register: _purge_files
   failed_when: false
   notify: Reload systemd daemon
+
+# 16.A# Detectar si es Nessus Manager (nessusd)
+- name: 16.A# Detectar si es Nessus Manager (nessusd)
+  ansible.builtin.set_fact:
+    nessus_is_manager: "{{ 'nessusd.service' in ansible_facts.services }}"
+
+# 16.B# Borrar rutas globales solo si NO es manager
+- name: 16.B# Eliminar /etc/nessus y /var/nessus solo en hosts no-manager
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/nessus
+    - /var/nessus
+  when: not (nessus_is_manager | bool)
+  failed_when: false
+
 
 # 17# Ejecutar daemon-reload antes de seguir instalando
 - name: 17# Flush handlers (daemon-reload) antes de seguir
