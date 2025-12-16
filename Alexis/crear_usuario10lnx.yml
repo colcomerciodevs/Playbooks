@@ -110,5 +110,8 @@
       loop: "{{ users }}"
       no_log: true
 
-    - name: Forzar cambio de contrase.a al iniciar sesió     ansible.builtin.command: chage -d 0 "{{ item.name }}"
+    - name: Forzar cambio de contrasena al iniciar sesion 
+      ansible.builtin.command: chage -d 0 "{{ item.name }}"
       loop: "{{ users }}"
+
+

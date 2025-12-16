@@ -5,20 +5,6 @@
 
   vars:
     users:
-      - name: rrodriguez
-        comment: "Rafael David Rodriguez Barrios"
-        home: /home/rrodriguez
-        group: soporte
-        shell: /bin/bash
-        password: "Soporte2025$"
-      
-     - name: jmgarcia  
-        comment: "Jose Miguel Garcia Rosado"
-        home: /home/jmgarcia
-        group: soporte
-        shell: /bin/bash
-        password: "Soporte2025$"
-       
       - name: aperez
         comment: "Andres David Perez Garcia"
         home: /home/aperez
@@ -26,70 +12,19 @@
         shell: /bin/bash
         password: "Soporte2025$"
       
-      - name: yguzman
-        comment: "Yuxemy Guzman Gonzalez"
-        home: /home/yguzman
-        group: soporte
-        shell: /bin/bash
-        password: "Soporte2025$"
-
-
-            - name: parias
-          comment: "Pablo Andres Arias Zapata"
-          home: /home/parias
-          group: soporte
-          shell: /bin/bash
-          password: "Soporte2025$"
-
-           - name: jpinilla
-          comment: "javier Pinilla Guzman"
-          home: /home/jpinilla
-           group: soporte
-          shell: /bin/bash
-          password: "Soporte2025$"
-
-          - name: nzuluaga 
-          comment: "Neider Zuluaga Zuluaga"
-          home: /home/nzuluaga
-          group: soporte
-          shell: /bin/bash
-          password: "Soporte2025$"
-
-          - name: obenavidez
-          comment: "Oscar Flavio Benavidez Jimenez"
-          home: /home/obenavidez
-          group: soporte
-          shell: /bin/bash
-          password: "Soporte2025$"
-
-          - name: ramezquita
-          comment: "Ronaldo Amezquita Ceron"
-          home: /home/ramezquita
-           group: soporte
-          shell: /bin/bash
-          password: "Soporte2025$"
-
-          - name: larias
-          comment: "Luis Felipe Arias Martinez"
-          home: /home/larias
-          group: soporte
-          shell: /bin/bash
-          password: "Soporte2025$"
-
-          - name: nromero
-          comment: "Nibaldo Enrique Romero Sanes"
-          home: /home/nromero
-          group: soporte
-          shell: /bin/bash
-          password: "Soporte2025$"
-
-          - name:obustamante
-          comment: "Oscar Javier Bustamante Salgado"
-          home: /home/obustamante
-          group: soporte
-          shell: /bin/bash
-          password: "Soporte2025$"
-
+    # - name: kacosta  
+    #   comment: "Kevin Acosta Canas"
+    #    home: /home/kacosta
+    #    group: soporte
+    #    shell: /bin/bash
+    #    password: "Soporte2025$"
+    #   
+    #  - name: rvargas
+    #    comment: "Rafael Vargas Perafan"
+    #    home: /home/rvargas
+    #    group: soporte
+    #    shell: /bin/bash
+    #    password: "Soporte2025$"
 
   tasks:
     - name: Asegurarse de que los grupos necesarios existen

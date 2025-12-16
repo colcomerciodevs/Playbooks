@@ -1,6 +1,6 @@
 ---
 - name: Verificar uso de disco y exportar a CSV
-  hosts: SERVERS_LINUX
+  hosts: CHECK_DISK
   gather_facts: true            # para obtener la IP
   become: true
   vars:
