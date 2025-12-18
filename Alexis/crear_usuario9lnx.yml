@@ -5,9 +5,9 @@
 
   vars:
     users:
-      - name: aperez
-        comment: "Andres David Perez Garcia"
-        home: /home/aperez
+      - name: djballesteros
+        comment: "Deimer De Jesus Ballesteros Padilla"
+        home: /home/djballesteros
         group: soporte
         shell: /bin/bash
         password: "Soporte2025$"

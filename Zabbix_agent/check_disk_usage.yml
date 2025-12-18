@@ -1,13 +1,25 @@
 ---
 - name: Verificar uso de disco y exportar a CSV
   hosts: CHECK_DISK
-  gather_facts: true            # para obtener la IP
+  gather_facts: true          # Necesario para obtener IP del host
   become: true
+
   vars:
-    threshold: 70             # % umbral
+    threshold: 70             # Umbral de uso en porcentaje
     output_file: "{{ playbook_dir }}/Salidas_Playbooks/disk_usage_report.csv"
 
+    excluded_fs:
+      - overlay
+
+    excluded_mounts:
+      - "^/run(/|$)"
+
   tasks:
+
+    # ------------------------------------------------------------
+    # Limpia el archivo CSV anterior en el nodo controlador
+    # Se ejecuta una sola vez antes de procesar los hosts
+    # ------------------------------------------------------------
     - name: Limpiar reporte previo (si existe)
       file:
         path: "{{ output_file }}"
@@ -15,7 +27,11 @@
       delegate_to: localhost
       run_once: true
 
-    - name: Crear archivo con encabezado
+    # ------------------------------------------------------------
+    # Crea el archivo CSV con encabezados
+    # Se ejecuta solo una vez en localhost
+    # ------------------------------------------------------------
+    - name: Crear archivo CSV con encabezado
       copy:
         dest: "{{ output_file }}"
         content: "host,ip,device,used_pct,mount\n"
@@ -23,22 +39,62 @@
       delegate_to: localhost
       run_once: true
 
-    - name: Obtener particiones sobre el umbral (CSV device,used_pct,mount)
+    # ------------------------------------------------------------
+    # Obtiene particiones cuyo uso sea >= threshold
+    # Excluye:
+    #   - filesystem tipo "overlay" (Docker / Kubernetes)
+    # Salida en formato CSV: device,used_pct,mount
+    # ------------------------------------------------------------
+        # ------------------------------------------------------------
+    # Obtiene particiones cuyo uso sea >= threshold
+    # Excluye:
+    #   - filesystem tipo "overlay" (Docker / Kubernetes)
+    #   - cualquier mountpoint bajo /run (incluye /run/media/...)
+    # Salida en formato CSV: device,used_pct,mount
+    # ------------------------------------------------------------
+    - name: Obtener particiones sobre el umbral (excluyendo fs y mounts definidos)
       shell: |
-        df -P | awk 'NR>1{
-          gsub("%","",$5);
-          if ($5+0 >= {{ threshold }}) printf "%s,%s,%s\n",$1,$5,$6
-        }'
+        df -P | awk '
+          NR>1 {
+            gsub("%","",$5);
+            fs=$1;
+            mount=$6;
+
+            excluded=0;
+
+            # Excluir tipos de filesystem (ej: overlay)
+            {% for fs in excluded_fs %}
+            if (fs == "{{ fs }}") excluded=1;
+            {% endfor %}
+
+            # Excluir prefijos de mount (ej: /run y subrutas)
+            {% for pattern in excluded_mounts %}
+            if (mount ~ "{{ pattern }}") excluded=1;
+            {% endfor %}
+
+            if (!excluded && $5+0 >= {{ threshold }}) {
+              printf "%s,%s,%s\n",fs,$5,mount
+            }
+          }'
       args:
         executable: /bin/bash
       register: high_usage_csv
       changed_when: false
 
+    # ------------------------------------------------------------
+    # Determina la IP principal del host
+    # Usa ansible_default_ipv4 si existe
+    # ------------------------------------------------------------
     - name: Determinar IP del host
       set_fact:
-        host_ip: "{{ ansible_default_ipv4.address
-                     | default(ansible_all_ipv4_addresses[0] | default('N/A')) }}"
+        host_ip: >-
+          {{ ansible_default_ipv4.address
+             | default(ansible_all_ipv4_addresses[0] | default('N/A')) }}
 
+    # ------------------------------------------------------------
+    # Agrega una línea al CSV por cada partición encontrada
+    # Escritura centralizada en localhost
+    # ------------------------------------------------------------
     - name: Anexar líneas al CSV (una por partición)
       lineinfile:
         path: "{{ output_file }}"
@@ -49,6 +105,9 @@
       when: high_usage_csv.stdout | length > 0
       delegate_to: localhost
 
+    # ------------------------------------------------------------
+    # Muestra resumen por host en la salida de Ansible
+    # ------------------------------------------------------------
     - name: Informar resultado por host
       debug:
         msg: >-
