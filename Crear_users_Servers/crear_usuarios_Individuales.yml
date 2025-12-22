@@ -1,0 +1,38 @@
+---
+- name: Crear usuarios en servidores Linux
+  hosts: linux_servers
+  become: true
+
+  vars_files:
+    - vars/users_linux.yml
+
+  vars:
+    force_password_change: true   # <- cámbialo a false si lo quieres desactivar
+
+  tasks:
+    - name: Asegurar que los grupos existen
+      ansible.builtin.group:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ users | map(attribute='group') | select('defined') | unique | list }}"
+
+    - name: Crear usuarios desde archivo vars
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        comment: "{{ item.comment | default(omit) }}"
+        home: "{{ item.home | default(omit) }}"
+        group: "{{ item.group | default(omit) }}"
+        create_home: true
+        shell: "{{ item.shell | default('/bin/bash') }}"
+        password: "{{ item.password | password_hash('sha512') }}"
+        update_password: on_create
+      loop: "{{ users }}"
+      register: user_create
+      no_log: true
+
+    - name: Forzar cambio de contraseña SOLO si el usuario fue creado (opcional)
+      ansible.builtin.command: chage -d 0 {{ item.item.name }}
+      loop: "{{ user_create.results }}"
+      when:
+        - force_password_change | bool
+      changed_when: true

@@ -1,0 +1,7 @@
+users:
+  - name: djballesteros
+    comment: "Deimer De Jesus Ballesteros Padilla"
+    home: /home/djballesteros
+    group: soporte
+    shell: /bin/bash
+    password: "Soporte2025$"

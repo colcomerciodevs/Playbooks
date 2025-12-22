@@ -10,9 +10,12 @@
 
     excluded_fs:
       - overlay
+      - efivarfs
 
     excluded_mounts:
       - "^/run(/|$)"
+      - "^/boot(/|$)"
+
 
   tasks:
 
