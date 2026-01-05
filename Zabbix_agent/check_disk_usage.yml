@@ -5,7 +5,7 @@
   become: true
 
   vars:
-    threshold: 70             # Umbral de uso en porcentaje
+    threshold: 75             # Umbral de uso en porcentaje
     output_file: "{{ playbook_dir }}/Salidas_Playbooks/disk_usage_report.csv"
 
     excluded_fs:
