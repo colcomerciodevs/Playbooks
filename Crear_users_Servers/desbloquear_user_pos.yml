@@ -1,0 +1,17 @@
+---
+- name: Configurar para que la contraseña no caduque
+  hosts: server_geopos
+  become: true
+  gather_facts: false
+
+  tasks:
+
+    - name: Verificar si el usuario pos existe
+      ansible.builtin.command: id pos
+      register: user_check
+      failed_when: false      # No marcar como FAILED aunque rc != 0
+      changed_when: false     # Para que aparezca como ok, no changed
+
+    - name: Establecer que la contraseña de pos nunca caduque
+      ansible.builtin.command: chage -M -1 -I -1 pos
+      when: user_check.rc == 0
