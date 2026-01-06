@@ -1,6 +1,6 @@
 ---
 - name: Despliegue y validación Trend Micro (ServerAgent + Sensor)
-  hosts: OCI_PEOPLE
+  hosts: OCI_PEOPLE_PRD
   serial: 50
   become: true
   gather_facts: true

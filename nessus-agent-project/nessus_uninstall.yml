@@ -1,5 +1,5 @@
 - name: Remover Nessus
-  hosts: OCI_PEOPLE
+  hosts: INTEG-BOG-01
   gather_facts: true
   become: true
 
