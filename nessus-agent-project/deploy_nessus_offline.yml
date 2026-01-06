@@ -1,6 +1,6 @@
 ---
 - name: Despliegue y validación Nessus Agent
-  hosts: OCI_PEOPLE
+  hosts: OCI_PEOPLE_PRD
   gather_facts: true
   become: true
 

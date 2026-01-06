@@ -1,5 +1,5 @@
 - name: Remover Nessus
-  hosts: PPU_UNINSTALL
+  hosts: OCI_PEOPLE
   gather_facts: true
   become: true
 
