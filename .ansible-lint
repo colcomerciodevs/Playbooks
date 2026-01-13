@@ -19,9 +19,4 @@ skip_list:
   - braces
   - truthy
   - comments 
- 
-  
-  
- 
-
-
+   
