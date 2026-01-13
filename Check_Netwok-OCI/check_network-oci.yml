@@ -109,10 +109,10 @@
         ip_obj: "{{ ip_puerto.0 }}"
         puerto_objetivo: "{{ ip_puerto.1 }}"
 
+
     # Escribir bloque final del log por host
     - name: 📝 Guardar log del host en archivo global
-      local_action:
-        module: blockinfile
+      ansible.builtin.blockinfile:
         path: "{{ ruta_log_local }}"
         block: |
           ==============================
@@ -121,6 +121,7 @@
           🌐 IP: {{ ip_local }} | GW: {{ gateway }}
           {{ contenido_log_total }}
           ------------------------------
-        create: yes
+        create: true
         marker: "# {mark}"
       delegate_to: localhost
+

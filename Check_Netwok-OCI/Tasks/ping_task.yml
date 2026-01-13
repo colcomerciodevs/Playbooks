@@ -51,13 +51,13 @@
 
 # 📥 Escribir resultado del ping en archivo CSV global
 - name: 💾 Guardar línea de ping en CSV
-  local_action:
-    module: lineinfile
+  ansible.builtin.lineinfile:
     path: "{{ ruta_csv_local }}"
     line: "{{ linea_ping }}"
-    create: yes
+    create: true
     insertafter: EOF
   delegate_to: localhost
+
 
 # 🗒️ Agregar resultado del ping al log por host
 - name: 📝 Agregar entrada al log por host

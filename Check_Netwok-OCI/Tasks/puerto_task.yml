@@ -62,13 +62,13 @@
 
 # 📥 Escribir resultado en archivo CSV consolidado
 - name: 💾 Guardar línea de puerto en CSV
-  local_action:
-    module: lineinfile
+  ansible.builtin.lineinfile:
     path: "{{ ruta_csv_local }}"
     line: "{{ linea_puerto }}"
-    create: yes
+    create: true
     insertafter: EOF
   delegate_to: localhost
+
 
 # 🗒️ Agregar entrada al log acumulado del host
 - name: 📝 Agregar entrada al log por puerto

@@ -1,4 +1,3 @@
----
 skip_list:
   - schema
   - role-name
@@ -9,17 +8,17 @@ skip_list:
   - name[play]
   - name[casing]
   - name[template]
-  - yaml[trailing-spaces]
-  - yaml[indentation]
-  - yaml[new-line-at-end-of-file]
-  - yaml[empty-lines]
-  - yaml[line-length]
-  - yaml[truthy]
   - key-order[task]
-  - command-instead-of-module
-  - command-instead-of-shell
-  - run-once[task]
-  - fqcn[action-core]
+
+  # Aquí empiezan las etiquetas de yamllint:
+  - trailing-spaces
+  - empty-lines
+  - line-length
+  - indentation
+  - new-line-at-end-of-file
+  - braces
+  - truthy
+  - comments 
  
   
   
