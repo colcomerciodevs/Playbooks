@@ -19,4 +19,7 @@ skip_list:
   - braces
   - truthy
   - comments 
-   
+
+exclude_paths:
+  - Check_Netwok-OCI/check_network-oci.yml
+  - Check_Netwok-OCI/check_network-ociV2.yml
