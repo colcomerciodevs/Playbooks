@@ -422,9 +422,4 @@
   failed_when: py_result.rc != 0
   changed_when: false
   
-- name: Debug salida Python (rc/stdout/stderr)
-  delegate_to: localhost
-  run_once: true
-  become: false
-  ansible.builtin.debug:
-    var: py_result
+
