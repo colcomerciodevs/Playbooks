@@ -24,7 +24,7 @@
     - role: trendmicro
       when: install_trendmicro | default(false) | bool
 
-    - role: zabbix_agent
+    - role: zabbix_agent2
       when: install_zabbix | default(false) | bool
 
     - role: nessus_agent
