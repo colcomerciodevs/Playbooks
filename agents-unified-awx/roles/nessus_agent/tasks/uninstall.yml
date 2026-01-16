@@ -1,0 +1,111 @@
+---
+# =========================================================
+#  ROL MINIMO: DESINSTALAR / PURGAR NESSUS AGENT
+#  (mismo estilo que tu play)
+# =========================================================
+
+# 01# Reunir facts del host
+- name: 01# Reunir facts (implícito por gather_facts=true)
+  ansible.builtin.setup:
+
+# 02# Capturar servicios del sistema
+- name: 02# Obtener facts de servicios
+  ansible.builtin.service_facts:
+
+# 03# Comprobar existencia de nessuscli (indica instalación previa)
+- name: 03# Comprobar nessuscli existente
+  ansible.builtin.stat:
+    path: "{{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }}"
+  register: _nessuscli_stat
+
+# 04# Calcular unit real registrada (puede ser nessusagent o nessus-agent)
+- name: 04# Calcular unit de Nessus si existe
+  ansible.builtin.set_fact:
+    nessus_unit: >-
+      {{
+        'nessusagent' if 'nessusagent.service' in ansible_facts.services
+        else (
+          'nessus-agent' if 'nessus-agent.service' in ansible_facts.services
+          else ''
+        )
+      }}
+
+# 05# Si había unit, detener servicio antes de purgar
+- name: 05# Parar servicio (si existía)
+  ansible.builtin.systemd:
+    name: "{{ nessus_unit }}"
+    state: stopped
+  when: nessus_unit | length > 0
+  failed_when: false
+  changed_when: false
+
+# 06# Mensaje informativo si no había Nessus instalado
+- name: 06# Aviso - no hay servicio Nessus cargado
+  ansible.builtin.debug:
+    msg: "Nessus Agent no instalado o sin unit registrada; no hay servicio que detener."
+  when: nessus_unit | length == 0
+
+# 07# Forzar unlink si existe nessuscli (best effort)
+- name: 07# Desvincular agente (best effort)
+  ansible.builtin.command: "{{ nessus_cli_path | default('/opt/nessus_agent/sbin/nessuscli') }} agent unlink --force"
+  register: _unlink_res
+  when: _nessuscli_stat.stat.exists | default(false)
+  failed_when: false
+  changed_when: "'Successfully unlinked' in (_unlink_res.stdout | default('')) or (_unlink_res.rc | default(0)) == 0"
+
+# 08# Eliminar paquete (puede estar con nombre distinto según distro)
+- name: 08# Quitar paquete Nessus Agent (cubre mayúsculas/minúsculas)
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: absent
+  loop:
+    - NessusAgent
+    - nessus-agent
+  register: _pkg_removed
+  failed_when: false
+
+# 09# Borrar rutas residuales + units viejas (SOLO agent)
+- name: 09# Eliminar rutas y units residuales
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /opt/nessus_agent
+    - /var/log/tenable
+    - /etc/systemd/system/nessusagent.service
+    - /usr/lib/systemd/system/nessusagent.service
+    - /etc/init.d/nessusagent
+    - /etc/systemd/system/multi-user.target.wants/nessusagent.service
+    - /etc/systemd/system.control/nessusagent.service.d
+    - /etc/systemd/system/nessusagent.service.d
+    - /etc/tenable_tag
+  register: _purge_files
+  failed_when: false
+  notify: Reload systemd daemon
+
+# 09.A# Detectar si es Nessus Manager (nessusd)
+- name: 09.A# Detectar si es Nessus Manager (nessusd)
+  ansible.builtin.set_fact:
+    nessus_is_manager: "{{ 'nessusd.service' in ansible_facts.services }}"
+
+# 09.B# Borrar rutas globales solo si NO es manager
+- name: 09.B# Eliminar /etc/nessus y /var/nessus solo en hosts no-manager
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/nessus
+    - /var/nessus
+  when: not (nessus_is_manager | bool)
+  failed_when: false
+
+# 10# Ejecutar daemon-reload antes de terminar
+- name: 10# Flush handlers (daemon-reload)
+  ansible.builtin.meta: flush_handlers
+
+# 11# Limpiar estado failed de systemd si existía la unit anterior
+- name: 11# Reset failed si existía la unit
+  ansible.builtin.command: "systemctl reset-failed {{ nessus_unit | default('nessusagent') }}"
+  when: nessus_unit | length > 0
+  changed_when: false
+  failed_when: false

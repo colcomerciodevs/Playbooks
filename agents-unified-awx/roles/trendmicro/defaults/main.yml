@@ -1,0 +1,37 @@
+---
+##### PLAYBOOK DEPLOY AGENT Y SENSOR TRENDMICRO #####
+
+# Rutas locales (nodo de control) y remotas
+local_installer_root: "Antivirus"
+
+tm_server_agent_dirname: "TMServerAgent_Linux_auto_x86_64_Server_and_Workload_Protection_Manager_-_654927779606"
+tm_sensor_dirname: "TMSensorAgent_Linux_auto_x86_64"
+
+remote_installer_root: "/opt/TrendMicroInstallers"
+
+# Reportes en el nodo de control
+report_dir_local: "Salidas_Playbooks"
+json_report_filename: "trendmicro_instalacion_sensor.json"
+excel_report_filename: "reporte_trendmicro.xlsx"
+
+# Criterio de OK final
+ok_version: "20.0.2"
+ok_release: "20480"
+ok_tmxbc_version: "1.2.0.1046"
+
+
+# Tiempo de espera para realizar instalaccion
+tm_install_timeout: 180
+
+
+##### PLAYBOOK VALIDACION DE CERTIFICADOS #####
+
+# Directorio de salida para resultados
+output_dir: "Salidas_Playbooks"
+
+# Archivo JSON final
+output_json: "{{ output_dir }}/ds2022_result.json"
+
+# Ruta del script Python que convierte JSON -> Excel
+# Nota: usa playbook_dir para resolver relativo al playbook
+python_script: "{{ playbook_dir }}/scripts/check_certificados_excel.py"

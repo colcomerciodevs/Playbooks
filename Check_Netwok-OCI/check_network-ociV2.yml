@@ -1,6 +1,6 @@
 ---
 - name: 🔍 Análisis de red optimizado (Linux y Windows)
-  hosts: PS_OUT
+  hosts: PS_IN_LIN
   gather_facts: yes
 
   vars:
@@ -8,7 +8,7 @@
     #archivo_puertos: "{{ playbook_dir }}/archivo_puertos.txt" # 📄 Puertos OUT a validar
     #archivo_ips: "{{ playbook_dir }}/archivo_ips_out.txt"         # 📄 IPs OUT a validar
     #archivo_ips: "{{ playbook_dir }}/archivo_ips_out-2.txt"         # 📄 IPs OUT 2 a validar
-    archivo_puertos: "{{ playbook_dir }}/archivo_puertos_out.txt" # 📄 Puertos OUT a validar
+    archivo_puertos: "{{ playbook_dir }}/archivo_puertos_in.txt" # 📄 Puertos OUT a validar
     #archivo_ips: "{{ playbook_dir }}/archivos_ips_in.txt"         # 📄 IPs IN a validar
     archivo_ips: "{{ playbook_dir }}/archivos_ips_in-2.txt"         # 📄 IPs IN 2 a validar
     #archivo_puertos: "{{ playbook_dir }}/archivo_puertos_in.txt" # 📄 Puertos IN a  validar

@@ -1,6 +1,6 @@
 ---
 - name: Análisis de red en hosts Windows y Linux
-  hosts: OCI-IN
+  hosts: PS_OUT
   gather_facts: yes
 
   # ---------------------

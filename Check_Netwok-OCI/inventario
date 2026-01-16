@@ -2,12 +2,12 @@
 
 ##OCI###
 [PS_OUT]
-vm-prd-appps-bog-01 ansible_host=172.25.98.226
+#vm-prd-appps-bog-01 ansible_host=172.25.98.226
 WS01 ansible_host=172.25.97.44
 WS02 ansible_host=172.25.97.201
-WS03 ansible_host=172.25.96.236
-WS04 ansible_host=172.25.96.158
-WS05 ansible_host=172.25.98.60
+#WS03 ansible_host=172.25.96.236
+#WS04 ansible_host=172.25.96.158
+#WS05 ansible_host=172.25.98.60
 APP01 ansible_host=172.25.98.111
 APP02 ansible_host=172.25.96.193
 BATCH01 ansible_host=172.25.96.96

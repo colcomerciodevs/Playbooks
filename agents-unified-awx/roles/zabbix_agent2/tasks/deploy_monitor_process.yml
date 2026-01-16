@@ -1,0 +1,103 @@
+---
+# ============================================================
+# Deploy personalizado: Top 5 procesos (Memoria / CPU)
+# ============================================================
+
+# 01) Verificar existencia de Zabbix Agent2
+- name: 01# Validar que Zabbix Agent2 esté instalado
+  ansible.builtin.stat:
+    path: /usr/sbin/zabbix_agent2
+  register: zbx_agent2_exists
+
+- name: 01.1# Saltar host si no tiene Agent2
+  ansible.builtin.meta: end_host
+  when: not zbx_agent2_exists.stat.exists
+
+- name: 02.1# Crear carpeta de configuración
+  ansible.builtin.file:
+    path: /etc/zabbix/zabbix_agent2.d
+    state: directory
+    owner: root
+    group: zabbix
+    mode: '0750'
+
+# 03) Instalar scripts y conf si no existen o cambian
+- name: 03# Copiar script top5_mem_readable.sh
+  ansible.builtin.template:
+    src: top5_mem_readable.sh.j2
+    dest: /usr/local/bin/top5_mem_readable.sh
+    owner: root
+    group: zabbix
+    mode: '0750'
+  register: mem_change
+  notify: Reiniciar zabbix-agent2
+
+- name: 03.1# Copiar script top5_cpu_readable.sh
+  ansible.builtin.template:
+    src: top5_cpu_readable.sh.j2
+    dest: /usr/local/bin/top5_cpu_readable.sh
+    owner: root
+    group: zabbix
+    mode: '0750'
+  register: cpu_change
+  notify: Reiniciar zabbix-agent2
+
+- name: 03.2# Crear UserParameter config
+  ansible.builtin.template:
+    src: top5_userparams.conf.j2
+    dest: /etc/zabbix/zabbix_agent2.d/top5_readable.conf
+    owner: root
+    group: zabbix
+    mode: '0640'
+  register: conf_change
+  notify: Reiniciar zabbix-agent2
+
+# 04) Aplicar reinicio si hubo cambios
+- name: 04# Sincronizar reinicio
+  ansible.builtin.meta: flush_handlers
+
+# 05) Estado final del servicio
+- name: 05# Estado del servicio Zabbix Agent2
+  ansible.builtin.command: systemctl is-active zabbix-agent2
+  register: zbx_service_state
+  changed_when: false
+  failed_when: false
+
+- name: 05.1# Versión del agente
+  ansible.builtin.command: zabbix_agent2 -V
+  register: zbx_version
+  changed_when: false
+  failed_when: false
+
+# 06) Armar resultado para reporte
+- name: 06# Construir diccionario de resultado
+  ansible.builtin.set_fact:
+    zbx_monitor_result:
+      InventoryHostname: "{{ inventory_hostname }}"
+      Hostname: "{{ ansible_facts['hostname'] | default(inventory_hostname) }}"
+      IP: "{{ ansible_facts['default_ipv4']['address'] | default('N/A') }}"
+      Reinicio_Zabbix: "{{ 'aplicado' if (mem_change.changed or cpu_change.changed or conf_change.changed) else 'no-aplico' }}"
+      Estado_Zabbix: "{{ zbx_service_state.stdout | default('desconocido') }}"
+      Version_Zabbix: "{{ (zbx_version.stdout_lines | first | default('N/A')) }}"
+      Monitores_Creados: "{{ 'si' if (mem_change.changed or cpu_change.changed or conf_change.changed) else 'ya_existian' }}"
+
+# 07) Guardar reporte JSON local
+- name: 07# Guardar resultados en JSON (controlador)
+  delegate_to: localhost
+  ansible.builtin.copy:
+    dest: "Salidas_Playbooks/zbx_monitores_top5.json"
+    content: "{{ hostvars | dict2items | selectattr('value.zbx_monitor_result', 'defined') | map(attribute='value.zbx_monitor_result') | list | to_nice_json }}"
+    mode: '0644'
+
+# 08) Convertir a Excel (Python)
+- name: 08# Generar Excel con Python
+  delegate_to: localhost
+  ansible.builtin.command:
+    argv:
+      - python3
+      - scripts/report_monitor_process_excel.py
+      - Salidas_Playbooks/zbx_monitores_top5.json
+      - Salidas_Playbooks/zbx_monitores_top5.xlsx
+  register: py_result
+  failed_when: py_result.rc != 0
+  changed_when: false
