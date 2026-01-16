@@ -390,16 +390,20 @@
 
 # Copiar script del repo (project) a /tmp dentro del EE
 - name: Copiar script Python del rol al /tmp del controlador
+  delegate_to: localhost
+  run_once: true
+  become: false
   ansible.builtin.copy:
     src: export_deploy_agent2_excel.py
     dest: /tmp/export_deploy_agent2_excel.py
     mode: "0755"
+  
+  
+
+- name: Ejecutar script Python desde /tmp para generar Excel (controlador)
   delegate_to: localhost
   run_once: true
   become: false
-
-
-- name: Ejecutar script Python desde /tmp para generar Excel (controlador)
   ansible.builtin.command:
     argv:
       - python3
@@ -407,8 +411,6 @@
       - "{{ agents_report_dir }}/zabbix_auditoria.json"
       - "{{ agents_report_dir }}/zabbix_auditoria.xlsx"
   register: py_result
-  delegate_to: localhost
-  run_once: true
-  become: false
-  changed_when: false
   failed_when: py_result.rc != 0
+  changed_when: false
+  
