@@ -1,0 +1,8 @@
+---
+- import_tasks: Deploy_ZabbixAgent2.yml
+  when: zabbix_agent_install | default(false)
+
+- import_tasks: deploy_monitor_process.yml
+  when: zabbix_monitor_process | default(false)
+
+
