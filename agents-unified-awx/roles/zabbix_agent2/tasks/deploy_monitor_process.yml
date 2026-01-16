@@ -84,20 +84,43 @@
 # 07) Guardar reporte JSON local
 - name: 07# Guardar resultados en JSON (controlador)
   delegate_to: localhost
+  run_once: true
+  become: false
   ansible.builtin.copy:
-    dest: "{{ playbook_dir }}/Salidas_Playbooks/zbx_monitores_top5.json"
-    content: "{{ hostvars | dict2items | selectattr('value.zbx_monitor_result', 'defined') | map(attribute='value.zbx_monitor_result') | list | to_nice_json }}"
-    mode: '0644'
+    dest: "{{ agents_report_dir }}/zbx_monitores_top5.json"
+    content: >-
+      {{
+        hostvars
+        | dict2items
+        | selectattr('value.zbx_monitor_result', 'defined')
+        | map(attribute='value.zbx_monitor_result')
+        | list
+        | to_nice_json
+      }}
+    mode: "0644"
+
 
 # 08) Convertir a Excel (Python)
-- name: 08# Generar Excel con Python
+- name: 08.1# Copiar script Python al /tmp del controlador
   delegate_to: localhost
+  run_once: true
+  become: false
+  ansible.builtin.copy:
+    src: report_monitor_process_excel.py
+    dest: /tmp/report_monitor_process_excel.py
+    mode: "0755"
+
+- name: 08.2# Generar Excel con Python (controlador)
+  delegate_to: localhost
+  run_once: true
+  become: false
   ansible.builtin.command:
     argv:
       - python3
-      - "{{ playbook_dir }}/scripts/report_monitor_process_excel.py"
-      - "{{ playbook_dir }}/Salidas_Playbooks/zbx_monitores_top5.json"
-      - "{{ playbook_dir }}/Salidas_Playbooks/zbx_monitores_top5.xlsx"
+      - /tmp/report_monitor_process_excel.py
+      - "{{ agents_report_dir }}/zbx_monitores_top5.json"
+      - "{{ agents_report_dir }}/zbx_monitores_top5.xlsx"
   register: py_result
   failed_when: py_result.rc != 0
   changed_when: false
+
