@@ -374,3 +374,33 @@
           }
         ]
       }}
+
+# 36) Consolidar y exportar reporte (solo una vez, en el controlador)
+- name: Asegurar directorio de salidas (controlador)
+  ansible.builtin.file:
+    path: "{{ playbook_dir }}/Salidas_Playbooks"
+    state: directory
+    mode: "0755"
+  delegate_to: localhost
+  run_once: true
+
+- name: Exportar JSON consolidado con resultados (controlador)
+  ansible.builtin.copy:
+    content: "{{ hostvars | json_query(query) | to_nice_json }}"
+    dest: "{{ playbook_dir }}/Salidas_Playbooks/zabbix_auditoria.json"
+    mode: "0644"
+  vars:
+    query: "*[].resultados_zabbix[]"
+  delegate_to: localhost
+  run_once: true
+
+- name: Ejecutar script Python para generar Excel (controlador)
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ playbook_dir }}/scripts/export_deploy_agent2_excel.py"
+  register: py_result
+  delegate_to: localhost
+  run_once: true
+  changed_when: false
+  failed_when: py_result.rc != 0
