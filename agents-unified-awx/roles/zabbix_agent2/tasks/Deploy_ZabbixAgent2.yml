@@ -376,15 +376,6 @@
       }}
 
 # 36) Consolidar y exportar reporte (solo una vez, en el controlador)
-# 36) Consolidar y exportar reporte (solo una vez, en el controlador/EE)
-- name: Asegurar directorio persistente de salidas (controlador)
-  ansible.builtin.file:
-    path: "{{ agents_report_dir }}"
-    state: directory
-    mode: "0755"
-  delegate_to: localhost
-  run_once: true
-  become: false
 
 - name: Exportar JSON consolidado con resultados (controlador)
   ansible.builtin.copy:
