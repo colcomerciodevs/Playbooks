@@ -376,17 +376,25 @@
       }}
 
 # 36) Consolidar y exportar reporte (solo una vez, en el controlador)
-
 - name: Exportar JSON consolidado con resultados (controlador)
-  ansible.builtin.copy:
-    content: "{{ hostvars | json_query(query) | to_nice_json }}"
-    dest: "{{ agents_report_dir }}/zabbix_auditoria.json"
-    mode: "0644"
-  vars:
-    query: "*[].resultados_zabbix[]"
   delegate_to: localhost
   run_once: true
   become: false
+  ansible.builtin.copy:
+    dest: "{{ agents_report_dir }}/zabbix_auditoria.json"
+    content: >-
+      {{
+        hostvars
+        | dict2items
+        | selectattr('value.resultados_zabbix', 'defined')
+        | map(attribute='value.resultados_zabbix')
+        | list
+        | flatten
+        | to_nice_json
+      }}
+    mode: "0644"
+
+  
 
 # Copiar script del repo (project) a /tmp dentro del EE
 - name: Copiar script Python del rol al /tmp del controlador
