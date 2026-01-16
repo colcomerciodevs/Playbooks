@@ -85,7 +85,7 @@
 - name: 07# Guardar resultados en JSON (controlador)
   delegate_to: localhost
   ansible.builtin.copy:
-    dest: "Salidas_Playbooks/zbx_monitores_top5.json"
+    dest: "{{ playbook_dir }}/Salidas_Playbooks/zbx_monitores_top5.json"
     content: "{{ hostvars | dict2items | selectattr('value.zbx_monitor_result', 'defined') | map(attribute='value.zbx_monitor_result') | list | to_nice_json }}"
     mode: '0644'
 
@@ -95,9 +95,9 @@
   ansible.builtin.command:
     argv:
       - python3
-      - scripts/report_monitor_process_excel.py
-      - Salidas_Playbooks/zbx_monitores_top5.json
-      - Salidas_Playbooks/zbx_monitores_top5.xlsx
+      - "{{ playbook_dir }}/scripts/report_monitor_process_excel.py"
+      - "{{ playbook_dir }}/Salidas_Playbooks/zbx_monitores_top5.json"
+      - "{{ playbook_dir }}/Salidas_Playbooks/zbx_monitores_top5.xlsx"
   register: py_result
   failed_when: py_result.rc != 0
   changed_when: false

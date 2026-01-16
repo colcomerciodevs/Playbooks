@@ -8,24 +8,24 @@
     - name: Mostrar selección de instalación
       debug:
         msg:
-          - "Instalar Trendmicro: {{ install_trendmicro | default(false) }}"
-          - "Instalar Zabbix:     {{ install_zabbix | default(false) }}"
-          - "Instalar Nessus:     {{ install_nessus | default(false) }}"
+          - "Instalar Trendmicro: {{ install_trendmicro | default('NO') }}"
+          - "Instalar Zabbix:     {{ install_zabbix | default('NO') }}"
+          - "Instalar Nessus:     {{ install_nessus | default('NO') }}"
 
     - name: Validar que al menos un agente fue seleccionado
       fail:
         msg: "No seleccionaste ningún agente. Marca al menos uno en la encuesta (Survey)."
       when:
-        - not (install_trendmicro | default(false) | bool)
-        - not (install_zabbix | default(false) | bool)
-        - not (install_nessus | default(false) | bool)
+        - (install_trendmicro | default('NO') | upper) != "YES"
+        - (install_zabbix     | default('NO') | upper) != "YES"
+        - (install_nessus     | default('NO') | upper) != "YES"
 
   roles:
     - role: trendmicro
-      when: install_trendmicro | default(false) | bool
+      when: (install_trendmicro | default('NO') | upper) == "YES"
 
     - role: zabbix_agent2
-      when: install_zabbix | default(false) | bool
+      when: (install_zabbix | default('NO') | upper) == "YES"
 
     - role: nessus_agent
-      when: install_nessus | default(false) | bool
+      when: (install_nessus | default('NO') | upper) == "YES"
