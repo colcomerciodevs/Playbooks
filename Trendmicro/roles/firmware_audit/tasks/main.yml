@@ -33,11 +33,13 @@
 - name: Construir registro del host
   set_fact:
     firmware_row:
-      inventario: "{{ inventory_file | default('CAJAS') }}"
-      hostname: "{{ inventory_hostname }}"
-      ip: "{{ ansible_default_ipv4.address | default('N/A') }}"
+      inventory_name: "{{ inventory_hostname }}"
+      hostname: "{{ ansible_hostname | default('N/A') }}"
+      inventory_ip: "{{ ansible_host | default('N/A') }}"
       firmware: "{{ firmware_type.stdout }}"
       secure_boot: "{{ secure_boot_status }}"
+
+
 
 - name: Consolidar datos en localhost
   set_fact:
