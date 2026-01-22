@@ -1,0 +1,69 @@
+---
+- name: Detectar tipo de firmware
+  shell: |
+    if [ -d /sys/firmware/efi ]; then
+      echo UEFI
+    else
+      echo LEGACY
+    fi
+  register: firmware_type
+  changed_when: false
+
+- name: Detectar estado de Secure Boot (solo UEFI)
+  command: mokutil --sb-state
+  register: sb_state
+  changed_when: false
+  failed_when: false
+  when: firmware_type.stdout == "UEFI"
+
+
+- name: Normalizar estado de Secure Boot
+  set_fact:
+    secure_boot_status: >-
+      {% if firmware_type.stdout != 'UEFI' %}
+      N/A
+      {% elif 'enabled' in sb_state.stdout | lower %}
+      ENABLED
+      {% elif 'disabled' in sb_state.stdout | lower %}
+      DISABLED
+      {% else %}
+      UNKNOWN
+      {% endif %}
+
+- name: Construir registro del host
+  set_fact:
+    firmware_row:
+      inventario: "{{ inventory_file | default('CAJAS') }}"
+      hostname: "{{ inventory_hostname }}"
+      ip: "{{ ansible_default_ipv4.address | default('N/A') }}"
+      firmware: "{{ firmware_type.stdout }}"
+      secure_boot: "{{ secure_boot_status }}"
+
+- name: Consolidar datos en localhost
+  set_fact:
+    firmware_report: "{{ firmware_report | default([]) + [ firmware_row ] }}"
+  delegate_to: localhost
+
+- name: Crear directorio de salidas
+  file:
+    path: "{{ salidas_playbooks_dir }}"
+    state: directory
+    mode: '0755'
+  delegate_to: localhost
+  run_once: true
+
+- name: Guardar JSON consolidado
+  copy:
+    content: "{{ firmware_report | to_nice_json }}"
+    dest: "{{ reporte_firmware_json }}"
+  delegate_to: localhost
+  run_once: true
+
+- name: Generar Excel con Python
+  command: >
+    python3 roles/firmware_audit/scripts/export_firmware_excel.py
+    {{ reporte_firmware_json }}
+    {{ reporte_firmware_xlsx }}
+  delegate_to: localhost
+  run_once: true
+  changed_when: false

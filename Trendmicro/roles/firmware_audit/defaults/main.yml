@@ -1,0 +1,4 @@
+---
+salidas_playbooks_dir: "{{ playbook_dir }}/Salidas_Playbooks"
+reporte_firmware_json: "{{ salidas_playbooks_dir }}/firmware_report.json"
+reporte_firmware_xlsx: "{{ salidas_playbooks_dir }}/firmware_report.xlsx"

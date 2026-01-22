@@ -1,0 +1,8 @@
+---
+- name: Reporte UEFI / Legacy BIOS / Secure Boot
+  hosts: CAJAS
+  become: true
+  gather_facts: true
+
+  roles:
+    - firmware_audit
