@@ -1,0 +1,10 @@
+---
+elastic_agent_service_name: "elastic-agent.service"
+
+# Como el playbook está en la raíz, playbook_dir == raíz del proyecto
+elastic_agent_report_dir: "{{ playbook_dir }}/Salidas_Playbooks"
+
+elastic_agent_report_json: "{{ elastic_agent_report_dir }}/elastic_agent_report.json"
+elastic_agent_report_xlsx: "{{ elastic_agent_report_dir }}/elastic_agent_report.xlsx"
+
+elastic_agent_status_excerpt_len: 250

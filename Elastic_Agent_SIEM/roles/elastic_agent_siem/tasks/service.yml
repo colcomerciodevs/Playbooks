@@ -1,0 +1,35 @@
+---
+- name: Reiniciar servicio Elastic Agent
+  ansible.builtin.systemd:
+    name: "{{ elastic_agent_service_name }}"
+    state: restarted
+    enabled: true
+  register: elastic_restart
+  failed_when: false
+
+- name: Consultar estado is-active
+  ansible.builtin.command: "systemctl is-active {{ elastic_agent_service_name }}"
+  register: elastic_is_active
+  changed_when: false
+  failed_when: false
+
+- name: Consultar status detallado
+  ansible.builtin.command: "systemctl status {{ elastic_agent_service_name }} --no-pager -l"
+  register: elastic_status
+  changed_when: false
+  failed_when: false
+
+- name: Construir registro por host
+  ansible.builtin.set_fact:
+    elastic_agent_record:
+      hostname: "{{ inventory_hostname }}"
+      ip: >-
+        {{
+          ansible_default_ipv4.address
+          | default(ansible_host | default(ansible_all_ipv4_addresses[0] | default('N/A')))
+        }}
+      restart_ok: "{{ (elastic_restart is defined) and (elastic_restart.failed is not defined or not elastic_restart.failed) }}"
+      is_active: "{{ elastic_is_active.stdout | default('unknown') }}"
+      ok: "{{ (elastic_is_active.stdout | default('unknown')) == 'active' }}"
+      status_excerpt: "{{ (elastic_status.stdout | default(''))[:elastic_agent_status_excerpt_len] }}"
+  changed_when: false

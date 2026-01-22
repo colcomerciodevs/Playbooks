@@ -1,0 +1,8 @@
+---
+- name: Reinicio Elastic Agent SIEM + Reporte Excel
+  hosts: siem_agents
+  gather_facts: true
+  become: true
+
+  roles:
+    - role: elastic_agent_siem

@@ -1,0 +1,70 @@
+---
+- name: Asegurar carpeta local de salida
+  ansible.builtin.file:
+    path: "{{ elastic_agent_report_dir }}"
+    state: directory
+    mode: "0755"
+  delegate_to: localhost
+  run_once: true
+
+- name: Copiar script de export Excel a localhost
+  ansible.builtin.copy:
+    src: "export_excel_elastic_agent.py"
+    dest: "{{ elastic_agent_report_dir }}/export_excel_elastic_agent.py"
+    mode: "0755"
+  delegate_to: localhost
+  run_once: true
+
+- name: Asegurar JSON existe (si no existe, crear [])
+  ansible.builtin.copy:
+    dest: "{{ elastic_agent_report_json }}"
+    content: "[]"
+    force: false
+    mode: "0644"
+  delegate_to: localhost
+  run_once: true
+
+- name: Leer JSON existente
+  ansible.builtin.slurp:
+    src: "{{ elastic_agent_report_json }}"
+  delegate_to: localhost
+  run_once: true
+  register: elastic_existing_json
+
+- name: Consolidar registros de todos los hosts en JSON
+  ansible.builtin.copy:
+    dest: "{{ elastic_agent_report_json }}"
+    content: >-
+      {{
+        (
+          (elastic_existing_json.content | b64decode | from_json)
+          +
+          (hostvars
+            | dict2items
+            | map(attribute='value.elastic_agent_record')
+            | select('defined')
+            | list)
+        ) | to_nice_json
+      }}
+    mode: "0644"
+  delegate_to: localhost
+  run_once: true
+
+- name: Exportar Excel con Python (localhost)
+  ansible.builtin.command: >
+    python3 {{ elastic_agent_report_dir }}/export_excel_elastic_agent.py
+    {{ elastic_agent_report_json }}
+    {{ elastic_agent_report_xlsx }}
+  delegate_to: localhost
+  run_once: true
+  register: elastic_excel_export
+  changed_when: false
+  failed_when: elastic_excel_export.rc != 0
+
+- name: Mostrar rutas generadas
+  ansible.builtin.debug:
+    msg:
+      - "JSON: {{ elastic_agent_report_json }}"
+      - "XLSX: {{ elastic_agent_report_xlsx }}"
+  delegate_to: localhost
+  run_once: true
