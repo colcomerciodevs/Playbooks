@@ -1,27 +1,31 @@
 ---
+# 1) Detectar tipo de firmware: UEFI o LEGACY
 - name: Detectar tipo de firmware
-  shell: |
-    if [ -d /sys/firmware/efi ]; then
-      echo UEFI
-    else
-      echo LEGACY
-    fi
-  register: firmware_type
+  command: test -d /sys/firmware/efi
+  register: efi_check
   changed_when: false
+  failed_when: false
 
+- name: Definir tipo de sistema
+  set_fact:
+    firmware_type: "{{ 'UEFI' if efi_check.rc == 0 else 'LEGACY' }}"
+
+# 2) Detectar estado de Secure Boot (solo si es UEFI)
 - name: Detectar estado de Secure Boot (solo UEFI)
   command: mokutil --sb-state
   register: sb_state
   changed_when: false
   failed_when: false
-  when: firmware_type.stdout == "UEFI"
+  when: firmware_type == 'UEFI'
 
-
+# 3) Normalizar estado de Secure Boot
 - name: Normalizar estado de Secure Boot
   set_fact:
     secure_boot_status: >-
-      {% if firmware_type.stdout != 'UEFI' %}
+      {% if firmware_type != 'UEFI' %}
       N/A
+      {% elif sb_state is not defined %}
+      UNKNOWN
       {% elif 'enabled' in sb_state.stdout | lower %}
       ENABLED
       {% elif 'disabled' in sb_state.stdout | lower %}
@@ -30,42 +34,59 @@
       UNKNOWN
       {% endif %}
 
+# 4) Construir fila por host (ESTO LO HACE CADA HOST)
 - name: Construir registro del host
   set_fact:
     firmware_row:
       inventory_name: "{{ inventory_hostname }}"
       hostname: "{{ ansible_hostname | default('N/A') }}"
       inventory_ip: "{{ ansible_host | default('N/A') }}"
-      firmware: "{{ firmware_type.stdout }}"
+      firmware: "{{ firmware_type }}"
       secure_boot: "{{ secure_boot_status }}"
 
-
-
-- name: Consolidar datos en localhost
-  set_fact:
-    firmware_report: "{{ firmware_report | default([]) + [ firmware_row ] }}"
+# 5) Consolidar TODAS las filas en localhost (CLAVE)
+- name: Consolidar reporte completo en localhost
+  run_once: true
   delegate_to: localhost
+  set_fact:
+    firmware_report: >-
+      {{
+        ansible_play_hosts
+        | map('extract', hostvars, 'firmware_row')
+        | select('defined')
+        | list
+      }}
 
+# 6) Crear directorio de salida (una sola vez)
 - name: Crear directorio de salidas
+  run_once: true
+  delegate_to: localhost
   file:
     path: "{{ salidas_playbooks_dir }}"
     state: directory
     mode: '0755'
-  delegate_to: localhost
-  run_once: true
 
+# 7) Guardar JSON consolidado
 - name: Guardar JSON consolidado
+  run_once: true
+  delegate_to: localhost
   copy:
     content: "{{ firmware_report | to_nice_json }}"
     dest: "{{ reporte_firmware_json }}"
-  delegate_to: localhost
-  run_once: true
 
+# 8) Validar cantidad de hosts recolectados (opcional pero recomendado)
+- name: Validar cantidad de hosts recolectados
+  run_once: true
+  delegate_to: localhost
+  debug:
+    msg: "Total de hosts en el reporte: {{ firmware_report | length }}"
+
+# 9) Generar Excel con Python
 - name: Generar Excel con Python
+  run_once: true
+  delegate_to: localhost
   command: >
     python3 roles/firmware_audit/scripts/export_firmware_excel.py
     {{ reporte_firmware_json }}
     {{ reporte_firmware_xlsx }}
-  delegate_to: localhost
-  run_once: true
   changed_when: false
