@@ -19,17 +19,16 @@
   changed_when: false
   failed_when: false
 
-- name: Construir registro por host
+- name: Construir registro por host (inventario + hostname + IP inventario)
   ansible.builtin.set_fact:
     elastic_agent_record:
-      hostname: "{{ inventory_hostname }}"
-      ip: >-
-        {{
-          ansible_default_ipv4.address
-          | default(ansible_host | default(ansible_all_ipv4_addresses[0] | default('N/A')))
-        }}
+      inventory_name: "{{ inventory_hostname }}"
+      hostname: "{{ ansible_hostname | default('N/A') }}"
+      inventory_ip: "{{ ansible_host | default('N/A') }}"
       restart_ok: "{{ (elastic_restart is defined) and (elastic_restart.failed is not defined or not elastic_restart.failed) }}"
       is_active: "{{ elastic_is_active.stdout | default('unknown') }}"
       ok: "{{ (elastic_is_active.stdout | default('unknown')) == 'active' }}"
       status_excerpt: "{{ (elastic_status.stdout | default(''))[:elastic_agent_status_excerpt_len] }}"
   changed_when: false
+
+
