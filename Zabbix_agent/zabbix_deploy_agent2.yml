@@ -1,7 +1,7 @@
 ---
 # Ejecuta instalación/verificación del Zabbix Agent 2 y genera reporte local
 - name: Verificar e instalar Zabbix Agent 2 desde repositorio HTTP local
-  hosts: mantis
+  hosts: ktuno-nuevo
   become: true
 
 
