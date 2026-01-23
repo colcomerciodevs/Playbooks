@@ -1,6 +1,6 @@
 ---
 - name: 0# Crear usuarios por zona
-  hosts: inventario
+  hosts: ktuno-nuevo
   become: true
 
   # 0.1# Zona seleccionada (se debe pasar SIEMPRE con -e "zona=...")

@@ -32,3 +32,4 @@ usuarios:
   - { name: "jsuarez",      comment: "Jairo Suarez" }
   - { name: "gochoa",       comment: "German Alberto Ochoa" }
   - { name: "izapata",      comment: "Ivan Camilo Zapata" }
+  - { name: "hcastiblanco",      comment: "heyson castiblanco mora" }

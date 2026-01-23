@@ -17,7 +17,8 @@ crear_usuarios/
 
 Selecciona la zona al ejecutar el playbook con -e "zona=...".
 Ejemplo:
-ansible-playbook crear_usuarios.yml -e "zona=zona_norte"
+ansible-playbook crear_usuarios_por_zonas.yml -e "zona=zona_norte"
+ansible-playbook crear_usuarios_por_zonas.yml -e "zona=zona_centro"
 
 
 
