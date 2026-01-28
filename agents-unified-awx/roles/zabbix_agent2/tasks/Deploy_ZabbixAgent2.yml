@@ -394,32 +394,21 @@
       }}
     mode: "0644"
 
+    
   
-
-# Copiar script del repo (project) a /tmp dentro del EE
-- name: Copiar script Python del rol al /tmp del controlador
-  delegate_to: localhost
-  run_once: true
-  become: false
-  ansible.builtin.copy:
-    src: export_deploy_agent2_excel.py
-    dest: /tmp/export_deploy_agent2_excel.py
-    mode: "0755"
-  
-  
-## Ejecutar script Python desde /tmp para generar Excel - Intalacion Zabbix Agent 2
-- name: Ejecutar script Python desde /tmp para generar Excel - Intalacion Zabbix Agent 2 (controlador)
+## 37) Ejecutar script Python desde /tmp para generar Excel - Intalacion Zabbix Agent 2
+- name: Ejecutar script Python (desde rol) para generar Excel - Instalación Zabbix Agent 2 (controlador)
   delegate_to: localhost
   run_once: true
   become: false
   ansible.builtin.command:
     argv:
       - python3
-      - /tmp/export_deploy_agent2_excel.py
-      - "{{ agents_report_dir }}/zabbix_auditoria.json"
-      - "{{ agents_report_dir }}/zabbix_auditoria.xlsx"
+      - "{{ zabbix_excel_script_path }}"
+      - "{{ agents_report_dir }}/{{ zabbix_json_report_name }}"
+      - "{{ agents_report_dir }}/{{ zabbix_excel_report_name }}"
   register: py_result
   failed_when: py_result.rc != 0
   changed_when: false
-  
+
 

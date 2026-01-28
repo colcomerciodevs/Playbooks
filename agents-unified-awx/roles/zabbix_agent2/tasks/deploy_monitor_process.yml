@@ -100,28 +100,20 @@
     mode: "0644"
 
 
-# 08) Convertir a Excel (Python)
-- name: 08.1# Copiar script Python al /tmp del controlador
-  delegate_to: localhost
-  run_once: true
-  become: false
-  ansible.builtin.copy:
-    src: report_monitor_process_excel.py
-    dest: /tmp/report_monitor_process_excel.py
-    mode: "0755"
 
-## Generar Excel con Python - Instalacion Monitores de Procesos (controlador)
-- name: 08.2# Generar Excel con Python - Instalacion Monitores de Procesos (controlador)
+## 08) Generar Excel con Python - Instalacion Monitores de Procesos (controlador)
+- name: 08# Generar Excel con Python - Instalación Monitores de Procesos (controlador)
   delegate_to: localhost
   run_once: true
   become: false
   ansible.builtin.command:
     argv:
       - python3
-      - /tmp/report_monitor_process_excel.py
-      - "{{ agents_report_dir }}/zbx_monitores_top5.json"
-      - "{{ agents_report_dir }}/zbx_monitores_top5.xlsx"
+      - "{{ monitor_process_excel_script_path }}"
+      - "{{ agents_report_dir }}/{{ monitor_process_json_name }}"
+      - "{{ agents_report_dir }}/{{ monitor_process_excel_name }}"
   register: py_result
   failed_when: py_result.rc != 0
   changed_when: false
+
 

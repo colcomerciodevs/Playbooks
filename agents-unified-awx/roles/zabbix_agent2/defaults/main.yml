@@ -9,9 +9,16 @@ repo_base_url: "http://10.181.8.209:8080/repos/localrepo/zabbix2"
 ## Incluir Sistema Operativo en la Auditoria
 zbx_audit_include_os_facts: true
 
-# Rutas de salida para auditoria (puedes sobreescribir con -e)
-zbx_audit_out_json: "Salidas_Playbooks/audit_zabbix_extended.json"
-zbx_audit_out_excel: "Salidas_Playbooks/Auditoria_Zabbix_Agentes.xlsx"
+# Rutas de script Python generar excel 
+zabbix_excel_script_path: "{{ role_path }}/files/export_deploy_agent2_excel.py"
+zabbix_json_report_name: "zabbix_auditoria.json"
+zabbix_excel_report_name: "zabbix_auditoria.xlsx"
+
+# Rutas de script Python generar excel - Monitor procesos
+monitor_process_excel_script_path: "{{ role_path }}/files/report_monitor_process_excel.py"
+monitor_process_json_name: "zbx_monitores_top5.json"
+monitor_process_excel_name: "zbx_monitores_top5.xlsx"
+
 
 # Ruta de guardado de Reportes
 agents_report_dir: "/data/work/Salida_Instalacion_Agentes"
