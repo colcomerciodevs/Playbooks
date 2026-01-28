@@ -4,17 +4,16 @@ nessus_force_reinstall: true
 nessus_manager_host: "10.181.8.192"
 nessus_manager_port: 8834
 nessus_agent_key: "279fa0cfb3549180f65cffe7a095455a4ba825af6ed6ad923cb7f228870a1694"
-nessus_agent_groups: "corbeta" ## opcional
+nessus_agent_groups: "corbeta"  # opcional
 nessus_try_link: true
 nessus_force_relink: false
 nessus_cli_path: "/opt/nessus_agent/sbin/nessuscli"
 
+# Carpeta de instaladores (relativa al rol)
+nessus_installers_dir: "{{ role_path }}/files/installers"
 
-# Carpeta de instaladores (relativa a la raíz del proyecto/playbook_dir)
-nessus_installers_dir: "{{ playbook_dir | realpath }}/installers"
-
-# Carpeta de salidas (en el controlador)
-nessus_output_dir: "{{ playbook_dir | realpath }}/Salidas_Playbooks"
+# Carpeta FIJA de reportes en el controlador
+nessus_output_dir: "/data/work/Salida_Instalacion_Agentes"
 
 # Mapa de selección por SO
 nessus_pkg_dir_map:
@@ -35,5 +34,10 @@ nessus_pkg_dir_map:
 nessus_installer_dest_dir: "{{ ansible_env.HOME }}"
 
 # Control de acciones opcionales
-nessus_audit_restart_service: false       # Reinicia el servicio si existe
-nessus_audit_try_link: false          # Linkea si NO está vinculado
+nessus_audit_restart_service: false
+nessus_audit_try_link: false
+
+# Script Excel dentro del rol (NO se copia, se ejecuta directo con role_path)
+nessus_excel_script_path: "{{ role_path }}/files/nessus_excel_report.py"
+nessus_json_filename: "nessus_results.json"
+nessus_excel_filename: "nessus_agent_reporte.xlsx"

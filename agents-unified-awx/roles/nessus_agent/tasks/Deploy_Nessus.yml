@@ -527,7 +527,7 @@
 # 41# Generar Excel a partir del JSON (script externo)
 - name: 41# Generar Excel (controlador)
   ansible.builtin.command: >
-    python3 scripts/nessus_excel_report.py
+    python3 {{ role_path }}/files/nessus_excel_report.py
     {{ nessus_output_dir }}/nessus_results.json
     {{ nessus_output_dir }}/nessus_agent_reporte.xlsx
   register: myoutput
