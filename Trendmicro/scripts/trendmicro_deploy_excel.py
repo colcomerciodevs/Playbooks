@@ -12,9 +12,9 @@ Dependencias:
 
 import json
 import sys
-import openpyxl
-from openpyxl.styles import PatternFill, Font
-from openpyxl.utils import get_column_letter
+import openpyxl  # type: ignore
+from openpyxl.styles import PatternFill, Font  # type: ignore
+from openpyxl.utils import get_column_letter  # type: ignore
 
 # ===================== VALIDACIÓN DE ARGUMENTOS =====================
 if len(sys.argv) < 3:
