@@ -515,7 +515,7 @@
     dest: "{{ nessus_output_dir }}/nessus_results.json"
     mode: "0644"
   run_once: true
-  delegate_to: localhost
+  
 
 # 41# Generar Excel a partir del JSON (script externo)
 - name: 41# Generar Excel (controlador)
