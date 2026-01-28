@@ -1,0 +1,3 @@
+---
+- import_tasks: Deploy_Nessus.yml
+  when: (install_nessus | default('NO') | upper) == "YES"
