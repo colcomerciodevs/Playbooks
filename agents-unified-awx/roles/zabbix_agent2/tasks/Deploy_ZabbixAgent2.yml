@@ -4,7 +4,7 @@
   ansible.builtin.setup:
 
 # 02) Detectar si Zabbix Agent 1 (agentd) está instalado (no cambia estado)
-- name: Verificar si Zabbix Agent 1 está instalado
+- name: Verificar si Zabbix Agent 1 está instalado 
   ansible.builtin.shell: rpm -q zabbix-agent || echo "not_installed"
   register: zabbix_v1_check
   changed_when: false

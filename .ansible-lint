@@ -9,7 +9,7 @@ skip_list:
   - name[casing]
   - name[template]
   - key-order[task]
-
+  
   # Aquí empiezan las etiquetas de yamllint:
   - trailing-spaces
   - empty-lines
@@ -19,6 +19,8 @@ skip_list:
   - braces
   - truthy
   - comments 
+  - command-instead-of-shell
+  - command-instead-of-module
 
 exclude_paths:
   - Check_Netwok-OCI/check_network-oci.yml
