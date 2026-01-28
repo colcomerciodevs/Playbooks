@@ -278,6 +278,7 @@
 - name: Exportar JSON consolidado
   delegate_to: localhost
   run_once: true
+  become: false
   ansible.builtin.copy:
     dest: "{{ report_dir_local }}/{{ json_report_filename }}"
     mode: "0644"
@@ -293,11 +294,17 @@
       }}
 
 # 22# Generar Excel final
-- name: Generar Excel final
+- name: Generar Excel final (controlador)
   delegate_to: localhost
   run_once: true
+  become: false
   changed_when: false
-  ansible.builtin.command: >
-    python3 {{ role_path }}/files/trendmicro_deploy_excel.py
-    {{ report_dir_local }}/{{ json_report_filename }}
-    {{ report_dir_local }}/{{ excel_report_filename }}
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ python_script }}"
+      - "{{ report_dir_local }}/{{ json_report_filename }}"
+      - "{{ report_dir_local }}/{{ excel_report_filename }}"
+  register: py_result
+  failed_when: py_result.rc != 0
+

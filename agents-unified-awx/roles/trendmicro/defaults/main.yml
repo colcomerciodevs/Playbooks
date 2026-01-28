@@ -23,13 +23,5 @@ ok_tmxbc_version: "1.2.0.1046"
 tm_install_timeout: 180
 
 
-##### PLAYBOOK VALIDACION DE CERTIFICADOS #####
-
-# Directorio de salida para resultados -> VOLUMEN PERSISTENTE
-output_dir: "/data/work/Salida_Instalacion_Agentes"
-
-# Archivo JSON final
-output_json: "{{ output_dir }}/ds2022_result.json"
-
 # Ruta del script Python que convierte JSON -> Excel (ahora está en files/ del rol)
 python_script: "{{ role_path }}/files/check_certificados_excel.py"
