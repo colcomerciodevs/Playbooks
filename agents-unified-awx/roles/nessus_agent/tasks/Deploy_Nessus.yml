@@ -507,14 +507,6 @@
   loop: "{{ ansible_play_hosts }}"
   run_once: true
 
-# 39# Crear carpeta de salida del reporte en el controlador
-- name: 39# Crear directorio de salida en el controlador
-  ansible.builtin.file:
-    path: "{{ nessus_output_dir }}"
-    state: directory
-    mode: "0755"
-  run_once: true
-  delegate_to: localhost
 
 # 40# Guardar JSON consolidado
 - name: 40# Guardar JSON consolidado
