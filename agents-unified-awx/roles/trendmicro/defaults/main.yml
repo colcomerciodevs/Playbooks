@@ -9,8 +9,8 @@ tm_sensor_dirname: "TMSensorAgent_Linux_auto_x86_64"
 
 remote_installer_root: "/opt/TrendMicroInstallers"
 
-# Reportes en el nodo de control
-report_dir_local: "Salidas_Playbooks"
+# Reportes en el nodo de control (AWX/EE) -> VOLUMEN PERSISTENTE
+report_dir_local: "/data/work/Salida_Instalacion_Agentes"
 json_report_filename: "trendmicro_instalacion_sensor.json"
 excel_report_filename: "reporte_trendmicro.xlsx"
 
@@ -19,19 +19,17 @@ ok_version: "20.0.2"
 ok_release: "20480"
 ok_tmxbc_version: "1.2.0.1046"
 
-
 # Tiempo de espera para realizar instalaccion
 tm_install_timeout: 180
 
 
 ##### PLAYBOOK VALIDACION DE CERTIFICADOS #####
 
-# Directorio de salida para resultados
-output_dir: "Salidas_Playbooks"
+# Directorio de salida para resultados -> VOLUMEN PERSISTENTE
+output_dir: "/data/work/Salida_Instalacion_Agentes"
 
 # Archivo JSON final
 output_json: "{{ output_dir }}/ds2022_result.json"
 
-# Ruta del script Python que convierte JSON -> Excel
-# Nota: usa playbook_dir para resolver relativo al playbook
-python_script: "{{ playbook_dir }}/scripts/check_certificados_excel.py"
+# Ruta del script Python que convierte JSON -> Excel (ahora está en files/ del rol)
+python_script: "{{ role_path }}/files/check_certificados_excel.py"
