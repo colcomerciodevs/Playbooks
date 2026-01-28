@@ -1,5 +1,5 @@
 - name: Remover Nessus
-  hosts: INTEG-BOG-01
+  hosts: ansible_test
   gather_facts: true
   become: true
 
