@@ -1,0 +1,3 @@
+---
+- import_tasks: Deploy_Trendmicro.yml
+  when: (install_antivirus| default('NO') | upper) == "YES"
