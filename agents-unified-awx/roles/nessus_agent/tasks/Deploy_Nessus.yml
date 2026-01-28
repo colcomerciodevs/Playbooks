@@ -41,6 +41,7 @@
     file_type: file
   register: _pkg_search
   delegate_to: localhost
+  become: false
 
 # 06# Validar que solo exista 1 instalador para evitar ambigüedad
 - name: 06# Validar cantidad de instaladores encontrados
