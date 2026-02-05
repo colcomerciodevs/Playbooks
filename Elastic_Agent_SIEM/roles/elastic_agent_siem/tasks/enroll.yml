@@ -1,9 +1,24 @@
 ---
+
+# (1) Validar si existe la unidad systemd del servicio
+- name: "Elastic Agent | Verificar existencia de la unidad systemd"
+  ansible.builtin.command: "systemctl list-unit-files {{ elastic_agent_service_name }} --no-pager --no-legend"
+  register: elastic_unit_files
+  changed_when: false
+  failed_when: false
+
+# (2) Bandera: existe servicio si list-unit-files devuelve algo
+- name: "Elastic Agent | Definir service_exists"
+  ansible.builtin.set_fact:
+    elastic_service_exists: "{{ (elastic_unit_files.stdout | default('') | trim) != '' }}"
+  changed_when: false
+
 - name: Stop elastic-agent (before re-enroll)
   ansible.builtin.systemd:
     name: elastic-agent
     state: stopped
   become: true
+  when: elastic_service_exists | bool
 
 - name: Re-enroll elastic-agent (service already installed)
   ansible.builtin.command: >
