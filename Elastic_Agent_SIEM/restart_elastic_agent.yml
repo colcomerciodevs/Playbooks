@@ -6,3 +6,4 @@
 
   roles:
     - role: elastic_agent_siem
+      tasks_from: restart_service.yml
