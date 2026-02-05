@@ -2,9 +2,8 @@
 # ==========================================================
 # Elastic Agent | enroll.yml
 # - Verifica existencia de unidad systemd
-# - Stop servicio (si existe)
 # - Ejecuta elastic-agent enroll (NO install)
-# - Start servicio (si existe)
+# - NO detiene/inicia servicio
 # - NO construye record (eso lo hace record_min.yml)
 # ==========================================================
 
@@ -26,41 +25,32 @@
   changed_when: false
 
 # ----------------------------------------------------------
-# (3) Stop servicio antes de re-enroll (si existe)
+# (3) Falla controlada si NO existe el servicio
 # ----------------------------------------------------------
-- name: "Elastic Agent | Stop servicio antes de re-enroll (si existe)"
-  ansible.builtin.command: "systemctl stop {{ elastic_agent_service_name }}"
-  register: elastic_stop_cmd
-  changed_when: true
-  failed_when: false
-  when: elastic_service_exists | bool
+- name: "Elastic Agent | Validar que exista servicio antes de enroll"
+  ansible.builtin.fail:
+    msg: "No existe la unidad {{ elastic_agent_service_name }} en {{ inventory_hostname }}. No se ejecuta enroll."
+  when: not (elastic_service_exists | bool)
 
 # ----------------------------------------------------------
-# (4) Ejecutar re-enroll (NO install) - si existe servicio
+# (4) Ejecutar re-enroll (NO install) - sin confirmación
+#     Nota: --force evita el prompt de 'y' (sobrescribe config)
 # ----------------------------------------------------------
-- name: "Elastic Agent | Ejecutar elastic-agent enroll (si existe servicio)"
+- name: "Elastic Agent | Ejecutar elastic-agent enroll (sin prompt)"
   ansible.builtin.command: >
     elastic-agent enroll
     --url={{ elastic_fleet_url }}
     --enrollment-token={{ elastic_enrollment_token }}
+    --force
     {% if elastic_insecure | default(true) %} --insecure {% endif %}
   register: elastic_enroll_cmd
   changed_when: true
-  failed_when: false
+  failed_when: elastic_enroll_cmd.rc != 0
+  become: true
   when: elastic_service_exists | bool
 
 # ----------------------------------------------------------
-# (5) Start servicio después del re-enroll (si existe)
-# ----------------------------------------------------------
-- name: "Elastic Agent | Start servicio después de re-enroll (si existe)"
-  ansible.builtin.command: "systemctl start {{ elastic_agent_service_name }}"
-  register: elastic_start_cmd
-  changed_when: true
-  failed_when: false
-  when: elastic_service_exists | bool
-
-# ----------------------------------------------------------
-# (6) Debug opcional
+# (5) Debug opcional (si lo quieres mantener)
 # ----------------------------------------------------------
 - name: "DEBUG | Re-enroll (rc/stdout/stderr)"
   ansible.builtin.debug:

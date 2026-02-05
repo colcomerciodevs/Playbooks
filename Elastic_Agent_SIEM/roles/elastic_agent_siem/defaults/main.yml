@@ -43,7 +43,8 @@ elastic_reenroll: true
 elastic_fleet_url: "https://cfc306e977fe43089c60d0052027d959.fleet.7.1.9.10.ip.es.io:9243"
 
 # Token de enrolamiento (⚠ idealmente mover a AWX Survey o vault)
-elastic_enrollment_token: "Vl9xQmxvY0JBMjY4enlQcWdueWE6dmFUVkRxaWhSSWl6dmFvWFNoWTA4UQ=="
+#elastic_enrollment_token: "Vl9xQmxvY0JBMjY4enlQcWdueWE6dmFUVkRxaWhSSWl6dmFvWFNoWTA4UQ=="
+elastic_enrollment_token: "Y0h4R25wc0JteFgzaFY2X2huVlA6dkY3Z1dNakhSQjIwUUhrR3VOLXdSUQ=="
 
 # Permitir TLS insecure (si Fleet no tiene CA confiable en host)
 elastic_insecure: true

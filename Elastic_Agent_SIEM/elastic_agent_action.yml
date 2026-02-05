@@ -1,6 +1,6 @@
 ---
 - name: Elastic Agent | Acción selectiva + Reporte
-  hosts: siem_agents
+  hosts: CRM04_K8S
   become: true
   gather_facts: true
 
