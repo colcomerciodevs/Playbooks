@@ -1,18 +1,49 @@
----
+# ==========================================================
+# Elastic Agent | CORE SERVICE CONFIG
+# ==========================================================
+
+# Nombre del servicio systemd del Elastic Agent
 elastic_agent_service_name: "elastic-agent.service"
 
-# Como el playbook está en la raíz, playbook_dir == raíz del proyecto
-elastic_agent_report_dir: "{{ playbook_dir }}/Salidas_Playbooks"
 
-elastic_agent_report_json: "{{ elastic_agent_report_dir }}/elastic_agent_report.json"
-elastic_agent_report_xlsx: "{{ elastic_agent_report_dir }}/elastic_agent_report.xlsx"
 
+# ==========================================================
+# Elastic Agent | RESTART / SERVICE VALIDATION VARIABLES
+# ==========================================================
+
+# Cantidad de caracteres a mostrar del status systemctl en el reporte
 elastic_agent_status_excerpt_len: 250
 
 
-### ENROLAMIENTO DE AGENTE ELASTIC ###
-elastic_reenroll: true
-elastic_fleet_url: "https://cfc306e977fe43089c60d0052027d959.fleet.7.1.9.10.ip.es.io:9243"
-elastic_enrollment_token: "Vl9xQmxvY0JBMjY4enlQcWdueWE6dmFUVkRxaWhSSWl6dmFvWFNoWTA4UQ=="
-elastic_insecure: true
 
+# ==========================================================
+# Elastic Agent | REPORTING VARIABLES
+# ==========================================================
+
+# Carpeta donde se guardan salidas del playbook
+# playbook_dir = raíz del repo cuando ejecutas desde allí
+elastic_agent_report_dir: "{{ playbook_dir }}/Salidas_Playbooks"
+
+# Archivo JSON consolidado
+elastic_agent_report_json: "{{ elastic_agent_report_dir }}/elastic_agent_report.json"
+
+# Archivo Excel final exportado
+elastic_agent_report_xlsx: "{{ elastic_agent_report_dir }}/elastic_agent_report.xlsx"
+
+
+
+# ==========================================================
+# Elastic Agent | RE-ENROLL VARIABLES
+# ==========================================================
+
+# Control lógico (si usas toggle desde playbook o AWX)
+elastic_reenroll: true
+
+# URL Fleet Server
+elastic_fleet_url: "https://cfc306e977fe43089c60d0052027d959.fleet.7.1.9.10.ip.es.io:9243"
+
+# Token de enrolamiento (⚠ idealmente mover a AWX Survey o vault)
+elastic_enrollment_token: "Vl9xQmxvY0JBMjY4enlQcWdueWE6dmFUVkRxaWhSSWl6dmFvWFNoWTA4UQ=="
+
+# Permitir TLS insecure (si Fleet no tiene CA confiable en host)
+elastic_insecure: true
