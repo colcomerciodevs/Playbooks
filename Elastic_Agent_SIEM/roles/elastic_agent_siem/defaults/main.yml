@@ -8,3 +8,11 @@ elastic_agent_report_json: "{{ elastic_agent_report_dir }}/elastic_agent_report.
 elastic_agent_report_xlsx: "{{ elastic_agent_report_dir }}/elastic_agent_report.xlsx"
 
 elastic_agent_status_excerpt_len: 250
+
+
+### ENROLAMIENTO DE AGENTE ELASTIC ###
+elastic_reenroll: true
+elastic_fleet_url: "https://cfc306e977fe43089c60d0052027d959.fleet.7.1.9.10.ip.es.io:9243"
+elastic_enrollment_token: "Vl9xQmxvY0JBMjY4enlQcWdueWE6dmFUVkRxaWhSSWl6dmFvWFNoWTA4UQ=="
+elastic_insecure: true
+

@@ -1,0 +1,30 @@
+---
+- name: Stop elastic-agent (before re-enroll)
+  ansible.builtin.systemd:
+    name: elastic-agent
+    state: stopped
+  become: true
+
+- name: Re-enroll elastic-agent (service already installed)
+  ansible.builtin.command: >
+    elastic-agent enroll
+    --url={{ elastic_fleet_url }}
+    --enrollment-token={{ elastic_enrollment_token }}
+    {% if elastic_insecure | default(true) %} --insecure {% endif %}
+  register: enroll_out
+  changed_when: >
+    (enroll_out.rc == 0) and
+    (
+      'Enrolled' in (enroll_out.stdout | default('')) or
+      'Successfully' in (enroll_out.stdout | default('')) or
+      'already' in (enroll_out.stdout | default(''))
+    )
+  failed_when: enroll_out.rc != 0
+  become: true
+
+- name: Start elastic-agent (after re-enroll)
+  ansible.builtin.systemd:
+    name: elastic-agent
+    state: started
+    enabled: true
+  become: true
