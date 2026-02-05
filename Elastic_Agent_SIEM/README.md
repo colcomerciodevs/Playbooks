@@ -110,13 +110,13 @@ reenroll_restart
 #### EJECUCIÓN EN ANSIBLE CORE #####
 
 SOLO RESTART
-ansible-playbook elastic_agent_action.yml -i inventory.ini -e "elastic_action=restart"
+ansible-playbook elastic_agent_action.yml -e "elastic_action=restart"
 
 SOLO RE-ENROLL
-ansible-playbook elastic_agent_action.yml -i inventory.ini -e "elastic_action=reenroll"
+ansible-playbook elastic_agent_action.yml -e "elastic_action=reenroll"
 
 RE-ENROLL + RESTART
-ansible-playbook elastic_agent_action.yml -i inventory.ini -e "elastic_action=reenroll_restart"
+ansible-playbook elastic_agent_action.yml -e "elastic_action=reenroll_restart"
 
 
 
