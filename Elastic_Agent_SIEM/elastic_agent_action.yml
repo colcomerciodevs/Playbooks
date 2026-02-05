@@ -15,6 +15,12 @@
         tasks_from: enroll.yml
       when: elastic_action | default('restart') == 'reenroll'
 
+    - name: "Elastic Agent | Record mínimo (tasks_from=record_min.yml)"
+      ansible.builtin.include_role:
+        name: elastic_agent_siem
+        tasks_from: record_min.yml
+      when: elastic_action | default('restart') == 'reenroll'
+
     # =========================
     # (B) SOLO RESTART
     # =========================
@@ -33,6 +39,14 @@
         tasks_from: enroll.yml
       when: elastic_action | default('restart') == 'reenroll_restart'
 
+    # (Opcional) Si quieres dejar evidencia de reenroll aun si luego falla service.yml,
+    # puedes armar record_min aquí y luego service.yml lo "completa".
+    - name: "Elastic Agent | Record mínimo (reenroll_restart)"
+      ansible.builtin.include_role:
+        name: elastic_agent_siem
+        tasks_from: record_min.yml
+      when: elastic_action | default('restart') == 'reenroll_restart'
+
     - name: "Elastic Agent | Restart/Status/Record (reenroll_restart)"
       ansible.builtin.include_role:
         name: elastic_agent_siem
@@ -46,4 +60,3 @@
       ansible.builtin.include_role:
         name: elastic_agent_siem
         tasks_from: report.yml
-      run_once: false
