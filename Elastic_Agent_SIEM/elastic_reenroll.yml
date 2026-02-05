@@ -1,9 +1,0 @@
----
-- name: Elastic Agent Re-Enroll Only
-  hosts: linux_servers
-  become: true
-  gather_facts: true
-
-  roles:
-    - role: elastic_agent_siem
-      tasks_from: enroll.yml

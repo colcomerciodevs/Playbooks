@@ -1,5 +1,19 @@
 ---
-- name: Asegurar carpeta local de salida
+# ==========================================================
+# Elastic Agent | report.yml
+# - Crea carpeta local
+# - Copia script Python de export
+# - Asegura JSON
+# - Lee JSON actual
+# - Consolida hostvars[*].elastic_agent_record
+# - Exporta Excel
+# - Muestra rutas finales
+# ==========================================================
+
+# ----------------------------------------------------------
+# (1) Asegurar carpeta local de salida (localhost)
+# ----------------------------------------------------------
+- name: "Elastic Agent | Asegurar carpeta local de salida"
   ansible.builtin.file:
     path: "{{ elastic_agent_report_dir }}"
     state: directory
@@ -7,7 +21,10 @@
   delegate_to: localhost
   run_once: true
 
-- name: Copiar script de export Excel a localhost
+# ----------------------------------------------------------
+# (2) Copiar script de export Excel a localhost
+# ----------------------------------------------------------
+- name: "Elastic Agent | Copiar script de export Excel a localhost"
   ansible.builtin.copy:
     src: "export_excel_elastic_agent.py"
     dest: "{{ elastic_agent_report_dir }}/export_excel_elastic_agent.py"
@@ -15,7 +32,10 @@
   delegate_to: localhost
   run_once: true
 
-- name: Asegurar JSON existe (si no existe, crear [])
+# ----------------------------------------------------------
+# (3) Asegurar JSON existe (si no existe, crear [])
+# ----------------------------------------------------------
+- name: "Elastic Agent | Asegurar JSON existe (si no existe, crear [])"
   ansible.builtin.copy:
     dest: "{{ elastic_agent_report_json }}"
     content: "[]"
@@ -24,14 +44,20 @@
   delegate_to: localhost
   run_once: true
 
-- name: Leer JSON existente
+# ----------------------------------------------------------
+# (4) Leer JSON existente
+# ----------------------------------------------------------
+- name: "Elastic Agent | Leer JSON existente"
   ansible.builtin.slurp:
     src: "{{ elastic_agent_report_json }}"
   delegate_to: localhost
   run_once: true
   register: elastic_existing_json
 
-- name: Consolidar registros de todos los hosts en JSON
+# ----------------------------------------------------------
+# (5) Consolidar registros de todos los hosts en JSON
+# ----------------------------------------------------------
+- name: "Elastic Agent | Consolidar registros de todos los hosts en JSON"
   ansible.builtin.copy:
     dest: "{{ elastic_agent_report_json }}"
     content: >-
@@ -50,7 +76,10 @@
   delegate_to: localhost
   run_once: true
 
-- name: Exportar Excel con Python (localhost)
+# ----------------------------------------------------------
+# (6) Exportar Excel con Python (localhost)
+# ----------------------------------------------------------
+- name: "Elastic Agent | Exportar Excel con Python (localhost)"
   ansible.builtin.command: >
     python3 {{ elastic_agent_report_dir }}/export_excel_elastic_agent.py
     {{ elastic_agent_report_json }}
@@ -61,7 +90,10 @@
   changed_when: false
   failed_when: elastic_excel_export.rc != 0
 
-- name: Mostrar rutas generadas
+# ----------------------------------------------------------
+# (7) Mostrar rutas generadas
+# ----------------------------------------------------------
+- name: "Elastic Agent | Mostrar rutas generadas"
   ansible.builtin.debug:
     msg:
       - "JSON: {{ elastic_agent_report_json }}"

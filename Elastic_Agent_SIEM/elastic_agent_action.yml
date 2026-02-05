@@ -1,0 +1,49 @@
+---
+- name: Elastic Agent | Acción selectiva + Reporte
+  hosts: siem_agents
+  become: true
+  gather_facts: true
+
+  tasks:
+
+    # =========================
+    # (A) SOLO RE-ENROLL
+    # =========================
+    - name: "Elastic Agent | Re-enroll (tasks_from=enroll.yml)"
+      ansible.builtin.include_role:
+        name: elastic_agent_siem
+        tasks_from: enroll.yml
+      when: elastic_action | default('restart') == 'reenroll'
+
+    # =========================
+    # (B) SOLO RESTART
+    # =========================
+    - name: "Elastic Agent | Restart/Status/Record (tasks_from=service.yml)"
+      ansible.builtin.include_role:
+        name: elastic_agent_siem
+        tasks_from: service.yml
+      when: elastic_action | default('restart') == 'restart'
+
+    # =========================
+    # (C) RE-ENROLL + RESTART (opcional)
+    # =========================
+    - name: "Elastic Agent | Re-enroll (reenroll_restart)"
+      ansible.builtin.include_role:
+        name: elastic_agent_siem
+        tasks_from: enroll.yml
+      when: elastic_action | default('restart') == 'reenroll_restart'
+
+    - name: "Elastic Agent | Restart/Status/Record (reenroll_restart)"
+      ansible.builtin.include_role:
+        name: elastic_agent_siem
+        tasks_from: service.yml
+      when: elastic_action | default('restart') == 'reenroll_restart'
+
+    # =========================
+    # (D) SIEMPRE REPORTE
+    # =========================
+    - name: "Elastic Agent | Report JSON/Excel (tasks_from=report.yml)"
+      ansible.builtin.include_role:
+        name: elastic_agent_siem
+        tasks_from: report.yml
+      run_once: false

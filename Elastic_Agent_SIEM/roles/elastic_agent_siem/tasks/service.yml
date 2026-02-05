@@ -6,23 +6,30 @@
 # - Consulta is-active y status si existe
 # - Ejecuta "elastic-agent version"
 # - Parseo de versión con regex_findall (estable en 2.9)
-# - Construye elastic_agent_record para el reporte
+# - Construye elastic_agent_record (COMPLETO) para el reporte
+#   * sin duplicar lógica del reenroll (toma lo existente o deja NO EJECUTADO)
 # ==========================================================
 
+# ----------------------------------------------------------
 # (1) Validar si existe la unidad systemd del servicio
+# ----------------------------------------------------------
 - name: "Elastic Agent | Verificar existencia de la unidad systemd"
   ansible.builtin.command: "systemctl list-unit-files {{ elastic_agent_service_name }} --no-pager --no-legend"
   register: elastic_unit_files
   changed_when: false
   failed_when: false
 
+# ----------------------------------------------------------
 # (2) Bandera: existe servicio si list-unit-files devuelve algo
+# ----------------------------------------------------------
 - name: "Elastic Agent | Definir service_exists"
   ansible.builtin.set_fact:
     elastic_service_exists: "{{ (elastic_unit_files.stdout | default('') | trim) != '' }}"
   changed_when: false
 
+# ----------------------------------------------------------
 # (3) Reiniciar SOLO si existe (no fallar el play aunque falle restart)
+# ----------------------------------------------------------
 - name: "Elastic Agent | Reiniciar servicio (solo si existe)"
   ansible.builtin.command: "systemctl restart {{ elastic_agent_service_name }}"
   register: elastic_restart_cmd
@@ -30,7 +37,9 @@
   failed_when: false
   when: elastic_service_exists | bool
 
+# ----------------------------------------------------------
 # (4) Consultar is-active SOLO si existe
+# ----------------------------------------------------------
 - name: "Elastic Agent | Consultar is-active (solo si existe)"
   ansible.builtin.command: "systemctl is-active {{ elastic_agent_service_name }}"
   register: elastic_is_active
@@ -38,7 +47,9 @@
   failed_when: false
   when: elastic_service_exists | bool
 
+# ----------------------------------------------------------
 # (5) Consultar status detallado SOLO si existe
+# ----------------------------------------------------------
 - name: "Elastic Agent | Consultar status detallado (solo si existe)"
   ansible.builtin.command: "systemctl status {{ elastic_agent_service_name }} --no-pager -l"
   register: elastic_status
@@ -46,11 +57,9 @@
   failed_when: false
   when: elastic_service_exists | bool
 
-# ==========================================================
-# (VERSIÓN) Ejecutar elastic-agent version y parsear
-# ==========================================================
-
+# ----------------------------------------------------------
 # (6) Ejecutar elastic-agent version (no fallar si no existe)
+# ----------------------------------------------------------
 - name: "Elastic Agent | Obtener versión (elastic-agent version)"
   ansible.builtin.shell: |
     set -o pipefail
@@ -61,42 +70,34 @@
   changed_when: false
   failed_when: false
 
+# ----------------------------------------------------------
 # (7) Unir stdout+stderr (string único para parseo)
+# ----------------------------------------------------------
 - name: "Elastic Agent | Unificar salida de versión"
   ansible.builtin.set_fact:
     elastic_version_raw: "{{ (elastic_version_cmd.stdout | default('')) ~ ' ' ~ (elastic_version_cmd.stderr | default('')) }}"
   changed_when: false
 
+# ----------------------------------------------------------
 # (8) Obtener lista de versiones encontradas (Ansible 2.9 friendly)
+# ----------------------------------------------------------
 - name: "Elastic Agent | Obtener lista de versiones encontradas"
   ansible.builtin.set_fact:
     elastic_version_matches: "{{ elastic_version_raw | regex_findall('[0-9]+\\.[0-9]+\\.[0-9]+') }}"
   changed_when: false
 
+# ----------------------------------------------------------
 # (9) Tomar la primera versión (si lista vacía => NO INSTALADO)
+# ----------------------------------------------------------
 - name: "Elastic Agent | Definir versión final"
   ansible.builtin.set_fact:
     elastic_version: "{{ (elastic_version_matches | first) | default('NO INSTALADO', true) }}"
   changed_when: false
 
-# (10) DEBUG para validar (RAW/MATCHES/PARSED)
-- name: "DEBUG | Elastic Agent versión (RAW/MATCHES/PARSED)"
-  ansible.builtin.debug:
-    msg:
-      - "HOST={{ inventory_hostname }}"
-      - "RC={{ elastic_version_cmd.rc | default('N/A') }}"
-      - "STDOUT={{ elastic_version_cmd.stdout | default('') }}"
-      - "STDERR={{ elastic_version_cmd.stderr | default('') }}"
-      - "RAW={{ elastic_version_raw }}"
-      - "MATCHES={{ elastic_version_matches | default([]) }}"
-      - "PARSED={{ elastic_version }}"
-  changed_when: false
-
-# ==========================================================
-# (REGISTRO) Construir datos por host para el reporte
-# ==========================================================
-
-# (11) Construir registro final por host
+# ----------------------------------------------------------
+# (10) Construir registro final por host para el reporte (COMPLETO)
+#     - Si ya existe reenroll_* (por record_min.yml) lo respeta
+# ----------------------------------------------------------
 - name: "Elastic Agent | Construir registro por host para reporte"
   ansible.builtin.set_fact:
     elastic_agent_record:
@@ -109,6 +110,29 @@
 
       # 4) Versión Elastic Agent
       elastic_version: "{{ elastic_version }}"
+
+      # 4b) Re-enroll (si record_min.yml ya lo definió, lo conserva)
+      reenroll_ran: "{{ elastic_agent_record.reenroll_ran | default(elastic_enroll_cmd is defined) }}"
+      reenroll_ok: >-
+        {{
+          elastic_agent_record.reenroll_ok
+          | default(
+              (elastic_enroll_cmd is defined) and ((elastic_enroll_cmd.rc | default(1)) == 0)
+            )
+        }}
+      reenroll_msg: >-
+        {{
+          elastic_agent_record.reenroll_msg
+          | default(
+              'NO EJECUTADO'
+              if (elastic_enroll_cmd is not defined)
+              else (
+                (elastic_enroll_cmd.stdout | default('') | trim)
+                if (elastic_enroll_cmd.stdout | default('') | trim) != ''
+                else (elastic_enroll_cmd.stderr | default('') | trim)
+              )
+            )
+        }}
 
       # 5) Reinicio OK (solo si existe unidad y restart rc=0)
       restart_ok: >-

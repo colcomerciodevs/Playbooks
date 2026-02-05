@@ -1,45 +1,74 @@
 ---
+# ==========================================================
+# Elastic Agent | enroll.yml
+# - Verifica existencia de unidad systemd
+# - Stop servicio (si existe)
+# - Ejecuta elastic-agent enroll (NO install)
+# - Start servicio (si existe)
+# - NO construye record (eso lo hace record_min.yml)
+# ==========================================================
 
-# (1) Validar si existe la unidad systemd del servicio
-- name: "Elastic Agent | Verificar existencia de la unidad systemd"
+# ----------------------------------------------------------
+# (1) Verificar si existe la unidad systemd del Elastic Agent
+# ----------------------------------------------------------
+- name: "Elastic Agent | Verificar existencia unidad systemd (enroll)"
   ansible.builtin.command: "systemctl list-unit-files {{ elastic_agent_service_name }} --no-pager --no-legend"
-  register: elastic_unit_files
+  register: elastic_unit_files_enroll
   changed_when: false
   failed_when: false
 
-# (2) Bandera: existe servicio si list-unit-files devuelve algo
-- name: "Elastic Agent | Definir service_exists"
+# ----------------------------------------------------------
+# (2) Definir bandera elastic_service_exists
+# ----------------------------------------------------------
+- name: "Elastic Agent | Definir elastic_service_exists (enroll)"
   ansible.builtin.set_fact:
-    elastic_service_exists: "{{ (elastic_unit_files.stdout | default('') | trim) != '' }}"
+    elastic_service_exists: "{{ (elastic_unit_files_enroll.stdout | default('') | trim) != '' }}"
   changed_when: false
 
-- name: Stop elastic-agent (before re-enroll)
-  ansible.builtin.systemd:
-    name: elastic-agent
-    state: stopped
-  become: true
+# ----------------------------------------------------------
+# (3) Stop servicio antes de re-enroll (si existe)
+# ----------------------------------------------------------
+- name: "Elastic Agent | Stop servicio antes de re-enroll (si existe)"
+  ansible.builtin.command: "systemctl stop {{ elastic_agent_service_name }}"
+  register: elastic_stop_cmd
+  changed_when: true
+  failed_when: false
   when: elastic_service_exists | bool
 
-- name: Re-enroll elastic-agent (service already installed)
+# ----------------------------------------------------------
+# (4) Ejecutar re-enroll (NO install) - si existe servicio
+# ----------------------------------------------------------
+- name: "Elastic Agent | Ejecutar elastic-agent enroll (si existe servicio)"
   ansible.builtin.command: >
     elastic-agent enroll
     --url={{ elastic_fleet_url }}
     --enrollment-token={{ elastic_enrollment_token }}
     {% if elastic_insecure | default(true) %} --insecure {% endif %}
-  register: enroll_out
-  changed_when: >
-    (enroll_out.rc == 0) and
-    (
-      'Enrolled' in (enroll_out.stdout | default('')) or
-      'Successfully' in (enroll_out.stdout | default('')) or
-      'already' in (enroll_out.stdout | default(''))
-    )
-  failed_when: enroll_out.rc != 0
-  become: true
+  register: elastic_enroll_cmd
+  changed_when: true
+  failed_when: false
+  when: elastic_service_exists | bool
 
-- name: Start elastic-agent (after re-enroll)
-  ansible.builtin.systemd:
-    name: elastic-agent
-    state: started
-    enabled: true
-  become: true
+# ----------------------------------------------------------
+# (5) Start servicio después del re-enroll (si existe)
+# ----------------------------------------------------------
+- name: "Elastic Agent | Start servicio después de re-enroll (si existe)"
+  ansible.builtin.command: "systemctl start {{ elastic_agent_service_name }}"
+  register: elastic_start_cmd
+  changed_when: true
+  failed_when: false
+  when: elastic_service_exists | bool
+
+# ----------------------------------------------------------
+# (6) Debug opcional
+# ----------------------------------------------------------
+- name: "DEBUG | Re-enroll (rc/stdout/stderr)"
+  ansible.builtin.debug:
+    msg:
+      - "HOST={{ inventory_hostname }}"
+      - "SERVICE_EXISTS={{ elastic_service_exists | default(false) }}"
+      - "ENROLL_RC={{ elastic_enroll_cmd.rc | default('N/A') }}"
+      - "ENROLL_STDOUT={{ elastic_enroll_cmd.stdout | default('') }}"
+      - "ENROLL_STDERR={{ elastic_enroll_cmd.stderr | default('') }}"
+  changed_when: false
+  when: elastic_debug | default(false) | bool

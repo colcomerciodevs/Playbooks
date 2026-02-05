@@ -1,0 +1,32 @@
+---
+- name: "Elastic Agent | Construir registro mínimo por host (para reporte)"
+  ansible.builtin.set_fact:
+    elastic_agent_record:
+      inventory_name: "{{ inventory_hostname }}"
+      hostname: "{{ ansible_hostname | default('N/A') }}"
+      inventory_ip: "{{ ansible_host | default('N/A') }}"
+
+      elastic_version: "{{ elastic_version | default('N/A') }}"
+
+      reenroll_ran: "{{ elastic_enroll_cmd is defined }}"
+      reenroll_ok: >-
+        {{
+          (elastic_enroll_cmd is defined)
+          and ((elastic_enroll_cmd.rc | default(1)) == 0)
+        }}
+      reenroll_msg: >-
+        {{
+          'NO EJECUTADO'
+          if (elastic_enroll_cmd is not defined)
+          else (
+            (elastic_enroll_cmd.stdout | default('') | trim)
+            if (elastic_enroll_cmd.stdout | default('') | trim) != ''
+            else (elastic_enroll_cmd.stderr | default('') | trim)
+          )
+        }}
+
+      restart_ok: false
+      is_active: "NO VALIDADO"
+      ok: false
+      status_excerpt: "Acción ejecutada: RE-ENROLL (sin validación de servicio)"
+  changed_when: false
