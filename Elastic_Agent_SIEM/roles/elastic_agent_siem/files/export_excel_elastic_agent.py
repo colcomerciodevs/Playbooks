@@ -2,15 +2,23 @@
 """
 Exporta un reporte Excel (XLSX) a partir de un JSON consolidado con datos por host.
 
+Soporta 3 escenarios:
+1) SOLO RE-ENROLL   (record_min.yml): incluye reenroll_* y NO valida servicio
+2) SOLO RESTART     (service.yml): incluye restart/status/ok/version
+3) RE-ENROLL+RESTART: incluye ambos (reenroll_* + restart/status/ok/version)
+
 Columnas (orden):
-1) Nombre en el inventario (inventory_hostname)          -> inventory_name
-2) Hostname real del servidor (ansible_hostname)         -> hostname
-3) IP del inventario (ansible_host)                      -> inventory_ip
-4) Versión Elastic Agent                                 -> elastic_version
-5) Reinicio OK                                           -> restart_ok
-6) Estado del servicio (is-active / NO EXISTE)           -> is_active
-7) OK (verde / rojo)                                     -> ok
-8) Extracto de status                                    -> status_excerpt
+1) Inventario (inventory_hostname)          -> inventory_name
+2) Hostname real (ansible_hostname)         -> hostname
+3) IP del inventario (ansible_host)         -> inventory_ip
+4) Versión Elastic Agent                    -> elastic_version
+5) Re-enroll ejecutado                      -> reenroll_ran
+6) Re-enroll OK                             -> reenroll_ok
+7) Mensaje Re-enroll                        -> reenroll_msg
+8) Reinicio OK                              -> restart_ok
+9) Estado del servicio (is-active)          -> is_active
+10) OK (verde / rojo)                       -> ok
+11) Extracto de status                      -> status_excerpt
 
 Uso:
   export_excel_elastic_agent.py <input.json> <output.xlsx>
@@ -29,6 +37,7 @@ from openpyxl.utils import get_column_letter
 # Colores (suaves) para semáforo
 GREEN = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
 RED = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
+YELLOW = PatternFill(start_color="FFEB9C", end_color="FFEB9C", fill_type="solid")
 HEADER = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
 
 
@@ -104,6 +113,11 @@ def main() -> int:
         "Hostname real (ansible_hostname)",
         "IP del inventario",
         "Versión Elastic Agent",
+
+        "Re-enroll ejecutado",
+        "Re-enroll OK",
+        "Mensaje re-enroll",
+
         "Reinicio OK",
         "Estado del servicio (is-active)",
         "OK (verde/rojo)",
@@ -116,7 +130,7 @@ def main() -> int:
         cell = ws.cell(row=1, column=c)
         cell.font = Font(bold=True)
         cell.fill = HEADER
-        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
     # Filas
     for item in data:
@@ -127,6 +141,12 @@ def main() -> int:
         # Nunca permitir None/vacío en versión
         elastic_version = norm_str(item.get("elastic_version"), "N/A")
 
+        # Re-enroll (puede venir de record_min.yml o service.yml si preservas campos)
+        reenroll_ran = safe_bool(item.get("reenroll_ran", False))
+        reenroll_ok = safe_bool(item.get("reenroll_ok", False))
+        reenroll_msg = norm_str(item.get("reenroll_msg"), "N/A")
+
+        # Restart/Status (puede venir vacío en solo reenroll)
         restart_ok = safe_bool(item.get("restart_ok", False))
         is_active = norm_str(item.get("is_active"), "unknown")
         ok = safe_bool(item.get("ok", False))
@@ -137,6 +157,11 @@ def main() -> int:
             hostname,
             inventory_ip,
             elastic_version,
+
+            "SI" if reenroll_ran else "NO",
+            "OK" if reenroll_ok else "NO OK",
+            reenroll_msg,
+
             "SI" if restart_ok else "NO",
             is_active,
             "OK" if ok else "NO OK",
@@ -145,22 +170,38 @@ def main() -> int:
 
         row = ws.max_row
 
-        # Colores basados en OK y restart_ok
+        # -----------------------------
+        # Colores / Semáforos
+        # -----------------------------
+
+        # OK global (col 10) y Estado (col 9) dependen de "ok"
         fill_ok = GREEN if ok else RED
-        ws.cell(row=row, column=7).fill = fill_ok                 # OK
-        ws.cell(row=row, column=6).fill = fill_ok                 # Estado
-        ws.cell(row=row, column=5).fill = GREEN if restart_ok else RED  # Reinicio OK
+        ws.cell(row=row, column=10).fill = fill_ok               # OK global
+        ws.cell(row=row, column=9).fill = fill_ok                # Estado servicio
+
+        # Reinicio OK (col 8)
+        ws.cell(row=row, column=8).fill = GREEN if restart_ok else RED
+
+        # Re-enroll OK (col 6) solo si se ejecutó re-enroll
+        if reenroll_ran:
+            ws.cell(row=row, column=6).fill = GREEN if reenroll_ok else RED
+        else:
+            # Si no se ejecutó, lo dejamos neutro (amarillo suave)
+            ws.cell(row=row, column=6).fill = YELLOW
 
         # Versión: si NO INSTALADO -> rojo (útil en auditoría)
         if elastic_version.upper() == "NO INSTALADO":
             ws.cell(row=row, column=4).fill = RED
 
-        # Alineación columnas principales
-        for col in [1, 2, 3, 4, 5, 6, 7]:
+        # -----------------------------
+        # Alineación
+        # -----------------------------
+        for col in [1, 2, 3, 4, 5, 6, 8, 9, 10]:
             ws.cell(row=row, column=col).alignment = Alignment(horizontal="center", vertical="center")
 
-        # Extracto con wrap
-        ws.cell(row=row, column=8).alignment = Alignment(wrap_text=True, vertical="top")
+        # Mensaje re-enroll y extracto con wrap
+        ws.cell(row=row, column=7).alignment = Alignment(wrap_text=True, vertical="top")
+        ws.cell(row=row, column=11).alignment = Alignment(wrap_text=True, vertical="top")
 
     ws.freeze_panes = "A2"
     autosize(ws, max_width=90)
