@@ -1,5 +1,8 @@
-\
 ---
+# ----------------------------------------------------------
+# (0) Construye regex exacto si no se suministra old_ip_regex
+# - Usa bordes \\b + regex_escape para coincidir SOLO la IP literal
+# ----------------------------------------------------------
 - name: Construir regex exacta para la IP (si no viene definida)
   ansible.builtin.set_fact:
     _old_ip_regex: >-
@@ -10,6 +13,9 @@
         )
       }}
 
+# ------------------------------------------
+# (1) Encuentra scripts según file_patterns
+# ------------------------------------------
 - name: Buscar scripts en {{ scan_root }}
   ansible.builtin.find:
     paths: "{{ scan_root }}"
@@ -18,16 +24,25 @@
     recurse: true
   register: _found_scripts
 
+# ------------------------------------------------
+# (2) Inicializa el array de resultados por host
+# ------------------------------------------------
 - name: Inicializar resultados del rol (por host)
   ansible.builtin.set_fact:
     replace_ip_results: []
 
+# ---------------------------------------------------------
+# (3) Procesa cada archivo encontrado (pre-scan, replace, post-scan)
+# ---------------------------------------------------------
 - name: Procesar cada archivo encontrado
   ansible.builtin.include_tasks: one_file.yml
   loop: "{{ _found_scripts.files }}"
   loop_control:
     loop_var: f
 
+# ---------------------------------------------------------
+# (4) Genera un summary final por host (totales + detalle)
+# ---------------------------------------------------------
 - name: Resumen del rol (por host)
   ansible.builtin.set_fact:
     replace_ip_summary:

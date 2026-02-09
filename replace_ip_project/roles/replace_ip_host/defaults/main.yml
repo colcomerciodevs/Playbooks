@@ -1,14 +1,21 @@
 ---
+# Ruta raíz a escanear recursivamente
 scan_root: "/home"
+
+# IP literal a reemplazar (exacta)
 old_ip: "10.181.0.77"
+
+# Hostname destino (ej. lo que tengas en /etc/hosts o DNS)
 new_host: "batch01"
 
+# Patrones de archivos a evaluar
 file_patterns:
   - "*.sh"
   - "*.bash"
 
-# Si lo dejas vacío, el rol lo construye automáticamente como regex exacto con bordes \b
+# Si lo dejas vacío, el rol construye un regex exacto con bordes \\b
+# para evitar reemplazos parciales.
 old_ip_regex: ""
 
-# Captura evidencia de líneas con el hostname después del cambio
+# Si true, captura evidencia de líneas que contengan el hostname tras el cambio
 capture_after_host_lines: true

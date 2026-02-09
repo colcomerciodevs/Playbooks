@@ -1,10 +1,17 @@
-\
 ---
+# ---------------------------------------------------------
+# (A) BEFORE: busca la IP exacta y captura evidencias con línea
+# - Si no hay coincidencias, el archivo queda como SKIPPED
+# ---------------------------------------------------------
 - name: BEFORE - Buscar IP exacta en {{ f.path }}
   ansible.builtin.shell: "grep -nE '{{ _old_ip_regex }}' '{{ f.path }}' || true"
   register: _before
   changed_when: false
 
+# ---------------------------------------------------------
+# (B) REPLACE: reemplaza SOLO si hubo coincidencias
+# - replace usa regexp exacto (bordes) => solo cambia esa IP
+# ---------------------------------------------------------
 - name: Reemplazar IP exacta por hostname (solo si hubo coincidencias)
   ansible.builtin.replace:
     path: "{{ f.path }}"
@@ -13,12 +20,19 @@
   register: _replace
   when: _before.stdout != ""
 
+# ---------------------------------------------------------
+# (C) AFTER: valida que NO quede la IP (debería estar vacío)
+# ---------------------------------------------------------
 - name: AFTER - Validar que NO quede la IP
   ansible.builtin.shell: "grep -nE '{{ _old_ip_regex }}' '{{ f.path }}' || true"
   register: _after_ip
   changed_when: false
   when: _before.stdout != ""
 
+# ---------------------------------------------------------
+# (D) AFTER: captura líneas con hostname (evidencia)
+# - opcional (capture_after_host_lines)
+# ---------------------------------------------------------
 - name: AFTER - Mostrar líneas con hostname
   ansible.builtin.shell: "grep -n '{{ new_host }}' '{{ f.path }}' || true"
   register: _after_host
@@ -27,6 +41,12 @@
     - _before.stdout != ""
     - capture_after_host_lines | bool
 
+# ---------------------------------------------------------
+# (E) Registrar resultado del archivo
+# - OK: no queda IP y (si capture enabled) existe hostname
+# - FAIL: quedó IP o no aparece hostname cuando debía
+# - SKIPPED: no había IP antes
+# ---------------------------------------------------------
 - name: Registrar resultado del archivo
   ansible.builtin.set_fact:
     replace_ip_results: >-

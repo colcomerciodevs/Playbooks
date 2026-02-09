@@ -1,15 +1,36 @@
 #!/usr/bin/env python3
+"""
+Genera un reporte HTML (verde/rojo) a partir de un JSON consolidado.
+
+Entrada:
+- JSON que contiene una LISTA de "replace_ip_summary" (uno por host),
+  generado por el Play 2 del site.yml.
+
+Salida:
+- Un HTML con:
+  - Totales globales OK/FAIL/SKIPPED
+  - Por host: resumen y detalle por archivo (ANTES/DESPUÉS)
+"""
+
 import argparse
 import json
 import os
 from datetime import datetime
 from html import escape
 
+
 def status_badge(status: str) -> str:
+    """Devuelve un badge HTML con estilos por estado."""
     cls = {"OK": "ok", "FAIL": "fail", "SKIPPED": "skip"}.get(status, "skip")
     return f"<span class='badge {cls}'>{escape(status)}</span>"
 
+
 def parse_line(s: str):
+    """
+    Parsea líneas tipo:
+      "59:  ssh batch01 ls -ltr ..."
+    Retorna: (59, "  ssh batch01 ls -ltr ...")
+    """
     if ":" in s:
         left, right = s.split(":", 1)
         try:
@@ -18,9 +39,12 @@ def parse_line(s: str):
             return None, s.rstrip("\n")
     return None, s.rstrip("\n")
 
+
 def render_lines(lines):
+    """Renderiza un listado de líneas grep -n en una tabla HTML."""
     if not lines:
         return "<div class='muted'>&lt;sin coincidencias&gt;</div>"
+
     rows = []
     for ln in lines:
         n, text = parse_line(ln)
@@ -33,22 +57,37 @@ def render_lines(lines):
         )
     return "<table class='tbl'>" + "".join(rows) + "</table>"
 
+
 def main():
-    ap = argparse.ArgumentParser(description="Genera reporte HTML a partir del JSON consolidado de Ansible.")
+    # ---------------------------------------
+    # (1) Parseo de argumentos de línea
+    # ---------------------------------------
+    ap = argparse.ArgumentParser(
+        description="Genera reporte HTML a partir del JSON consolidado de Ansible."
+    )
     ap.add_argument("--input", required=True, help="Ruta JSON consolidado (lista de summaries por host).")
     ap.add_argument("--output", required=True, help="Ruta HTML de salida.")
     args = ap.parse_args()
 
+    # ---------------------------------------
+    # (2) Cargar JSON y validar estructura
+    # ---------------------------------------
     with open(args.input, "r", encoding="utf-8") as f:
         data = json.load(f)
 
     if not isinstance(data, list):
         raise SystemExit("El JSON de entrada debe ser una LISTA (summaries por host).")
 
+    # ---------------------------------------
+    # (3) Totales globales
+    # ---------------------------------------
     sum_ok = sum(h.get("totals", {}).get("ok", 0) for h in data)
     sum_fail = sum(h.get("totals", {}).get("fail", 0) for h in data)
     sum_skip = sum(h.get("totals", {}).get("skipped", 0) for h in data)
 
+    # ---------------------------------------
+    # (4) CSS embebido (reporte autocontenido)
+    # ---------------------------------------
     css = '''
     body{font-family:Arial,Helvetica,sans-serif;margin:24px;background:#fff;color:#111;}
     h1{margin:0 0 8px 0;}
@@ -71,16 +110,29 @@ def main():
     .summary{display:flex;gap:10px;align-items:center;margin:10px 0 18px 0;}
     '''
 
+    # ---------------------------------------
+    # (5) Render HTML
+    # ---------------------------------------
     now = datetime.now().isoformat(timespec="seconds")
-    html = [f"<!doctype html><html><head><meta charset='utf-8'><title>Reporte Replace IP</title><style>{css}</style></head><body>"]
+    html = [
+        "<!doctype html><html><head><meta charset='utf-8'>"
+        "<title>Reporte Replace IP</title>"
+        f"<style>{css}</style></head><body>"
+    ]
+
     html.append("<h1>Reporte: Reemplazo IP → Hostname</h1>")
     html.append(f"<div class='meta'>Generado: {escape(now)}</div>")
-    html.append("<div class='summary'>"
-                f"<span class='badge ok'>OK: {sum_ok}</span>"
-                f"<span class='badge fail'>FAIL: {sum_fail}</span>"
-                f"<span class='badge skip'>SKIPPED: {sum_skip}</span>"
-                "</div>")
+    html.append(
+        "<div class='summary'>"
+        f"<span class='badge ok'>OK: {sum_ok}</span>"
+        f"<span class='badge fail'>FAIL: {sum_fail}</span>"
+        f"<span class='badge skip'>SKIPPED: {sum_skip}</span>"
+        "</div>"
+    )
 
+    # ---------------------------------------
+    # (6) Por cada host: resumen y detalle
+    # ---------------------------------------
     for h in data:
         host = h.get("host", "unknown")
         scan_root = h.get("scan_root", "")
@@ -92,45 +144,59 @@ def main():
 
         html.append("<div class='card'>")
         html.append(f"<div class='host'><b>Host:</b> {escape(host)}</div>")
-        html.append("<div class='meta'>"
-                    f"<b>Ruta:</b> {escape(scan_root)} &nbsp; | &nbsp; "
-                    f"<b>Cambio:</b> {escape(old_ip)} → {escape(new_host)} &nbsp; | &nbsp; "
-                    f"<b>Fecha:</b> {escape(generated_at)}<br>"
-                    f"<b>Totales:</b> scanned={totals.get('files_scanned',0)}, "
-                    f"con_ip_antes={totals.get('files_with_ip_before',0)}, "
-                    f"OK={totals.get('ok',0)}, FAIL={totals.get('fail',0)}, SKIPPED={totals.get('skipped',0)}"
-                    "</div>")
+        html.append(
+            "<div class='meta'>"
+            f"<b>Ruta:</b> {escape(scan_root)} &nbsp; | &nbsp; "
+            f"<b>Cambio:</b> {escape(old_ip)} → {escape(new_host)} &nbsp; | &nbsp; "
+            f"<b>Fecha:</b> {escape(generated_at)}<br>"
+            f"<b>Totales:</b> scanned={totals.get('files_scanned',0)}, "
+            f"con_ip_antes={totals.get('files_with_ip_before',0)}, "
+            f"OK={totals.get('ok',0)}, FAIL={totals.get('fail',0)}, SKIPPED={totals.get('skipped',0)}"
+            "</div>"
+        )
 
         for item in files:
             path = item.get("file", "")
             status = item.get("status", "SKIPPED")
+
             before_lines = item.get("before_lines", [])
             after_ip_lines = item.get("after_ip_lines", [])
             after_host_lines = item.get("after_host_lines", [])
 
             html.append(f"<div class='file'>{escape(path)} &nbsp; {status_badge(status)}</div>")
             html.append("<div class='grid'>")
-            html.append("<div class='box'>"
-                        "<div class='title'>ANTES (coincidencias IP)</div>"
-                        f"{render_lines(before_lines)}"
-                        "</div>")
-            html.append("<div class='box'>"
-                        "<div class='title'>DESPUÉS (IP debería estar vacío)</div>"
-                        f"{render_lines(after_ip_lines)}"
-                        f"<div class='title' style='margin-top:10px;'>DESPUÉS (líneas con {escape(new_host)})</div>"
-                        f"{render_lines(after_host_lines)}"
-                        "</div>")
-            html.append("</div>")
 
-        html.append("</div>")
+            html.append(
+                "<div class='box'>"
+                "<div class='title'>ANTES (coincidencias IP)</div>"
+                f"{render_lines(before_lines)}"
+                "</div>"
+            )
+
+            html.append(
+                "<div class='box'>"
+                "<div class='title'>DESPUÉS (IP debería estar vacío)</div>"
+                f"{render_lines(after_ip_lines)}"
+                f"<div class='title' style='margin-top:10px;'>DESPUÉS (líneas con {escape(new_host)})</div>"
+                f"{render_lines(after_host_lines)}"
+                "</div>"
+            )
+
+            html.append("</div>")  # grid
+
+        html.append("</div>")  # card
 
     html.append("</body></html>")
 
+    # ---------------------------------------
+    # (7) Escribir HTML a disco
+    # ---------------------------------------
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
     with open(args.output, "w", encoding="utf-8") as f:
         f.write("".join(html))
 
     print(f"OK: reporte generado en: {args.output}")
+
 
 if __name__ == "__main__":
     main()
