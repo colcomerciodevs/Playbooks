@@ -9,9 +9,19 @@
       new_host: "{{ new_host }}"
       generated_at: "{{ ansible_date_time.iso8601 }}"
       totals:
-        files_scanned: "{{ _found_scripts.matched | default(0) }}"
-        files_with_ip_before: "{{ replace_ip_results | selectattr('before_lines','defined') | selectattr('before_lines','length') | list | length }}"
-        ok: "{{ replace_ip_results | selectattr('status','equalto','OK') | list | length }}"
-        fail: "{{ replace_ip_results | selectattr('status','equalto','FAIL') | list | length }}"
-        skipped: "{{ replace_ip_results | selectattr('status','equalto','SKIPPED') | list | length }}"
-      files: "{{ replace_ip_results }}"
+        files_scanned: "{{ (_found_scripts.matched | default(0)) | int }}"
+
+        # Cantidad de archivos que tuvieron coincidencias antes (before_lines con contenido)
+        files_with_ip_before: >-
+          {{
+            (replace_ip_results | default([]))
+            | selectattr('before_lines', 'defined')
+            | selectattr('before_lines', 'ne', [])
+            | list
+            | length
+          }}
+
+        ok: "{{ (replace_ip_results | default([]) | selectattr('status','equalto','OK') | list | length) | int }}"
+        fail: "{{ (replace_ip_results | default([]) | selectattr('status','equalto','FAIL') | list | length) | int }}"
+        skipped: "{{ (replace_ip_results | default([]) | selectattr('status','equalto','SKIPPED') | list | length) | int }}"
+      files: "{{ replace_ip_results | default([]) }}"

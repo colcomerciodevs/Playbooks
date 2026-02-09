@@ -1,0 +1,151 @@
+[
+    {
+        "files": [
+            {
+                "after_host_lines": [
+                    "12:LOG=\"/home/carvajal/logs/traerbatch01_liquidacion.log\"    # Ruta del log",
+                    "34:  rsync -avzh --remove-source-files --progress psoft85@batch01:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
+                    "50:    scp -pr $FOLDERINSUMO/*.$FORMAT psoft85@batch01:$BCK"
+                ],
+                "after_ip_lines": [],
+                "before_lines": [
+                    "34:  rsync -avzh --remove-source-files --progress psoft85@10.181.0.77:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
+                    "50:    scp -pr $FOLDERINSUMO/*.$FORMAT psoft85@10.181.0.77:$BCK"
+                ],
+                "changed": true,
+                "file": "/home/psoft85/prueba/avisoliq_txt.sh",
+                "status": "OK"
+            },
+            {
+                "after_host_lines": [
+                    "12:LOG=\"/home/carvajal/logs/traerbatch01_cartera.log\"      # Ruta del log",
+                    "34:  rsync -avzh --remove-source-files --progress psoft85@batch01:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
+                    "50:    scp -pr $FOLDERINSUMO/*.$FORMAT psoft85@batch01:$BCK"
+                ],
+                "after_ip_lines": [],
+                "before_lines": [
+                    "34:  rsync -avzh --remove-source-files --progress psoft85@10.181.0.77:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
+                    "50:    scp -pr $FOLDERINSUMO/*.$FORMAT psoft85@10.181.0.77:$BCK"
+                ],
+                "changed": true,
+                "file": "/home/psoft85/prueba/cartera_txt.sh",
+                "status": "OK"
+            },
+            {
+                "after_host_lines": [
+                    "12:LOG=\"/home/carvajal/logs/traerbatch01_devoluciones.log\"  # Ruta del log",
+                    "34:  rsync -avzh --remove-source-files --progress psoft85@batch01:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
+                    "50:    scp -pr $FOLDERINSUMO/*.$FORMAT psoft85@batch01:$BCK"
+                ],
+                "after_ip_lines": [],
+                "before_lines": [
+                    "34:  rsync -avzh --remove-source-files --progress psoft85@10.181.0.77:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
+                    "50:    scp -pr $FOLDERINSUMO/*.$FORMAT psoft85@10.181.0.77:$BCK"
+                ],
+                "changed": true,
+                "file": "/home/psoft85/prueba/devolucion_txt.sh",
+                "status": "OK"
+            },
+            {
+                "after_host_lines": [],
+                "after_ip_lines": [],
+                "before_lines": [],
+                "changed": false,
+                "file": "/home/psoft85/prueba/extrae_ftps.sh",
+                "status": "SKIPPED"
+            },
+            {
+                "after_host_lines": [
+                    "12:LOG=\"/home/carvajal/logs/traerbatch01_inventario.log\"       # Ruta del log",
+                    "36:  rsync -avzh --remove-source-files --progress psoft85@batch01:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
+                    "53:    # scp -pr $FOLDERINSUMO/*.$FORMAT psoft85@batch01:$BCK"
+                ],
+                "after_ip_lines": [],
+                "before_lines": [
+                    "36:  rsync -avzh --remove-source-files --progress psoft85@10.181.0.77:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
+                    "53:    # scp -pr $FOLDERINSUMO/*.$FORMAT psoft85@10.181.0.77:$BCK"
+                ],
+                "changed": true,
+                "file": "/home/psoft85/prueba/inventario_exi.sh",
+                "status": "OK"
+            },
+            {
+                "after_host_lines": [],
+                "after_ip_lines": [],
+                "before_lines": [],
+                "changed": false,
+                "file": "/home/psoft85/prueba/main_carvajal.sh",
+                "status": "SKIPPED"
+            },
+            {
+                "after_host_lines": [
+                    "21:LOG=\"/home/carvajal/logs/traerbatch01_orders.log\"           # Archivo de log del proceso",
+                    "45:    psoft85@batch01:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
+                    "70:      scp -pr $FOLDERINSUMO/$i psoft85@batch01:$BCK",
+                    "73:      DOES_FILE_EXIST=`ssh psoft85@batch01 ls -l $BCK/$i | wc -l`",
+                    "85:        scp -pr $FOLDERINSUMO/$i psoft85@batch01:$BCK",
+                    "89:      DOES_FILE_EXIST=`ssh psoft85@batch01 ls -l $BCK/$i | wc -l`"
+                ],
+                "after_ip_lines": [],
+                "before_lines": [
+                    "45:    psoft85@10.181.0.77:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
+                    "70:      scp -pr $FOLDERINSUMO/$i psoft85@10.181.0.77:$BCK",
+                    "73:      DOES_FILE_EXIST=`ssh psoft85@10.181.0.77 ls -l $BCK/$i | wc -l`",
+                    "85:        scp -pr $FOLDERINSUMO/$i psoft85@10.181.0.77:$BCK",
+                    "89:      DOES_FILE_EXIST=`ssh psoft85@10.181.0.77 ls -l $BCK/$i | wc -l`"
+                ],
+                "changed": true,
+                "file": "/home/psoft85/prueba/ordenes_compra.sh",
+                "status": "OK"
+            },
+            {
+                "after_host_lines": [
+                    "21:  LOG=\"/home/carvajal/logs/traerbatch01_recibo.log\"         # Archivo de log del proceso",
+                    "45:      psoft85@batch01:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
+                    "70:        scp -pr $FOLDERINSUMO/$i psoft85@batch01:$BCK",
+                    "73:        DOES_FILE_EXIST=`ssh psoft85@batch01 ls -l $BCK/$i | wc -l`",
+                    "85:          scp -pr $FOLDERINSUMO/$i psoft85@batch01:$BCK",
+                    "89:        DOES_FILE_EXIST=`ssh psoft85@batch01 ls -l $BCK/$i | wc -l`"
+                ],
+                "after_ip_lines": [],
+                "before_lines": [
+                    "45:      psoft85@10.181.0.77:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
+                    "70:        scp -pr $FOLDERINSUMO/$i psoft85@10.181.0.77:$BCK",
+                    "73:        DOES_FILE_EXIST=`ssh psoft85@10.181.0.77 ls -l $BCK/$i | wc -l`",
+                    "85:          scp -pr $FOLDERINSUMO/$i psoft85@10.181.0.77:$BCK",
+                    "89:        DOES_FILE_EXIST=`ssh psoft85@10.181.0.77 ls -l $BCK/$i | wc -l`"
+                ],
+                "changed": true,
+                "file": "/home/psoft85/prueba/recibo_hse.sh",
+                "status": "OK"
+            },
+            {
+                "after_host_lines": [
+                    "12:LOG=\"/home/carvajal/logs/traerbatch01_ventas.log\"           # Ruta del log",
+                    "36:  rsync -avzh --remove-source-files --progress psoft85@batch01:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
+                    "53:    # scp -pr $FOLDERINSUMO/* psoft85@batch01:$BCK"
+                ],
+                "after_ip_lines": [],
+                "before_lines": [
+                    "36:  rsync -avzh --remove-source-files --progress psoft85@10.181.0.77:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
+                    "53:    # scp -pr $FOLDERINSUMO/* psoft85@10.181.0.77:$BCK"
+                ],
+                "changed": true,
+                "file": "/home/psoft85/prueba/ventas_ven.sh",
+                "status": "OK"
+            }
+        ],
+        "generated_at": "2026-02-09T16:36:46Z",
+        "host": "batman_new",
+        "new_host": "batch01",
+        "old_ip": "10.181.0.77",
+        "scan_root": "/home/psoft85/prueba",
+        "totals": {
+            "fail": "0",
+            "files_scanned": "9",
+            "files_with_ip_before": "7",
+            "ok": "7",
+            "skipped": "2"
+        }
+    }
+]

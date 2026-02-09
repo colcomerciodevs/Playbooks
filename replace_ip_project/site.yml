@@ -2,7 +2,7 @@
 - name: Replace IP exacta por hostname + reporte (todo dentro del rol)
   hosts: targets
   gather_facts: true
-  become: false
+  become: true
 
   roles:
     - replace_ip_host
