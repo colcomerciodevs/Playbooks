@@ -1,0 +1,14 @@
+---
+scan_root: "/home"
+old_ip: "10.181.0.77"
+new_host: "batch01"
+
+file_patterns:
+  - "*.sh"
+  - "*.bash"
+
+# Si lo dejas vacío, el rol lo construye automáticamente como regex exacto con bordes \b
+old_ip_regex: ""
+
+# Captura evidencia de líneas con el hostname después del cambio
+capture_after_host_lines: true

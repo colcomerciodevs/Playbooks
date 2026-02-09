@@ -1,0 +1,47 @@
+\
+---
+- name: BEFORE - Buscar IP exacta en {{ f.path }}
+  ansible.builtin.shell: "grep -nE '{{ _old_ip_regex }}' '{{ f.path }}' || true"
+  register: _before
+  changed_when: false
+
+- name: Reemplazar IP exacta por hostname (solo si hubo coincidencias)
+  ansible.builtin.replace:
+    path: "{{ f.path }}"
+    regexp: "{{ _old_ip_regex }}"
+    replace: "{{ new_host }}"
+  register: _replace
+  when: _before.stdout != ""
+
+- name: AFTER - Validar que NO quede la IP
+  ansible.builtin.shell: "grep -nE '{{ _old_ip_regex }}' '{{ f.path }}' || true"
+  register: _after_ip
+  changed_when: false
+  when: _before.stdout != ""
+
+- name: AFTER - Mostrar líneas con hostname
+  ansible.builtin.shell: "grep -n '{{ new_host }}' '{{ f.path }}' || true"
+  register: _after_host
+  changed_when: false
+  when:
+    - _before.stdout != ""
+    - capture_after_host_lines | bool
+
+- name: Registrar resultado del archivo
+  ansible.builtin.set_fact:
+    replace_ip_results: >-
+      {{
+        replace_ip_results + [
+          {
+            "file": f.path,
+            "before_lines": (_before.stdout_lines | default([])),
+            "after_ip_lines": (_after_ip.stdout_lines | default([])),
+            "after_host_lines": (_after_host.stdout_lines | default([])) if (capture_after_host_lines | bool) else [],
+            "changed": (_replace.changed | default(false)),
+            "status": (
+              "SKIPPED" if (_before.stdout | default('') == '') else
+              ("OK" if ((_after_ip.stdout | default('')) == '' and ( (not capture_after_host_lines) or (_after_host.stdout | default('')) != '' )) else "FAIL")
+            )
+          }
+        ]
+      }}

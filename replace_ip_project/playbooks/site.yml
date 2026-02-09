@@ -1,0 +1,40 @@
+\
+---
+# ==== PLAY 1: Ejecutar rol en hosts destino ====
+- name: Replace IP exacta por hostname (scan + replace + validación)
+  hosts: targets
+  gather_facts: true
+  become: false
+
+  roles:
+    - role: replace_ip_host
+
+# ==== PLAY 2: Compilar reporte y generar HTML (misma carpeta del proyecto) ====
+- name: Compilar reporte y generar HTML
+  hosts: localhost
+  gather_facts: false
+  vars:
+    output_dir: "{{ playbook_dir }}/Salidas_Playbooks"
+    json_out: "{{ output_dir }}/replace_ip_report.json"
+    html_out: "{{ output_dir }}/replace_ip_report.html"
+    query: "*[].replace_ip_summary"
+  tasks:
+    - name: Asegurar directorio de salidas
+      ansible.builtin.file:
+        path: "{{ output_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Exportar JSON consolidado (summaries por host)
+      ansible.builtin.copy:
+        content: "{{ hostvars | json_query(query) | to_nice_json }}"
+        dest: "{{ json_out }}"
+        mode: '0644'
+      run_once: true
+
+    - name: Ejecutar script Python para generar HTML
+      ansible.builtin.command: python3 scripts/genera_reporte_replace_ip.py --input "{{ json_out }}" --output "{{ html_out }}"
+      args:
+        chdir: "{{ playbook_dir }}"
+      run_once: true
+      changed_when: false
