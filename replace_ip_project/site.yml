@@ -1,68 +1,8 @@
 ---
-# ==========================================================
-# PLAY 1: Ejecuta el rol en los hosts destino (targets)
-# - Escanea scripts .sh/.bash
-# - Valida antes con grep -nE
-# - Reemplaza la IP exacta por hostname
-# - Valida después (no debe existir IP, y debe existir hostname)
-# - Deja resultados en variables por host (replace_ip_summary)
-# ==========================================================
-- name: Replace IP exacta por hostname (scan + replace + validación)
+- name: Replace IP exacta por hostname + reporte (todo dentro del rol)
   hosts: targets
   gather_facts: true
   become: false
 
   roles:
-    - role: replace_ip_host
-
-# ==========================================================
-# PLAY 2: Consolida resultados y genera reporte en la raíz
-# - Crea Salidas_Playbooks en el root del proyecto
-# - Exporta JSON consolidado desde hostvars (summaries)
-# - Ejecuta Python para generar HTML verde/rojo
-# ==========================================================
-- name: Compilar reporte y generar HTML
-  hosts: localhost
-  gather_facts: false
-
-  vars:
-    # Carpeta de salida en raíz del proyecto
-    output_dir: "{{ playbook_dir }}/Salidas_Playbooks"
-
-    # Archivos de salida
-    json_out: "{{ output_dir }}/replace_ip_report.json"
-    html_out: "{{ output_dir }}/replace_ip_report.html"
-
-    # Query para extraer los summaries generados por el rol en cada host
-    query: "*[].replace_ip_summary"
-
-  tasks:
-    # ------------------------------
-    # (1) Asegura carpeta de salidas
-    # ------------------------------
-    - name: Asegurar directorio de salidas
-      ansible.builtin.file:
-        path: "{{ output_dir }}"
-        state: directory
-        mode: '0755'
-
-    # ---------------------------------------------
-    # (2) Exporta JSON consolidado de todos los host
-    # ---------------------------------------------
-    - name: Exportar JSON consolidado (summaries por host)
-      ansible.builtin.copy:
-        content: "{{ hostvars | json_query(query) | to_nice_json }}"
-        dest: "{{ json_out }}"
-        mode: '0644'
-      run_once: true
-
-    # ----------------------------------------------------------
-    # (3) Ejecuta Python desde el root para generar HTML (reporte)
-    # ----------------------------------------------------------
-    - name: Ejecutar script Python para generar HTML
-      ansible.builtin.command: python3 scripts/genera_reporte_replace_ip.py --input "{{ json_out }}" --output "{{ html_out }}"
-      args:
-        chdir: "{{ playbook_dir }}"
-      run_once: true
-      changed_when: false
-
+    - replace_ip_host

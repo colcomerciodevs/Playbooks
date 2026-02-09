@@ -1,0 +1,36 @@
+---
+# ----------------------------------------------------------
+# Crear carpeta Salidas_Playbooks en controlador (localhost)
+# ----------------------------------------------------------
+- name: Crear carpeta de salidas en controlador
+  ansible.builtin.file:
+    path: "{{ playbook_dir }}/Salidas_Playbooks"
+    state: directory
+    mode: '0755'
+  delegate_to: localhost
+  run_once: true
+
+# ----------------------------------------------------------
+# Exportar JSON consolidado desde hostvars
+# ----------------------------------------------------------
+- name: Exportar JSON consolidado
+  ansible.builtin.copy:
+    content: "{{ hostvars | json_query('*[].replace_ip_summary') | to_nice_json }}"
+    dest: "{{ playbook_dir }}/Salidas_Playbooks/replace_ip_report.json"
+    mode: '0644'
+  delegate_to: localhost
+  run_once: true
+
+# ----------------------------------------------------------
+# Ejecutar Python reporte HTML
+# ----------------------------------------------------------
+- name: Generar reporte HTML
+  ansible.builtin.command: >
+    python3 scripts/genera_reporte_replace_ip.py
+    --input {{ playbook_dir }}/Salidas_Playbooks/replace_ip_report.json
+    --output {{ playbook_dir }}/Salidas_Playbooks/replace_ip_report.html
+  args:
+    chdir: "{{ playbook_dir }}"
+  delegate_to: localhost
+  run_once: true
+  changed_when: false
