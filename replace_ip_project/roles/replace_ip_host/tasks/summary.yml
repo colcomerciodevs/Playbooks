@@ -1,0 +1,17 @@
+---
+# Construir resumen por host con totales + detalle
+- name: Construir resumen final del host
+  ansible.builtin.set_fact:
+    replace_ip_summary:
+      host: "{{ inventory_hostname }}"
+      scan_root: "{{ scan_root }}"
+      old_ip: "{{ old_ip }}"
+      new_host: "{{ new_host }}"
+      generated_at: "{{ ansible_date_time.iso8601 }}"
+      totals:
+        files_scanned: "{{ _found_scripts.matched | default(0) }}"
+        files_with_ip_before: "{{ replace_ip_results | selectattr('before_lines','defined') | selectattr('before_lines','length') | list | length }}"
+        ok: "{{ replace_ip_results | selectattr('status','equalto','OK') | list | length }}"
+        fail: "{{ replace_ip_results | selectattr('status','equalto','FAIL') | list | length }}"
+        skipped: "{{ replace_ip_results | selectattr('status','equalto','SKIPPED') | list | length }}"
+      files: "{{ replace_ip_results }}"

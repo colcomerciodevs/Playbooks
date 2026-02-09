@@ -1,0 +1,10 @@
+---
+# Determina si el usuario suministró un regex manual
+- name: Determinar si old_ip_regex fue suministrado
+  ansible.builtin.set_fact:
+    _use_custom_regex: "{{ (old_ip_regex | default('')) | length > 0 }}"
+
+# Construye el regex final a usar
+- name: Construir regex exacta para la IP
+  ansible.builtin.set_fact:
+    _old_ip_regex: "{{ old_ip_regex if _use_custom_regex else ('\\b' ~ (old_ip | regex_escape) ~ '\\b') }}"

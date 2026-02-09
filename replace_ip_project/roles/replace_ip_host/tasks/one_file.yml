@@ -1,23 +1,16 @@
 ---
-# ---------------------------------------------------------
-# (A) BEFORE: Buscar IP exacta (con número de línea)
-# ---------------------------------------------------------
+# BEFORE: Buscar IP exacta con número de línea
 - name: BEFORE - Buscar IP exacta en {{ f.path }}
   ansible.builtin.shell: "grep -nE '{{ _old_ip_regex }}' '{{ f.path }}' || true"
   register: _before
   changed_when: false
 
-# ---------------------------------------------------------
-# (B) Flag: ¿hubo coincidencias?
-# (ansible-lint: usar length en vez de != "")
-# ---------------------------------------------------------
-- name: Definir si hay coincidencias en {{ f.path }}
+# Flag match (ansible-lint friendly)
+- name: Definir si hay coincidencias
   ansible.builtin.set_fact:
     _has_match: "{{ (_before.stdout | default('')) | length > 0 }}"
 
-# ---------------------------------------------------------
-# (C) REPLACE: Reemplazar SOLO si hubo coincidencias
-# ---------------------------------------------------------
+# REPLACE: solo si hubo coincidencias
 - name: Reemplazar IP exacta por hostname
   ansible.builtin.replace:
     path: "{{ f.path }}"
@@ -26,18 +19,14 @@
   register: _replace
   when: _has_match
 
-# ---------------------------------------------------------
-# (D) AFTER: Validar que NO quede la IP
-# ---------------------------------------------------------
+# AFTER: validar que la IP ya no existe
 - name: AFTER - Validar que NO quede la IP
   ansible.builtin.shell: "grep -nE '{{ _old_ip_regex }}' '{{ f.path }}' || true"
   register: _after_ip
   changed_when: false
   when: _has_match
 
-# ---------------------------------------------------------
-# (E) AFTER: Capturar líneas con hostname (evidencia)
-# ---------------------------------------------------------
+# AFTER: capturar evidencia del hostname (opcional)
 - name: AFTER - Mostrar líneas con hostname
   ansible.builtin.shell: "grep -n '{{ new_host }}' '{{ f.path }}' || true"
   register: _after_host
@@ -46,9 +35,7 @@
     - _has_match
     - capture_after_host_lines | bool
 
-# ---------------------------------------------------------
-# (F) Registrar resultado
-# ---------------------------------------------------------
+# RESULT: registrar resultado en replace_ip_results
 - name: Registrar resultado del archivo
   ansible.builtin.set_fact:
     replace_ip_results: "{{ replace_ip_results + [ _result_item ] }}"
@@ -68,6 +55,6 @@
       file: "{{ f.path }}"
       before_lines: "{{ _before.stdout_lines | default([]) }}"
       after_ip_lines: "{{ _after_ip.stdout_lines | default([]) if _has_match else [] }}"
-      after_host_lines: "{{ _after_host.stdout_lines | default([]) if (_has_match and (capture_after_host_lines | bool)) else [] }}"
+      after_host_lines: "{{ _after_host.stdout_lines | default([]) if (_has_match and capture_after_host_lines | bool) else [] }}"
       changed: "{{ _replace.changed | default(false) }}"
       status: "{{ _status }}"

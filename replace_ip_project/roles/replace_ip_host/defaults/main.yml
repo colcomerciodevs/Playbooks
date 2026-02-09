@@ -1,11 +1,11 @@
 ---
-# Ruta raíz a escanear recursivamente
-scan_root: "/home/psoft85/prueba"
+# Ruta raíz a escanear
+scan_root: "/home"
 
-# IP literal a reemplazar (exacta)
+# IP literal a reemplazar
 old_ip: "10.181.0.77"
 
-# Hostname destino (ej. lo que tengas en /etc/hosts o DNS)
+# Hostname destino
 new_host: "batch01"
 
 # Patrones de archivos a evaluar
@@ -13,9 +13,17 @@ file_patterns:
   - "*.sh"
   - "*.bash"
 
-# Si lo dejas vacío, el rol construye un regex exacto con bordes \\b
-# para evitar reemplazos parciales.
+# Si está vacío, el rol construye regex exacta con bordes \b
 old_ip_regex: ""
 
-# Si true, captura evidencia de líneas que contengan el hostname tras el cambio
+# Capturar evidencia de líneas con hostname después del cambio
 capture_after_host_lines: true
+
+# -----------------------------
+# Variables de reporte (salida)
+# -----------------------------
+report_output_dir: "{{ playbook_dir }}/Salidas_Playbooks"
+report_json: "{{ report_output_dir }}/replace_ip_report.json"
+report_html: "{{ report_output_dir }}/replace_ip_report.html"
+report_py: "scripts/genera_reporte_replace_ip.py"
+report_query: "*[].replace_ip_summary"

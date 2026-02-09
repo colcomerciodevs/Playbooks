@@ -1,0 +1,7 @@
+---
+# Procesar cada archivo encontrado con one_file.yml
+- name: Procesar cada archivo encontrado
+  ansible.builtin.include_tasks: one_file.yml
+  loop: "{{ _found_scripts.files }}"
+  loop_control:
+    loop_var: f

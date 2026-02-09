@@ -1,60 +1,21 @@
 ---
-# ----------------------------------------------------------
-# (0) Construye regex exacto si no se suministra old_ip_regex
-# - Usa bordes \\b + regex_escape para coincidir SOLO la IP literal
-# ----------------------------------------------------------
-- name: Construir regex exacta para la IP (si no viene definida)
-  ansible.builtin.set_fact:
-    _old_ip_regex: >-
-      {{
-        old_ip_regex | default('') | length > 0
-        | ternary(old_ip_regex,
-          '\\b' ~ (old_ip | regex_escape) ~ '\\b'
-        )
-      }}
+# (1) Construir regex final (automático o manual)
+- name: Build regex
+  ansible.builtin.include_tasks: build_regex.yml
 
-# ------------------------------------------
-# (1) Encuentra scripts según file_patterns
-# ------------------------------------------
-- name: Buscar scripts en {{ scan_root }}
-  ansible.builtin.find:
-    paths: "{{ scan_root }}"
-    patterns: "{{ file_patterns }}"
-    file_type: file
-    recurse: true
-  register: _found_scripts
+# (2) Encontrar scripts según patrones en scan_root
+- name: Find files
+  ansible.builtin.include_tasks: find_files.yml
 
-# ------------------------------------------------
-# (2) Inicializa el array de resultados por host
-# ------------------------------------------------
-- name: Inicializar resultados del rol (por host)
-  ansible.builtin.set_fact:
-    replace_ip_results: []
+# (3) Procesar archivos (before/replace/after por archivo)
+- name: Process files
+  ansible.builtin.include_tasks: process_files.yml
 
-# ---------------------------------------------------------
-# (3) Procesa cada archivo encontrado (pre-scan, replace, post-scan)
-# ---------------------------------------------------------
-- name: Procesar cada archivo encontrado
-  ansible.builtin.include_tasks: one_file.yml
-  loop: "{{ _found_scripts.files }}"
-  loop_control:
-    loop_var: f
+# (4) Construir summary por host
+- name: Build summary
+  ansible.builtin.include_tasks: summary.yml
 
-# ---------------------------------------------------------
-# (4) Genera un summary final por host (totales + detalle)
-# ---------------------------------------------------------
-- name: Resumen del rol (por host)
-  ansible.builtin.set_fact:
-    replace_ip_summary:
-      host: "{{ inventory_hostname }}"
-      scan_root: "{{ scan_root }}"
-      old_ip: "{{ old_ip }}"
-      new_host: "{{ new_host }}"
-      generated_at: "{{ ansible_date_time.iso8601 | default(lookup('pipe','date -Iseconds')) }}"
-      totals:
-        files_scanned: "{{ _found_scripts.matched | default(0) }}"
-        files_with_ip_before: "{{ replace_ip_results | selectattr('before_lines','defined') | selectattr('before_lines','length') | list | length }}"
-        ok: "{{ replace_ip_results | selectattr('status','equalto','OK') | list | length }}"
-        fail: "{{ replace_ip_results | selectattr('status','equalto','FAIL') | list | length }}"
-        skipped: "{{ replace_ip_results | selectattr('status','equalto','SKIPPED') | list | length }}"
-      files: "{{ replace_ip_results }}"
+# (5) Generar reporte consolidado (delegado a localhost)
+- name: Generate report
+  ansible.builtin.include_tasks: report.yml
+  run_once: true

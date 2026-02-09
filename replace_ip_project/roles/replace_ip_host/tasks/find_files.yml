@@ -1,0 +1,14 @@
+---
+# Buscar scripts dentro de scan_root
+- name: Buscar scripts en {{ scan_root }}
+  ansible.builtin.find:
+    paths: "{{ scan_root }}"
+    patterns: "{{ file_patterns }}"
+    file_type: file
+    recurse: true
+  register: _found_scripts
+
+# Inicializar lista de resultados por host
+- name: Inicializar resultados del rol
+  ansible.builtin.set_fact:
+    replace_ip_results: []
