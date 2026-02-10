@@ -1,6 +1,6 @@
 ---
 # Ruta raíz a escanear
-scan_root: "/home/psoft85/prueba"
+scan_root: "/home/psoft85/"
 
 # IP literal a reemplazar
 old_ip: "10.181.0.77"

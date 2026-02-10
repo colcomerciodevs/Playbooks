@@ -3,47 +3,29 @@
         "files": [
             {
                 "after_host_lines": [
-                    "12:LOG=\"/home/carvajal/logs/traerbatch01_liquidacion.log\"    # Ruta del log",
-                    "34:  rsync -avzh --remove-source-files --progress psoft85@batch01:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
-                    "50:    scp -pr $FOLDERINSUMO/*.$FORMAT psoft85@batch01:$BCK"
+                    "1:ssh psoft85@batch01 '"
                 ],
                 "after_ip_lines": [],
                 "before_lines": [
-                    "34:  rsync -avzh --remove-source-files --progress psoft85@10.181.0.77:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
-                    "50:    scp -pr $FOLDERINSUMO/*.$FORMAT psoft85@10.181.0.77:$BCK"
+                    "1:ssh psoft85@10.181.0.77 '"
                 ],
                 "changed": true,
-                "file": "/home/psoft85/prueba/avisoliq_txt.sh",
+                "file": "/home/psoft85/test.sh",
                 "status": "OK"
             },
             {
                 "after_host_lines": [
-                    "12:LOG=\"/home/carvajal/logs/traerbatch01_cartera.log\"      # Ruta del log",
-                    "34:  rsync -avzh --remove-source-files --progress psoft85@batch01:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
-                    "50:    scp -pr $FOLDERINSUMO/*.$FORMAT psoft85@batch01:$BCK"
+                    "12:LOG=\"/home/carvajal/logs/traerbatch01_ventas.log\"           # Ruta del log",
+                    "36:  rsync -avzh --remove-source-files --progress psoft85@batch01:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
+                    "53:    # scp -pr $FOLDERINSUMO/* psoft85@batch01:$BCK"
                 ],
                 "after_ip_lines": [],
                 "before_lines": [
-                    "34:  rsync -avzh --remove-source-files --progress psoft85@10.181.0.77:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
-                    "50:    scp -pr $FOLDERINSUMO/*.$FORMAT psoft85@10.181.0.77:$BCK"
+                    "36:  rsync -avzh --remove-source-files --progress psoft85@10.181.0.77:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
+                    "53:    # scp -pr $FOLDERINSUMO/* psoft85@10.181.0.77:$BCK"
                 ],
                 "changed": true,
-                "file": "/home/psoft85/prueba/cartera_txt.sh",
-                "status": "OK"
-            },
-            {
-                "after_host_lines": [
-                    "12:LOG=\"/home/carvajal/logs/traerbatch01_devoluciones.log\"  # Ruta del log",
-                    "34:  rsync -avzh --remove-source-files --progress psoft85@batch01:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
-                    "50:    scp -pr $FOLDERINSUMO/*.$FORMAT psoft85@batch01:$BCK"
-                ],
-                "after_ip_lines": [],
-                "before_lines": [
-                    "34:  rsync -avzh --remove-source-files --progress psoft85@10.181.0.77:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
-                    "50:    scp -pr $FOLDERINSUMO/*.$FORMAT psoft85@10.181.0.77:$BCK"
-                ],
-                "changed": true,
-                "file": "/home/psoft85/prueba/devolucion_txt.sh",
+                "file": "/home/psoft85/Carvajal/ventas_ven.sh",
                 "status": "OK"
             },
             {
@@ -51,7 +33,7 @@
                 "after_ip_lines": [],
                 "before_lines": [],
                 "changed": false,
-                "file": "/home/psoft85/prueba/extrae_ftps.sh",
+                "file": "/home/psoft85/Carvajal/main_carvajal.sh",
                 "status": "SKIPPED"
             },
             {
@@ -66,7 +48,22 @@
                     "53:    # scp -pr $FOLDERINSUMO/*.$FORMAT psoft85@10.181.0.77:$BCK"
                 ],
                 "changed": true,
-                "file": "/home/psoft85/prueba/inventario_exi.sh",
+                "file": "/home/psoft85/Carvajal/inventario_exi.sh",
+                "status": "OK"
+            },
+            {
+                "after_host_lines": [
+                    "12:LOG=\"/home/carvajal/logs/traerbatch01_liquidacion.log\"    # Ruta del log",
+                    "34:  rsync -avzh --remove-source-files --progress psoft85@batch01:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
+                    "50:    scp -pr $FOLDERINSUMO/*.$FORMAT psoft85@batch01:$BCK"
+                ],
+                "after_ip_lines": [],
+                "before_lines": [
+                    "34:  rsync -avzh --remove-source-files --progress psoft85@10.181.0.77:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
+                    "50:    scp -pr $FOLDERINSUMO/*.$FORMAT psoft85@10.181.0.77:$BCK"
+                ],
+                "changed": true,
+                "file": "/home/psoft85/Carvajal/avisoliq_txt.sh",
                 "status": "OK"
             },
             {
@@ -74,8 +71,38 @@
                 "after_ip_lines": [],
                 "before_lines": [],
                 "changed": false,
-                "file": "/home/psoft85/prueba/main_carvajal.sh",
+                "file": "/home/psoft85/Carvajal/extrae_ftps.sh",
                 "status": "SKIPPED"
+            },
+            {
+                "after_host_lines": [
+                    "12:LOG=\"/home/carvajal/logs/traerbatch01_cartera.log\"      # Ruta del log",
+                    "34:  rsync -avzh --remove-source-files --progress psoft85@batch01:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
+                    "50:    scp -pr $FOLDERINSUMO/*.$FORMAT psoft85@batch01:$BCK"
+                ],
+                "after_ip_lines": [],
+                "before_lines": [
+                    "34:  rsync -avzh --remove-source-files --progress psoft85@10.181.0.77:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
+                    "50:    scp -pr $FOLDERINSUMO/*.$FORMAT psoft85@10.181.0.77:$BCK"
+                ],
+                "changed": true,
+                "file": "/home/psoft85/Carvajal/cartera_txt.sh",
+                "status": "OK"
+            },
+            {
+                "after_host_lines": [
+                    "12:LOG=\"/home/carvajal/logs/traerbatch01_devoluciones.log\"  # Ruta del log",
+                    "34:  rsync -avzh --remove-source-files --progress psoft85@batch01:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
+                    "50:    scp -pr $FOLDERINSUMO/*.$FORMAT psoft85@batch01:$BCK"
+                ],
+                "after_ip_lines": [],
+                "before_lines": [
+                    "34:  rsync -avzh --remove-source-files --progress psoft85@10.181.0.77:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
+                    "50:    scp -pr $FOLDERINSUMO/*.$FORMAT psoft85@10.181.0.77:$BCK"
+                ],
+                "changed": true,
+                "file": "/home/psoft85/Carvajal/devolucion_txt.sh",
+                "status": "OK"
             },
             {
                 "after_host_lines": [
@@ -95,7 +122,7 @@
                     "89:      DOES_FILE_EXIST=`ssh psoft85@10.181.0.77 ls -l $BCK/$i | wc -l`"
                 ],
                 "changed": true,
-                "file": "/home/psoft85/prueba/ordenes_compra.sh",
+                "file": "/home/psoft85/Carvajal/ordenes_compra.sh",
                 "status": "OK"
             },
             {
@@ -116,36 +143,284 @@
                     "89:        DOES_FILE_EXIST=`ssh psoft85@10.181.0.77 ls -l $BCK/$i | wc -l`"
                 ],
                 "changed": true,
-                "file": "/home/psoft85/prueba/recibo_hse.sh",
+                "file": "/home/psoft85/Carvajal/recibo_hse.sh",
                 "status": "OK"
             },
             {
                 "after_host_lines": [
-                    "12:LOG=\"/home/carvajal/logs/traerbatch01_ventas.log\"           # Ruta del log",
-                    "36:  rsync -avzh --remove-source-files --progress psoft85@batch01:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
-                    "53:    # scp -pr $FOLDERINSUMO/* psoft85@batch01:$BCK"
+                    "68:    scp -pr batch01:/reportes/CKPR/files/igerencia/Apple/267567_US_SLS_26$mes$dia*.txt .",
+                    "79:    scp -pr batch01:/reportes/CKPR/files/igerencia/Apple/267567_US_INV_26$mes$dia*.txt ."
                 ],
                 "after_ip_lines": [],
                 "before_lines": [
-                    "36:  rsync -avzh --remove-source-files --progress psoft85@10.181.0.77:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
-                    "53:    # scp -pr $FOLDERINSUMO/* psoft85@10.181.0.77:$BCK"
+                    "68:    scp -pr 10.181.0.77:/reportes/CKPR/files/igerencia/Apple/267567_US_SLS_26$mes$dia*.txt .",
+                    "79:    scp -pr 10.181.0.77:/reportes/CKPR/files/igerencia/Apple/267567_US_INV_26$mes$dia*.txt ."
                 ],
                 "changed": true,
-                "file": "/home/psoft85/prueba/ventas_ven.sh",
+                "file": "/home/psoft85/APPLE/traearchivos_apple_consftp.bash",
+                "status": "OK"
+            },
+            {
+                "after_host_lines": [
+                    "16:# Ruta destino del log en el servidor batch (batch01)",
+                    "27:# Origen remoto de los archivos en batch01 (batch01)",
+                    "37:# Carpeta de backup en batch01 (batch01)",
+                    "64:  # Trae desde batch01 todos los archivos con extensi\u00f3n .pgp",
+                    "67:  timeout 5 rsync -avzh --remove-source-files --progress psoft85@batch01:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
+                    "70:  # rsync -avzh --remove-source-files --progress psoft85@batch01:/reportes/CKPR/files/igerencia/Tableros_Gr_Bit/test/*.gpg /home/grupobit/Tableros_Gr_Bit",
+                    "74:    echo \"$DATE - Archivos traidos correctamente del batch01\" |tee -a \"$LOG\"",
+                    "131:      scp -pr $CHAR2 psoft85@batch01:$BCK",
+                    "153:    TOT_ARCHIVO=`timeout 5 ssh psoft85@batch01 ls -ltr $ORIGEN | awk '{print $2}'`",
+                    "166:  scp -pr $LOG psoft85@batch01:$LOG_DEST"
+                ],
+                "after_ip_lines": [],
+                "before_lines": [
+                    "16:# Ruta destino del log en el servidor batch (10.181.0.77)",
+                    "27:# Origen remoto de los archivos en batch01 (10.181.0.77)",
+                    "37:# Carpeta de backup en batch01 (10.181.0.77)",
+                    "64:  # Trae desde 10.181.0.77 todos los archivos con extensi\u00f3n .pgp",
+                    "67:  timeout 5 rsync -avzh --remove-source-files --progress psoft85@10.181.0.77:$ORIGEN/*.$FORMAT $FOLDERINSUMO",
+                    "70:  # rsync -avzh --remove-source-files --progress psoft85@10.181.0.77:/reportes/CKPR/files/igerencia/Tableros_Gr_Bit/test/*.gpg /home/grupobit/Tableros_Gr_Bit",
+                    "131:      scp -pr $CHAR2 psoft85@10.181.0.77:$BCK",
+                    "153:    TOT_ARCHIVO=`timeout 5 ssh psoft85@10.181.0.77 ls -ltr $ORIGEN | awk '{print $2}'`",
+                    "166:  scp -pr $LOG psoft85@10.181.0.77:$LOG_DEST"
+                ],
+                "changed": true,
+                "file": "/home/psoft85/GRUPOBIT/transfer_grupobit.sh",
+                "status": "OK"
+            },
+            {
+                "after_host_lines": [
+                    "46:# Obtiene el \u00faltimo archivo DISP* del directorio remoto (batch batch01)",
+                    "50:ARCHIVO=`ssh batch01 ls -lrt /reportes/CKPR/SAGAL/DISP* | tail -n1 | awk '{print $9}'`",
+                    "53:scp -p -r batch01:$ARCHIVO ."
+                ],
+                "after_ip_lines": [],
+                "before_lines": [
+                    "46:# Obtiene el \u00faltimo archivo DISP* del directorio remoto (batch 10.181.0.77)",
+                    "50:ARCHIVO=`ssh 10.181.0.77 ls -lrt /reportes/CKPR/SAGAL/DISP* | tail -n1 | awk '{print $9}'`",
+                    "53:scp -p -r 10.181.0.77:$ARCHIVO ."
+                ],
+                "changed": true,
+                "file": "/home/psoft85/SAGAL/traearchivossagal_inventario_prd.sh",
+                "status": "OK"
+            },
+            {
+                "after_host_lines": [
+                    "23:# Identifica el \u00faltimo archivo \"Lista*\" en el batch (batch01) y toma su ruta/nombre",
+                    "24:ARCHIVO=`ssh batch01 ls -lrt /reportes/CKPR/SAGAL/Lista* | tail -n1 | awk '{print $9}'`",
+                    "45:# Copia desde batch01 (batch01) el archivo identificado en la variable ARCHIVO",
+                    "46:scp -p -r batch01:$ARCHIVO ."
+                ],
+                "after_ip_lines": [],
+                "before_lines": [
+                    "23:# Identifica el \u00faltimo archivo \"Lista*\" en el batch (10.181.0.77) y toma su ruta/nombre",
+                    "24:ARCHIVO=`ssh 10.181.0.77 ls -lrt /reportes/CKPR/SAGAL/Lista* | tail -n1 | awk '{print $9}'`",
+                    "45:# Copia desde batch01 (10.181.0.77) el archivo identificado en la variable ARCHIVO",
+                    "46:scp -p -r 10.181.0.77:$ARCHIVO ."
+                ],
+                "changed": true,
+                "file": "/home/psoft85/SAGAL/traearchivossagal_precios_prd.sh",
+                "status": "OK"
+            },
+            {
+                "after_host_lines": [],
+                "after_ip_lines": [],
+                "before_lines": [],
+                "changed": false,
+                "file": "/home/psoft85/SAGAL/traearchivossagal_inventario.sh",
+                "status": "SKIPPED"
+            },
+            {
+                "after_host_lines": [],
+                "after_ip_lines": [],
+                "before_lines": [],
+                "changed": false,
+                "file": "/home/psoft85/SAGAL/traearchivossagal_precios.sh",
+                "status": "SKIPPED"
+            },
+            {
+                "after_host_lines": [],
+                "after_ip_lines": [],
+                "before_lines": [],
+                "changed": false,
+                "file": "/home/psoft85/SAGAL/traearchivossagal_inventario_last.sh",
+                "status": "SKIPPED"
+            },
+            {
+                "after_host_lines": [
+                    "64:# Copia los archivos .PGP locales hacia el servidor remoto batch01",
+                    "69:  psoft85@batch01:/reportes/CKPR/bancolombia/Factoring/Respuesta/"
+                ],
+                "after_ip_lines": [],
+                "before_lines": [
+                    "64:# Copia los archivos .PGP locales hacia el servidor remoto 10.181.0.77",
+                    "69:  psoft85@10.181.0.77:/reportes/CKPR/bancolombia/Factoring/Respuesta/"
+                ],
+                "changed": true,
+                "file": "/home/psoft85/Bancolombia/Factoring_Rta_bancolombia.sh",
+                "status": "OK"
+            },
+            {
+                "after_host_lines": [
+                    "8:# y los env\u00eda al servidor batch01 en:",
+                    "54:# Copia los .PGP locales hacia batch01, preservando atributos.",
+                    "58:  psoft85@batch01:/reportes/CKPR/bancolombia/Factoring/Seguimiento"
+                ],
+                "after_ip_lines": [],
+                "before_lines": [
+                    "8:# y los env\u00eda al servidor 10.181.0.77 en:",
+                    "54:# Copia los .PGP locales hacia 10.181.0.77, preservando atributos.",
+                    "58:  psoft85@10.181.0.77:/reportes/CKPR/bancolombia/Factoring/Seguimiento"
+                ],
+                "changed": true,
+                "file": "/home/psoft85/Bancolombia/Factoring_Sgto_bancolombia.sh",
+                "status": "OK"
+            },
+            {
+                "after_host_lines": [],
+                "after_ip_lines": [],
+                "before_lines": [],
+                "changed": false,
+                "file": "/home/psoft85/Bancolombia/depuracion_Entrada_new_prd.sh",
+                "status": "SKIPPED"
+            },
+            {
+                "after_host_lines": [
+                    "29:# usando el usuario psoft85 en el host batch01",
+                    "30:scp -pr /home/colombi/entrada/*.TXT psoft85@batch01:/reportes/work/people/input/Bancolombia"
+                ],
+                "after_ip_lines": [],
+                "before_lines": [
+                    "29:# usando el usuario psoft85 en el host 10.181.0.77",
+                    "30:scp -pr /home/colombi/entrada/*.TXT psoft85@10.181.0.77:/reportes/work/people/input/Bancolombia"
+                ],
+                "changed": true,
+                "file": "/home/psoft85/Bancolombia/pasa_people_colombia.sh",
+                "status": "OK"
+            },
+            {
+                "after_host_lines": [
+                    "8:# y los env\u00eda al servidor batch01 en:",
+                    "56:# Copia los archivos .PGP locales al servidor remoto batch01",
+                    "60:  batch01:/reportes/CKPR/bancolombia/bancolombia_rpt"
+                ],
+                "after_ip_lines": [],
+                "before_lines": [
+                    "8:# y los env\u00eda al servidor 10.181.0.77 en:",
+                    "56:# Copia los archivos .PGP locales al servidor remoto 10.181.0.77",
+                    "60:  10.181.0.77:/reportes/CKPR/bancolombia/bancolombia_rpt"
+                ],
+                "changed": true,
+                "file": "/home/psoft85/Bancolombia/traearchivos_bancolombiaencriptadoprd_salidas.sh",
+                "status": "OK"
+            },
+            {
+                "after_host_lines": [
+                    "8:# (batch01) hacia 10.181.3.25, los guarda en /home/colombi/Salida_new_prd,",
+                    "46:ssh batch01 'ls /reportes/CKPR/bancolombia/bancolombia_eft/*.pgp >/dev/null 2>&1'",
+                    "57:# Copia los archivos .pgp desde batman (batch01) hacia",
+                    "59:ssh batch01 'NOMBREARCHIVO=\"*.pgp\"; scp -p -r /reportes/CKPR/bancolombia/bancolombia_eft/$NOMBREARCHIVO psoft85@10.181.5.224:/home/colombi/Salida_new_prd'",
+                    "67:ssh batch01 'NOMBREARCHIVO=\"*.pgp\"; cp -p -r /reportes/CKPR/bancolombia/bancolombia_eft/$NOMBREARCHIVO /reportes/CKPR/bancolombia/bancolombia_hst/bancolombia_hstft'",
+                    "68:ssh batch01 'NOMBREARCHIVO=\"*.txt\"; cp -p -r /reportes/CKPR/bancolombia/bancolombia_eft/$NOMBREARCHIVO /reportes/CKPR/bancolombia/bancolombia_hst/bancolombia_hstft'",
+                    "84:    ssh batch01 'find /reportes/CKPR/bancolombia/bancolombia_eft/ -exec rm {} \\;'"
+                ],
+                "after_ip_lines": [],
+                "before_lines": [
+                    "8:# (10.181.0.77) hacia 10.181.3.25, los guarda en /home/colombi/Salida_new_prd,",
+                    "46:ssh 10.181.0.77 'ls /reportes/CKPR/bancolombia/bancolombia_eft/*.pgp >/dev/null 2>&1'",
+                    "57:# Copia los archivos .pgp desde batman (10.181.0.77) hacia",
+                    "59:ssh 10.181.0.77 'NOMBREARCHIVO=\"*.pgp\"; scp -p -r /reportes/CKPR/bancolombia/bancolombia_eft/$NOMBREARCHIVO psoft85@10.181.5.224:/home/colombi/Salida_new_prd'",
+                    "67:ssh 10.181.0.77 'NOMBREARCHIVO=\"*.pgp\"; cp -p -r /reportes/CKPR/bancolombia/bancolombia_eft/$NOMBREARCHIVO /reportes/CKPR/bancolombia/bancolombia_hst/bancolombia_hstft'",
+                    "68:ssh 10.181.0.77 'NOMBREARCHIVO=\"*.txt\"; cp -p -r /reportes/CKPR/bancolombia/bancolombia_eft/$NOMBREARCHIVO /reportes/CKPR/bancolombia/bancolombia_hst/bancolombia_hstft'",
+                    "84:    ssh 10.181.0.77 'find /reportes/CKPR/bancolombia/bancolombia_eft/ -exec rm {} \\;'"
+                ],
+                "changed": true,
+                "file": "/home/psoft85/Bancolombia/traearchivos_bancolombiaencriptadoprd.sh",
+                "status": "OK"
+            },
+            {
+                "after_host_lines": [],
+                "after_ip_lines": [],
+                "before_lines": [],
+                "changed": false,
+                "file": "/home/psoft85/Bancolombia/traearchivos_bancolombiaencriptadoqa.sh",
+                "status": "SKIPPED"
+            },
+            {
+                "after_host_lines": [
+                    "8:# Factoring de Bancolombia, desde el servidor batch01",
+                    "48:ssh batch01 'ls /reportes/CKPR/bancolombia/Factoring/Pendiente/*.pgp >/dev/null 2>&1'",
+                    "60:# Ejecuta un scp remoto desde batch01 al servidor 10.181.5.224",
+                    "65:ssh batch01 'NOMBREARCHIVO=\"*.pgp\"; scp -p -r /reportes/CKPR/bancolombia/Factoring/Pendiente/$NOMBREARCHIVO psoft85@10.181.5.224:/home/colombi/factoring/Pendiente'",
+                    "73:ssh batch01 'NOMBREARCHIVO=\"*.pgp\"; cp -p -r /reportes/CKPR/bancolombia/Factoring/Pendiente/$NOMBREARCHIVO /reportes/CKPR/bancolombia/bancolombia_hst/FactHistPendiente'",
+                    "89:  ssh batch01 'find \"/reportes/CKPR/bancolombia/Factoring/Pendiente/\" -type f -exec rm -f {} \\;'"
+                ],
+                "after_ip_lines": [],
+                "before_lines": [
+                    "8:# Factoring de Bancolombia, desde el servidor 10.181.0.77",
+                    "48:ssh 10.181.0.77 'ls /reportes/CKPR/bancolombia/Factoring/Pendiente/*.pgp >/dev/null 2>&1'",
+                    "60:# Ejecuta un scp remoto desde 10.181.0.77 al servidor 10.181.5.224",
+                    "65:ssh 10.181.0.77 'NOMBREARCHIVO=\"*.pgp\"; scp -p -r /reportes/CKPR/bancolombia/Factoring/Pendiente/$NOMBREARCHIVO psoft85@10.181.5.224:/home/colombi/factoring/Pendiente'",
+                    "73:ssh 10.181.0.77 'NOMBREARCHIVO=\"*.pgp\"; cp -p -r /reportes/CKPR/bancolombia/Factoring/Pendiente/$NOMBREARCHIVO /reportes/CKPR/bancolombia/bancolombia_hst/FactHistPendiente'",
+                    "89:  ssh 10.181.0.77 'find \"/reportes/CKPR/bancolombia/Factoring/Pendiente/\" -type f -exec rm -f {} \\;'"
+                ],
+                "changed": true,
+                "file": "/home/psoft85/Bancolombia/Factoring_Pte_bancolombia.sh",
+                "status": "OK"
+            },
+            {
+                "after_host_lines": [],
+                "after_ip_lines": [],
+                "before_lines": [],
+                "changed": false,
+                "file": "/home/psoft85/JDA/enviaarchivosjda.sh",
+                "status": "SKIPPED"
+            },
+            {
+                "after_host_lines": [],
+                "after_ip_lines": [],
+                "before_lines": [],
+                "changed": false,
+                "file": "/home/psoft85/JDA/enviaarchivosjda_prd.sh",
+                "status": "SKIPPED"
+            },
+            {
+                "after_host_lines": [
+                    "21:scp -p -r /home/davi/*.TXT  batch01:/reportes/work/people/input/Davivienda"
+                ],
+                "after_ip_lines": [],
+                "before_lines": [
+                    "21:scp -p -r /home/davi/*.TXT  10.181.0.77:/reportes/work/people/input/Davivienda"
+                ],
+                "changed": true,
+                "file": "/home/psoft85/Davivienda/pasa_people.sh",
+                "status": "OK"
+            },
+            {
+                "after_host_lines": [
+                    "24:scp -p -r /home/bbva/$NOMBREARCHIVO batch01:/reportes/work/people/input/Bbva"
+                ],
+                "after_ip_lines": [],
+                "before_lines": [
+                    "24:scp -p -r /home/bbva/$NOMBREARCHIVO 10.181.0.77:/reportes/work/people/input/Bbva"
+                ],
+                "changed": true,
+                "file": "/home/psoft85/BBVA/lleva_archivos_bbva_repowkpeople.sh",
                 "status": "OK"
             }
         ],
-        "generated_at": "2026-02-09T16:36:46Z",
+        "generated_at": "2026-02-10T15:19:30Z",
         "host": "batman_new",
         "new_host": "batch01",
         "old_ip": "10.181.0.77",
-        "scan_root": "/home/psoft85/prueba",
+        "scan_root": "/home/psoft85/",
         "totals": {
             "fail": "0",
-            "files_scanned": "9",
-            "files_with_ip_before": "7",
-            "ok": "7",
-            "skipped": "2"
+            "files_scanned": "29",
+            "files_with_ip_before": "20",
+            "ok": "20",
+            "skipped": "9"
         }
     }
 ]
