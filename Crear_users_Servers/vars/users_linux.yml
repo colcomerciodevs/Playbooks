@@ -1,7 +1,14 @@
 users:
-  - name: djballesteros
-    comment: "Deimer De Jesus Ballesteros Padilla"
-    home: /home/djballesteros
+  - name: orodriguez
+    comment: "Oscar Rodriguez"
+    home: /home/orodriguez
     group: soporte
     shell: /bin/bash
     password: "Soporte2025$"
+  - name: lcubillos
+    comment: "Lisandro Cubillos"
+    home: /home/lcubillos
+    group: soporte
+    shell: /bin/bash
+    password: "Soporte2025$"
+  

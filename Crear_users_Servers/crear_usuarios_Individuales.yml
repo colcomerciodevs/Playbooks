@@ -1,13 +1,13 @@
 ---
 - name: Crear usuarios en servidores Linux
-  hosts: linux_servers
+  hosts: GEOPOS_FSC_CENTRO
   become: true
 
   vars_files:
     - vars/users_linux.yml
 
   vars:
-    force_password_change: true   # <- cámbialo a false si lo quieres desactivar
+    force_password_change: true   # cámbialo a false si lo quieres desactivar
 
   tasks:
     - name: Asegurar que los grupos existen
@@ -31,8 +31,9 @@
       no_log: true
 
     - name: Forzar cambio de contraseña SOLO si el usuario fue creado (opcional)
-      ansible.builtin.command: chage -d 0 {{ item.item.name }}
+      ansible.builtin.command: "chage -d 0 {{ item.item.name }}"
       loop: "{{ user_create.results }}"
       when:
         - force_password_change | bool
+        - item.changed | bool
       changed_when: true

@@ -186,6 +186,8 @@ ktvil-n0 ansible_host=10.151.3.5 ansible_user=ansible_test
 mford-new ansible_host=10.206.3.18 ansible_user=ansible_test
 terio-n0 ansible_host=10.40.3.5 ansible_user=ansible_test
 Vwmed ansible_host=10.206.3.8 ansible_user=ansible_test
+
+
 [GEOPOS_FSC_PPAL_ALKNORTE]
 akede-n1 ansible_host=172.16.134.4 ansible_user=ansible_test
 akede-n0 ansible_host=172.16.134.5 ansible_user=ansible_test
