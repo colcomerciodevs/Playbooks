@@ -1,0 +1,19 @@
+[
+    {
+        "affected_range": "7.17.0 - 8.17.0",
+        "backend_ssl": "OpenSSL/3.2.2",
+        "curl_installed": true,
+        "curl_version": "7.76.1",
+        "evidence_curl_version_line": "curl 7.76.1 (x86_64-redhat-linux-gnu) libcurl/7.76.1 OpenSSL/3.2.2 zlib/1.2.11 brotli/1.0.9 libidn2/2.3.0 libpsl/0.21.1 (+libidn2/2.3.0) libssh/0.10.4/openssl/zlib nghttp2/1.43.0",
+        "evidence_features_line": "Features: alt-svc AsynchDNS brotli GSS-API HTTP2 HTTPS-proxy IDN IPv6 Kerberos Largefile libz NTLM NTLM_WB PSL SPNEGO SSL TLS-SRP UnixSockets",
+        "evidence_protocols_line": "Protocols: dict file ftp ftps gopher gophers http https imap imaps ldap ldaps mqtt pop3 pop3s rtsp scp sftp smb smbs smtp smtps telnet tftp",
+        "hostname": "ansiblepruLB",
+        "ip_from_inventory": "10.181.6.38",
+        "libcurl_version": "7.76.1",
+        "os": "   OracleLinux 9.5 ",
+        "supports_ldap": true,
+        "supports_sftp": true,
+        "uses_gnutls": false,
+        "uses_libssh": false
+    }
+]

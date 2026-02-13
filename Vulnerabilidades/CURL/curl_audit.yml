@@ -1,29 +1,31 @@
 ---
 - name: Auditoria curl/libcurl + Generacion Excel (VERSION AFECTADA SI/NO)
-  hosts: all
+  hosts: prueba
   gather_facts: true
   become: true
 
   vars:
-    # Directorio de salida en la misma ruta del playbook
     output_dir: "{{ playbook_dir }}/Salidas_Playbooks"
-
-    # Evidencia técnica consolidada (base para el Excel)
     output_json: "{{ output_dir }}/curl_audit.json"
-
-    # Reporte final para responder a Ciber
     output_xlsx: "{{ output_dir }}/curl_audit_report.xlsx"
-
-    # Script Python ubicado en la misma ruta del playbook
     python_script: "{{ playbook_dir }}/curl_audit_to_excel.py"
 
   tasks:
 
     #####################################################################
-    # TASK: Obtener facts de paquetes instalados
-    # OBJETIVO:
-    # - Tener evidencia de versiones de paquetes curl/libcurl vía gestor (rpm/zypper)
-    # - Útil si el binario "curl" no está en PATH, pero el paquete existe
+    # TASK: Crear carpeta de salida en el controlador
+    #####################################################################
+    - name: Ensure output directory exists on controller
+      ansible.builtin.file:
+        path: "{{ output_dir }}"
+        state: directory
+        mode: "0755"
+      run_once: true
+      delegate_to: localhost
+
+
+    #####################################################################
+    # TASK: Obtener facts de paquetes instalados (rpm/zypper)
     #####################################################################
     - name: Gather installed package facts
       ansible.builtin.package_facts:
@@ -31,8 +33,37 @@
 
 
     #####################################################################
-    # TASK: Verificar si el binario curl existe en el PATH
-    # OBJETIVO: Confirmar si el comando curl está disponible para ejecutar
+    # TASK: Construir OS completo (incluye versión y SP para SLES)
+    #####################################################################
+    - name: Build OS full name
+      ansible.builtin.set_fact:
+        os_full: >-
+          {% set d = ansible_distribution | default('') %}
+          {% set v = ansible_distribution_version | default('') %}
+          {% if (d | lower) is search('suse') or (d | lower) is search('sles') %}
+          {% set major = (v.split('.')[0] | default('')) %}
+          {% set minor = (v.split('.')[1] | default('')) %}
+          SLES {{ major }} SP{{ minor }}
+          {% else %}
+          {{ d }} {{ v }}
+          {% endif %}
+
+
+    #####################################################################
+    # TASK: Inicializar variables (evita undefined en cualquier host)
+    #####################################################################
+    - name: Initialize evidence variables to avoid undefined
+      ansible.builtin.set_fact:
+        evidence_curl_version_line: ""
+        evidence_protocols_line: ""
+        evidence_features_line: ""
+        parsed_backend_ssl_str: ""
+        parsed_curl_version_str: ""
+        parsed_libcurl_version_str: ""
+
+
+    #####################################################################
+    # TASK: Verificar si existe el binario curl en PATH
     #####################################################################
     - name: Check if curl binary exists
       ansible.builtin.command: "command -v curl"
@@ -42,130 +73,166 @@
 
 
     #####################################################################
-    # TASK: Obtener salida de "curl --version"
-    # OBJETIVO:
-    # - Extraer versión de curl/libcurl y backend SSL (OpenSSL/GnuTLS/NSS/etc.)
-    # NOTA: Solo se ejecuta si existe el binario curl
+    # TASK: Fallback de versión desde package_facts
     #####################################################################
-    - name: Get curl short version line
-      ansible.builtin.command: "curl --version"
-      register: curl_version_cmd
-      changed_when: false
-      failed_when: false
-      when: curl_path.rc == 0
-
-
-    #####################################################################
-    # TASK: Obtener salida de "curl -V"
-    # OBJETIVO:
-    # - Detectar indicios de soporte de protocolos (ldap, sftp, scp, etc.)
-    # - Detectar menciones de libssh/libssh2
-    # NOTA: Solo se ejecuta si existe el binario curl
-    #####################################################################
-    - name: Get curl verbose features
-      ansible.builtin.command: "curl -V"
-      register: curl_v_cmd
-      changed_when: false
-      failed_when: false
-      when: curl_path.rc == 0
-
-
-    #####################################################################
-    # TASK: Extraer versión de paquetes instalados (fallback)
-    # OBJETIVO:
-    # - Si curl no está en PATH, igual intentar sacar versión desde packages facts
-    #####################################################################
-    - name: Set package versions (fallback if curl command not available)
+    - name: Set package versions fallback
       ansible.builtin.set_fact:
         curl_pkg_version: >-
           {{
-            (ansible_facts.packages['curl'][0].version ~ '-' ~ ansible_facts.packages['curl'][0].release)
+            (ansible_facts.packages['curl'][0].version)
             if ('curl' in ansible_facts.packages and ansible_facts.packages['curl']|length > 0)
             else ""
           }}
         libcurl_pkg_version: >-
           {{
-            (ansible_facts.packages['libcurl'][0].version ~ '-' ~ ansible_facts.packages['libcurl'][0].release)
+            (ansible_facts.packages['libcurl'][0].version)
             if ('libcurl' in ansible_facts.packages and ansible_facts.packages['libcurl']|length > 0)
             else ""
           }}
 
 
     #####################################################################
-    # TASK: Normalizar datos de curl/libcurl y “indicios” requeridos
-    # OBJETIVO:
-    # - Definir curl_installed (bool)
-    # - Definir curl_version y libcurl_version (preferir comando; fallback paquete)
-    # - Definir backend SSL hint
-    # - Definir indicios: GnuTLS, libssh/libssh2, soporte LDAP/SFTP
+    # TASK: Evidencia - curl --version primera línea
     #####################################################################
-    - name: Parse curl information and hints
+    - name: Evidence - curl --version first line
+      ansible.builtin.shell: "curl --version 2>/dev/null | head -1"
+      register: ev_curl_version
+      changed_when: false
+      failed_when: false
+      when: curl_path.rc == 0
+
+
+    #####################################################################
+    # TASK: Evidencia - Protocols: y Features: desde curl -V
+    #####################################################################
+    - name: Evidence - curl -V Protocols line
+      ansible.builtin.shell: "curl -V 2>/dev/null | awk '/^Protocols:/{print $0}'"
+      register: ev_protocols
+      changed_when: false
+      failed_when: false
+      when: curl_path.rc == 0
+
+    - name: Evidence - curl -V Features line
+      ansible.builtin.shell: "curl -V 2>/dev/null | awk '/^Features:/{print $0}'"
+      register: ev_features
+      changed_when: false
+      failed_when: false
+      when: curl_path.rc == 0
+
+
+    #####################################################################
+    # TASK: Parsear curl/libcurl/backend con awk (solo si curl existe)
+    #####################################################################
+    - name: Parse curl version (awk)
+      ansible.builtin.shell: "curl --version 2>/dev/null | head -1 | awk '{print $2}'"
+      register: parsed_curl_version
+      changed_when: false
+      failed_when: false
+      when: curl_path.rc == 0
+
+    - name: Parse libcurl version (awk)
+      ansible.builtin.shell: |
+        curl --version 2>/dev/null | head -1 | awk '{
+          for(i=1;i<=NF;i++){
+            if($i ~ /^libcurl\//){
+              gsub(/^libcurl\//,"",$i);
+              print $i; exit
+            }
+          }
+        }'
+      register: parsed_libcurl_version
+      changed_when: false
+      failed_when: false
+      when: curl_path.rc == 0
+
+    - name: Parse backend SSL (awk)
+      ansible.builtin.shell: |
+        curl --version 2>/dev/null | head -1 | awk '{
+          for(i=1;i<=NF;i++){
+            if($i ~ /^(OpenSSL|GnuTLS|NSS|wolfSSL|mbedTLS|Schannel)\//){
+              print $i; exit
+            }
+          }
+        }'
+      register: parsed_backend_ssl
+      changed_when: false
+      failed_when: false
+      when: curl_path.rc == 0
+
+
+    #####################################################################
+    # TASK: Copiar results de registers a variables normales (si existen)
+    # OBJETIVO: que siempre existan strings aunque el when no corra
+    #####################################################################
+    - name: Normalize registered outputs into safe strings
       ansible.builtin.set_fact:
-        # “Instalado” si hay binario o paquete instalado
+        evidence_curl_version_line: "{{ (ev_curl_version.stdout | default('') | trim) }}"
+        evidence_protocols_line: "{{ (ev_protocols.stdout | default('') | trim) }}"
+        evidence_features_line: "{{ (ev_features.stdout | default('') | trim) }}"
+        parsed_curl_version_str: "{{ (parsed_curl_version.stdout | default('') | trim) }}"
+        parsed_libcurl_version_str: "{{ (parsed_libcurl_version.stdout | default('') | trim) }}"
+        parsed_backend_ssl_str: "{{ (parsed_backend_ssl.stdout | default('') | trim) }}"
+      when: curl_path.rc == 0
+
+
+    #####################################################################
+    # TASK: Consolidar valores finales (usa comando si hay; si no paquete)
+    #####################################################################
+    - name: Consolidate final values
+      ansible.builtin.set_fact:
         curl_installed: "{{ (curl_path.rc == 0) or (curl_pkg_version | length > 0) }}"
 
-        # Versión curl: preferir comando, si no usar versión del paquete
         curl_version: >-
           {{
-            (curl_version_cmd.stdout_lines[0].split()[1])
-            if (curl_path.rc == 0 and curl_version_cmd.stdout_lines|length > 0)
+            parsed_curl_version_str
+            if (parsed_curl_version_str | length > 0)
             else (curl_pkg_version | default(''))
           }}
 
-        # Versión libcurl: preferir comando, si no usar versión del paquete
         libcurl_version: >-
           {{
-            (curl_version_cmd.stdout_lines[0].split()[2].replace('libcurl/',''))
-            if (curl_path.rc == 0 and curl_version_cmd.stdout_lines|length > 0 and 'libcurl/' in curl_version_cmd.stdout_lines[0])
+            parsed_libcurl_version_str
+            if (parsed_libcurl_version_str | length > 0)
             else (libcurl_pkg_version | default(''))
           }}
 
-        # Backend SSL: normalmente es el 4to token de la primera línea
-        ssl_backend_hint: >-
-          {{
-            (curl_version_cmd.stdout_lines[0].split()[3])
-            if (curl_path.rc == 0 and curl_version_cmd.stdout_lines|length > 0 and (curl_version_cmd.stdout_lines[0].split()|length > 3))
-            else ""
-          }}
+        backend_ssl: "{{ parsed_backend_ssl_str }}"
 
-        # Indicio de GnuTLS (si aparece en texto)
-        uses_gnutls: "{{ (curl_version_cmd.stdout | default('')) is search('GnuTLS') }}"
-
-        # Indicio de libssh/libssh2 (si aparece en curl -V)
-        uses_libssh_or_libssh2: "{{ (curl_v_cmd.stdout | default('')) is search('libssh') or (curl_v_cmd.stdout | default('')) is search('libssh2') }}"
-
-        # Indicios de soporte de protocolos (NO confirma uso real, solo soporte del binario)
-        supports_ldap: "{{ (curl_v_cmd.stdout | default('') | lower) is search('\\bldap\\b') or (curl_v_cmd.stdout | default('') | lower) is search('\\bldaps\\b') }}"
-        supports_sftp: "{{ (curl_v_cmd.stdout | default('') | lower) is search('\\bsftp\\b') }}"
-      when: true
+        uses_gnutls: "{{ parsed_backend_ssl_str is search('^GnuTLS/') }}"
+        uses_libssh: "{{ (evidence_features_line ~ ' ' ~ evidence_protocols_line) is search('libssh') or (evidence_features_line ~ ' ' ~ evidence_protocols_line) is search('libssh2') }}"
+        supports_ldap: "{{ (evidence_protocols_line | lower) is search('\\bldap\\b') or (evidence_protocols_line | lower) is search('\\bldaps\\b') }}"
+        supports_sftp: "{{ (evidence_protocols_line | lower) is search('\\bsftp\\b') }}"
 
 
     #####################################################################
-    # TASK: Construir registro por host (lo mínimo necesario para el Excel)
-    # OBJETIVO:
-    # - Guardar IP (ansible_host), hostname, OS y datos curl
-    # - Guardar indicios (gnutls/libssh/ldap/sftp)
+    # TASK: Registro por host (mínimo + evidencias)
     #####################################################################
     - name: Build per-host audit record
       ansible.builtin.set_fact:
         curl_audit_record:
           ip_from_inventory: "{{ hostvars[inventory_hostname].ansible_host | default('') }}"
           hostname: "{{ ansible_hostname | default('') }}"
-          os: "{{ ansible_distribution | default('') }}"
+          os: "{{ os_full }}"
+
           curl_installed: "{{ curl_installed }}"
           curl_version: "{{ curl_version }}"
           libcurl_version: "{{ libcurl_version }}"
-          ssl_backend_hint: "{{ ssl_backend_hint }}"
+          backend_ssl: "{{ backend_ssl }}"
+
           uses_gnutls: "{{ uses_gnutls }}"
-          uses_libssh_or_libssh2: "{{ uses_libssh_or_libssh2 }}"
+          uses_libssh: "{{ uses_libssh }}"
           supports_ldap: "{{ supports_ldap }}"
           supports_sftp: "{{ supports_sftp }}"
+
           affected_range: "7.17.0 - 8.17.0"
+
+          evidence_curl_version_line: "{{ evidence_curl_version_line }}"
+          evidence_protocols_line: "{{ evidence_protocols_line }}"
+          evidence_features_line: "{{ evidence_features_line }}"
 
 
     #####################################################################
     # TASK: Consolidar todos los registros en el controlador
-    # OBJETIVO: Un solo JSON consolidado para todo el inventario
     #####################################################################
     - name: Aggregate all host records on controller
       ansible.builtin.set_fact:
@@ -177,7 +244,6 @@
 
     #####################################################################
     # TASK: Guardar JSON consolidado
-    # OBJETIVO: Evidencia técnica base para auditoría y para el Excel
     #####################################################################
     - name: Write consolidated JSON on controller
       ansible.builtin.copy:
@@ -189,10 +255,7 @@
 
 
     #####################################################################
-    # TASK: Ejecutar Python desde el playbook para generar el Excel final
-    # OBJETIVO:
-    # - Generar XLSX con columnas mínimas
-    # - Colorear SOLO la celda "VERSION AFECTADA" (SI=rojo, NO=verde)
+    # TASK: Generar Excel desde el JSON (controller)
     #####################################################################
     - name: Generate Excel report from JSON on controller
       ansible.builtin.command: >

@@ -2,19 +2,19 @@
 """
 curl_audit_to_excel.py
 
-Convierte el JSON consolidado generado por el playbook en un Excel (.xlsx)
-con información MINIMA para responder a Ciber.
+- Lee JSON consolidado (curl_audit.json)
+- Genera Excel (curl_audit_report.xlsx)
 
-Requerimiento principal:
-- SOLO colorear la celda de la columna "VERSION AFECTADA"
-  - SI  -> ROJO
-  - NO  -> VERDE
-
-Rango vulnerable (según solicitud Ciber):
-- curl 7.17.0 hasta 8.17.0 (inclusive)
-
-Uso:
-  python3 curl_audit_to_excel.py /ruta/curl_audit.json /ruta/curl_audit_report.xlsx
+Requerimientos:
+1) VERSION AFECTADA (SI/NO)
+2) Solo esa celda se colorea:
+   - SI -> rojo
+   - NO -> verde
+3) No mostrar "true/false": usar SI/NO
+4) Incluir evidencia:
+   - Linea 1 de 'curl --version'
+   - Linea 'Protocols:' de 'curl -V'
+   - Linea 'Features:' de 'curl -V'
 """
 
 import json
@@ -24,70 +24,69 @@ from pathlib import Path
 
 from openpyxl import Workbook
 from openpyxl.styles import PatternFill, Font
-
+from openpyxl.utils import get_column_letter
 
 # Rango vulnerable (inclusive)
 AFFECTED_MIN = (7, 17, 0)
 AFFECTED_MAX = (8, 17, 0)
 
-# Colores para la celda "VERSION AFECTADA"
-RED = PatternFill("solid", fgColor="FFC7CE")     # rojo claro
-GREEN = PatternFill("solid", fgColor="C6EFCE")   # verde claro
+RED = PatternFill("solid", fgColor="FFC7CE")
+GREEN = PatternFill("solid", fgColor="C6EFCE")
 
 
-def normalize_version_to_tuple(version_str: str):
+def yn(value) -> str:
+    """Convierte booleanos o valores truthy/falsy a SI/NO."""
+    return "SI" if bool(value) else "NO"
+
+
+def normalize_version(version_str: str):
     """
-    Extrae un patrón de versión desde un string y lo convierte a tupla (X,Y,Z).
-
-    Ejemplos:
-    - "7.29.0"           -> (7,29,0)
-    - "7.29.0-59.el7"    -> (7,29,0)
-    - "8.10.1-xyz"       -> (8,10,1)
-    - "" / None          -> None
+    Extrae X.Y o X.Y.Z y retorna (X,Y,Z).
+    Si no se puede parsear, retorna None.
     """
     if not version_str:
         return None
-
-    # Buscar "X.Y" o "X.Y.Z" dentro del string
     m = re.search(r"(\d+)\.(\d+)(?:\.(\d+))?", version_str)
     if not m:
         return None
-
-    major = int(m.group(1))
-    minor = int(m.group(2))
-    patch = int(m.group(3)) if m.group(3) else 0
-
-    return (major, minor, patch)
+    return (int(m.group(1)), int(m.group(2)), int(m.group(3) or 0))
 
 
-def is_version_affected(version_str: str) -> bool:
-    """
-    Retorna True si la versión cae dentro del rango vulnerable (inclusive).
-    """
-    t = normalize_version_to_tuple(version_str)
+def is_affected(version_str: str) -> bool:
+    """True si la versión cae en el rango vulnerable."""
+    t = normalize_version(version_str)
     if t is None:
         return False
     return AFFECTED_MIN <= t <= AFFECTED_MAX
 
 
+def autosize(ws, max_width=80):
+    """Autoajusta anchos (cosmético)."""
+    for col_idx in range(1, ws.max_column + 1):
+        max_len = 0
+        for row_idx in range(1, ws.max_row + 1):
+            v = ws.cell(row=row_idx, column=col_idx).value
+            if v is None:
+                continue
+            max_len = max(max_len, len(str(v)))
+        ws.column_dimensions[get_column_letter(col_idx)].width = min(max_len + 2, max_width)
+
+
 def main():
-    # Validar argumentos
     if len(sys.argv) < 3:
-        print("Uso: python3 curl_audit_to_excel.py /path/curl_audit.json /path/curl_audit_report.xlsx")
+        print("Uso: python3 curl_audit_to_excel.py curl_audit.json curl_audit_report.xlsx")
         sys.exit(1)
 
     json_path = Path(sys.argv[1])
     xlsx_path = Path(sys.argv[2])
 
-    # Leer JSON consolidado
     data = json.loads(json_path.read_text(encoding="utf-8"))
 
-    # Crear Excel
     wb = Workbook()
     ws = wb.active
     ws.title = "curl_audit"
 
-    # Columnas MINIMAS (sin Q1..Q5 ni Observación)
+    # Columnas mínimas + evidencias
     headers = [
         "IP",
         "Hostname",
@@ -100,46 +99,55 @@ def main():
         "Usa libssh",
         "Soporta LDAP",
         "Soporta SFTP",
-        "VERSION AFECTADA"
+        "VERSION AFECTADA",
+        "EVIDENCIA curl --version (linea 1)",
+        "EVIDENCIA Protocols:",
+        "EVIDENCIA Features:",
     ]
 
-    # Escribir encabezados
     ws.append(headers)
-    for c in ws[1]:
-        c.font = Font(bold=True)
 
-    # Escribir filas por host
-    for row in data:
-        installed = bool(row.get("curl_installed", False))
-        curl_ver = row.get("curl_version", "") or ""
+    # encabezado en negrita
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
 
-        # Solo es "AFECTADA" si está instalado y la versión está en rango
-        affected = installed and is_version_affected(curl_ver)
+    for r in data:
+        installed = bool(r.get("curl_installed", False))
+        curl_ver = r.get("curl_version", "") or ""
+
+        affected = installed and is_affected(curl_ver)
         affected_text = "SI" if affected else "NO"
 
-        excel_row = [
-            row.get("ip_from_inventory", ""),
-            row.get("hostname", ""),
-            row.get("os", ""),
-            installed,
+        row = [
+            r.get("ip_from_inventory", ""),
+            r.get("hostname", ""),
+            r.get("os", ""),
+
+            yn(installed),
             curl_ver,
-            row.get("libcurl_version", ""),
-            row.get("ssl_backend_hint", ""),
-            bool(row.get("uses_gnutls", False)),
-            bool(row.get("uses_libssh_or_libssh2", False)),
-            bool(row.get("supports_ldap", False)),
-            bool(row.get("supports_sftp", False)),
-            affected_text
+            r.get("libcurl_version", ""),
+            r.get("backend_ssl", ""),
+
+            yn(r.get("uses_gnutls", False)),
+            yn(r.get("uses_libssh", False)),
+            yn(r.get("supports_ldap", False)),
+            yn(r.get("supports_sftp", False)),
+
+            affected_text,
+
+            r.get("evidence_curl_version_line", ""),
+            r.get("evidence_protocols_line", ""),
+            r.get("evidence_features_line", ""),
         ]
 
-        ws.append(excel_row)
+        ws.append(row)
 
-        # Colorear SOLO la celda "VERSION AFECTADA"
-        affected_col_idx = headers.index("VERSION AFECTADA") + 1
-        cell = ws.cell(row=ws.max_row, column=affected_col_idx)
+        # colorear SOLO la celda VERSION AFECTADA
+        idx = headers.index("VERSION AFECTADA") + 1
+        cell = ws.cell(row=ws.max_row, column=idx)
         cell.fill = RED if affected_text == "SI" else GREEN
 
-    # Guardar Excel
+    autosize(ws)
     wb.save(xlsx_path)
     print(f"Excel generado: {xlsx_path.resolve()}")
 
