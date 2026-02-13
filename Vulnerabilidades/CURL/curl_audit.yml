@@ -1,0 +1,165 @@
+---
+- name: Auditoria curl/libcurl y export a JSON + Excel
+  hosts: all
+  gather_facts: true
+  become: true
+
+  vars:
+    # Directorio de salida relativo a donde está este playbook
+    output_dir: "{{ playbook_dir }}/Salidas_Playbooks"
+    output_json: "{{ output_dir }}/curl_audit.json"
+    output_xlsx: "{{ output_dir }}/curl_audit_report.xlsx"
+
+    # Script Python (se asume en la misma ruta del playbook)
+    python_script: "{{ playbook_dir }}/curl_audit_to_excel.py"
+
+  tasks:
+
+    #################################################################
+    # TASK: Crear carpeta Salidas_Playbooks si no existe (en controller)
+    # OBJETIVO: asegurar ruta de salida para JSON y Excel
+    #################################################################
+    - name: Create output directory on controller
+      ansible.builtin.file:
+        path: "{{ output_dir }}"
+        state: directory
+        mode: "0755"
+      run_once: true
+      delegate_to: localhost
+
+
+    #################################################################
+    # TASK: Validar si curl existe en el servidor
+    # OBJETIVO: detectar binario curl en PATH
+    #################################################################
+    - name: Check if curl binary exists
+      ansible.builtin.command: "command -v curl"
+      register: curl_path
+      changed_when: false
+      failed_when: false
+
+
+    #################################################################
+    # TASK: Obtener versión base de curl (curl --version)
+    # OBJETIVO: capturar versión curl y libcurl desde primera línea
+    #################################################################
+    - name: Get curl short version line
+      ansible.builtin.command: "curl --version"
+      register: curl_version_cmd
+      changed_when: false
+      failed_when: false
+      when: curl_path.rc == 0
+
+
+    #################################################################
+    # TASK: Obtener detalles completos (curl -V)
+    # OBJETIVO: detectar indicios de libssh/libssh2, GnuTLS, features
+    #################################################################
+    - name: Get curl verbose features
+      ansible.builtin.command: "curl -V"
+      register: curl_v_cmd
+      changed_when: false
+      failed_when: false
+      when: curl_path.rc == 0
+
+
+    #################################################################
+    # TASK: Parsear y normalizar información recolectada
+    # OBJETIVO:
+    # - curl_installed (bool)
+    # - curl_version (ej 7.29.0)
+    # - libcurl_version (ej 7.29.0)
+    # - ssl_backend_hint (ej OpenSSL/GnuTLS/NSS/etc)
+    # - flags de texto: uses_gnutls / mentions_libssh
+    #################################################################
+    - name: Parse curl information
+      ansible.builtin.set_fact:
+        curl_installed: "{{ curl_path.rc == 0 }}"
+
+        curl_version: >-
+          {{
+            (curl_version_cmd.stdout_lines[0].split()[1])
+            if (curl_path.rc == 0 and curl_version_cmd.stdout_lines|length > 0)
+            else "NOT_INSTALLED"
+          }}
+
+        libcurl_version: >-
+          {{
+            (curl_version_cmd.stdout_lines[0].split()[2].replace('libcurl/',''))
+            if (curl_path.rc == 0 and curl_version_cmd.stdout_lines|length > 0 and 'libcurl/' in curl_version_cmd.stdout_lines[0])
+            else ""
+          }}
+
+        ssl_backend: >-
+          {{
+            (curl_version_cmd.stdout_lines[0].split()[3])
+            if (curl_path.rc == 0 and curl_version_cmd.stdout_lines|length > 0 and (curl_version_cmd.stdout_lines[0].split()|length > 3))
+            else ""
+          }}
+
+        uses_gnutls: "{{ (curl_version_cmd.stdout | default('')) is search('GnuTLS') }}"
+        mentions_libssh: "{{ (curl_v_cmd.stdout | default('')) is search('libssh') or (curl_v_cmd.stdout | default('')) is search('libssh2') }}"
+
+
+    #################################################################
+    # TASK: Construir registro por host
+    # OBJETIVO: consolidar info host + curl en una estructura uniforme
+    #################################################################
+    - name: Build per-host audit record
+      ansible.builtin.set_fact:
+        curl_audit_record:
+          ip_from_inventory: "{{ hostvars[inventory_hostname].ansible_host | default('') }}"
+          inventory_name: "{{ inventory_hostname }}"
+          hostname: "{{ ansible_hostname | default('') }}"
+          fqdn: "{{ ansible_fqdn | default('') }}"
+          os: "{{ ansible_distribution | default('') }}"
+          os_version: "{{ ansible_distribution_version | default('') }}"
+          kernel: "{{ ansible_kernel | default('') }}"
+          curl_installed: "{{ curl_installed }}"
+          curl_version: "{{ curl_version }}"
+          libcurl_version: "{{ libcurl_version }}"
+          ssl_backend_hint: "{{ ssl_backend }}"
+          uses_gnutls: "{{ uses_gnutls }}"
+          mentions_libssh: "{{ mentions_libssh }}"
+          affected_range: "7.17.0 - 8.17.0"
+
+
+    #################################################################
+    # TASK: Agregar todos los registros en el controller
+    # OBJETIVO: crear una lista global con resultados de todos los hosts
+    #################################################################
+    - name: Aggregate all host records on controller
+      ansible.builtin.set_fact:
+        curl_audit_all: "{{ (curl_audit_all | default([])) + [ hostvars[item].curl_audit_record ] }}"
+      loop: "{{ ansible_play_hosts_all }}"
+      run_once: true
+      delegate_to: localhost
+
+
+    #################################################################
+    # TASK: Guardar JSON consolidado en controller
+    # OBJETIVO: dejar evidencia única y reutilizable para Excel/reportes
+    #################################################################
+    - name: Write consolidated JSON on controller
+      ansible.builtin.copy:
+        dest: "{{ output_json }}"
+        content: "{{ curl_audit_all | to_nice_json }}"
+        mode: "0644"
+      run_once: true
+      delegate_to: localhost
+
+    #################################################################
+    # TASK: Ejecutar Python para generar Excel
+    # OBJETIVO: crear reporte XLSX con estado afectada/no afectada
+    #################################################################
+    - name: Generate Excel report from JSON on controller
+      ansible.builtin.command: >
+        python3 "{{ python_script }}" "{{ output_json }}" "{{ output_xlsx }}"
+      register: excel_gen
+      changed_when: true
+      failed_when: excel_gen.rc != 0
+      run_once: true
+      delegate_to: localhost
+
+
+
