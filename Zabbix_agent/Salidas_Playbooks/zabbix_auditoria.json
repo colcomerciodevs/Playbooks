@@ -1,80 +1,24 @@
 [
     {
         "estado_servicio_final": "active",
-        "hostname": "WS01-OCI",
-        "ip": "172.25.97.44",
+        "hostname": "alkexapsprd-3pqcq1",
+        "ip": "172.25.87.120",
         "nueva_version_instalada": "7.0.18",
         "version_zabbix_agent1": "No instalado",
         "version_zabbix_agent2": "7.0.18"
     },
     {
         "estado_servicio_final": "active",
-        "hostname": "WS02-OCI",
-        "ip": "172.25.97.201",
+        "hostname": "alkexapsprd-3pqcq2",
+        "ip": "172.25.87.110",
         "nueva_version_instalada": "7.0.18",
         "version_zabbix_agent1": "No instalado",
         "version_zabbix_agent2": "7.0.18"
     },
     {
         "estado_servicio_final": "active",
-        "hostname": "APP01-OCI",
-        "ip": "172.25.98.111",
-        "nueva_version_instalada": "7.0.18",
-        "version_zabbix_agent1": "No instalado",
-        "version_zabbix_agent2": "7.0.18"
-    },
-    {
-        "estado_servicio_final": "active",
-        "hostname": "APP02-OCI",
-        "ip": "172.25.96.193",
-        "nueva_version_instalada": "7.0.18",
-        "version_zabbix_agent1": "No instalado",
-        "version_zabbix_agent2": "7.0.18"
-    },
-    {
-        "estado_servicio_final": "active",
-        "hostname": "BATCH01-OCI",
-        "ip": "172.25.96.96",
-        "nueva_version_instalada": "7.0.18",
-        "version_zabbix_agent1": "No instalado",
-        "version_zabbix_agent2": "7.0.18"
-    },
-    {
-        "estado_servicio_final": "active",
-        "hostname": "BATCH02-OCI",
-        "ip": "172.25.99.10",
-        "nueva_version_instalada": "7.0.18",
-        "version_zabbix_agent1": "No instalado",
-        "version_zabbix_agent2": "7.0.18"
-    },
-    {
-        "estado_servicio_final": "active",
-        "hostname": "BATCH03-OCI",
-        "ip": "172.25.99.176",
-        "nueva_version_instalada": "7.0.18",
-        "version_zabbix_agent1": "No instalado",
-        "version_zabbix_agent2": "7.0.18"
-    },
-    {
-        "estado_servicio_final": "active",
-        "hostname": "BATCH04-OCI",
-        "ip": "172.25.96.209",
-        "nueva_version_instalada": "7.0.18",
-        "version_zabbix_agent1": "No instalado",
-        "version_zabbix_agent2": "7.0.18"
-    },
-    {
-        "estado_servicio_final": "active",
-        "hostname": "MASTER01-OCI",
-        "ip": "172.25.97.108",
-        "nueva_version_instalada": "7.0.18",
-        "version_zabbix_agent1": "No instalado",
-        "version_zabbix_agent2": "7.0.18"
-    },
-    {
-        "estado_servicio_final": "active",
-        "hostname": "MASTER02-OCI",
-        "ip": "172.25.98.228",
+        "hostname": "alkexapsprd-3pqcq3",
+        "ip": "172.25.86.246",
         "nueva_version_instalada": "7.0.18",
         "version_zabbix_agent1": "No instalado",
         "version_zabbix_agent2": "7.0.18"
