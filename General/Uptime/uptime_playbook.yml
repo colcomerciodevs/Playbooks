@@ -1,0 +1,58 @@
+- name: Tarea para recolectar uptime BIA y generar Excel
+  hosts: BIA
+  become: false
+  gather_facts: true
+
+  vars:
+    out_path: "/data/work/Salida_Uptime"
+    json_filename: "BIA_uptime.json"
+    xlsx_filename: "BIA_uptime.xlsx"
+    py_script: "{{ playbook_dir }}/genera_excel_uptime.py"
+
+  tasks:
+
+    # 1) Limpia JSON viejo si existe (evita residuos de ejecuciones anteriores)
+    - name: Remove old JSON (if exists)
+      delegate_to: localhost
+      run_once: true
+      ansible.builtin.file:
+        path: "{{ out_path }}/{{ json_filename }}"
+        state: absent
+
+    # 2) Limpia Excel viejo si existe (garantiza archivo nuevo sin residuos)
+    - name: Remove old Excel (if exists)
+      delegate_to: localhost
+      run_once: true
+      ansible.builtin.file:
+        path: "{{ out_path }}/{{ xlsx_filename }}"
+        state: absent
+
+    # 3) Construye JSON consolidado con los facts de todos los hosts
+    - name: Build JSON content from host facts (Control Node)
+      delegate_to: localhost
+      run_once: true
+      ansible.builtin.copy:
+        dest: "{{ out_path }}/{{ json_filename }}"
+        mode: "0644"
+        content: |
+          [
+          {% for h in ansible_play_hosts %}
+            {
+              "inventory_hostname": "{{ h }}",
+              "ansible_hostname": "{{ hostvars[h].ansible_hostname | default('') }}",
+              "uptime_seconds": {{ hostvars[h].ansible_facts.uptime_seconds | default(0) }},
+              "uptime_days": {{ ((hostvars[h].ansible_facts.uptime_seconds | default(0)) / 86400) | int }}
+            }{% if not loop.last %},{% endif %}
+          {% endfor %}
+          ]
+
+    # 4) Ejecuta script Python para generar el Excel final
+    - name: Generate Excel using Python (Control Node)
+      delegate_to: localhost
+      run_once: true
+      ansible.builtin.command:
+        cmd: >
+          python3 {{ py_script }}
+          --input {{ out_path }}/{{ json_filename }}
+          --output {{ out_path }}/{{ xlsx_filename }}
+      changed_when: true
