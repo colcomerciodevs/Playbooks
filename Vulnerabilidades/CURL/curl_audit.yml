@@ -1,8 +1,9 @@
 ---
-- name: Auditoria curl/libcurl + Generacion Excel (AFECTADA SI/NO + whatrequires)
+- name: Auditoria curl/libcurl + Generacion Excel (AFECTADA SI/NO + whatrequires) - tolerante a fallos
   hosts: SERVERS_LINUX
   gather_facts: true
   become: true
+  any_errors_fatal: false
 
   vars:
     # Carpeta de salida (en el controlador / máquina donde ejecutas ansible)
@@ -100,9 +101,10 @@
 
     #####################################################################
     # 5) Obtener versión de curl/libcurl por rpm -q (universal en distros RPM)
+    #    - Si el host NO es RPM-based (sin rpm), esto NO falla y devuelve vacío.
     #####################################################################
     - name: Get curl package VERSION/RELEASE by rpm -q
-      ansible.builtin.shell: "rpm -q curl --qf '%{VERSION} %{RELEASE}\\n' 2>/dev/null || true"
+      ansible.builtin.shell: "command -v rpm >/dev/null 2>&1 && rpm -q curl --qf '%{VERSION} %{RELEASE}\\n' 2>/dev/null || true"
       register: rpm_q_curl
       changed_when: false
       failed_when: false
@@ -110,6 +112,11 @@
     - name: Get libcurl package VERSION/RELEASE by rpm -q (try common names)
       ansible.builtin.shell: |
         set -o pipefail
+        if ! command -v rpm >/dev/null 2>&1; then
+          echo ""
+          exit 0
+        fi
+
         (rpm -q libcurl --qf '%{VERSION} %{RELEASE}\n' 2>/dev/null) || \
         (rpm -q libcurl4 --qf '%{VERSION} %{RELEASE}\n' 2>/dev/null) || \
         (rpm -q libcurl4-gnutls --qf '%{VERSION} %{RELEASE}\n' 2>/dev/null) || \
@@ -279,10 +286,16 @@
 
     #####################################################################
     # 14) Identificar paquetes que dependen de libcurl (rpm whatrequires)
+    #     - Si el host no tiene rpm, devuelve vacío sin fallar.
     #####################################################################
     - name: Get packages that require libcurl (rpm whatrequires)
       ansible.builtin.shell: |
         set -o pipefail
+        if ! command -v rpm >/dev/null 2>&1; then
+          echo ""
+          exit 0
+        fi
+
         if rpm -q libcurl >/dev/null 2>&1; then
           PKG="libcurl"
         elif rpm -q libcurl4 >/dev/null 2>&1; then
@@ -313,7 +326,7 @@
 
 
     #####################################################################
-    # 15) Registro por host (mínimo + evidencias)
+    # 15) Registro por host (siempre se intenta construir si el host llegó aquí)
     #####################################################################
     - name: Build per-host audit record
       ansible.builtin.set_fact:
@@ -349,18 +362,29 @@
 
 
     #####################################################################
-    # 16) Consolidar todos los registros en el controlador (run_once)
+    # 16) Consolidar SOLO registros de hosts exitosos (NO incluye caídos/unreachable)
     #####################################################################
-    - name: Aggregate all host records on controller
+    - name: Aggregate all host records on controller (only successful hosts)
       ansible.builtin.set_fact:
-        curl_audit_all: "{{ (curl_audit_all | default([])) + [ hostvars[item].curl_audit_record ] }}"
-      loop: "{{ ansible_play_hosts_all }}"
+        curl_audit_all: >-
+          {{
+            ansible_play_hosts
+            | map('extract', hostvars, 'curl_audit_record')
+            | select('defined')
+            | list
+          }}
+      run_once: true
+      delegate_to: localhost
+
+    - name: Ensure curl_audit_all is a list (guard)
+      ansible.builtin.set_fact:
+        curl_audit_all: "{{ curl_audit_all | default([]) | list }}"
       run_once: true
       delegate_to: localhost
 
 
     #####################################################################
-    # 17) Guardar JSON consolidado en el controlador
+    # 17) Guardar JSON consolidado en el controlador (siempre)
     #####################################################################
     - name: Write consolidated JSON on controller
       ansible.builtin.copy:
@@ -372,7 +396,7 @@
 
 
     #####################################################################
-    # 18) Generar Excel desde el JSON (controller)
+    # 18) Generar Excel desde el JSON (siempre genera con los exitosos)
     #####################################################################
     - name: Generate Excel report from JSON on controller
       ansible.builtin.command: >
