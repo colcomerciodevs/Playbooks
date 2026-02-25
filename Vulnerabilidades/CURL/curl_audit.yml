@@ -1,6 +1,6 @@
 ---
 - name: Auditoria curl/libcurl + Generacion Excel (AFECTADA SI/NO + whatrequires)
-  hosts: prueba
+  hosts: SERVERS_LINUX
   gather_facts: true
   become: true
 
@@ -272,17 +272,32 @@
 
 
     #####################################################################
-    # 12) Normalizar versión X.Y.Z y evaluar afectación 7.17.0–8.17.0
+    # 12) Normalizar versiones a listas de enteros para comparar sin "version()"
     #####################################################################
-    - name: Normalize curl version and evaluate affected range 7.17.0 - 8.17.0
+    - name: Build version parts (int) for curl and affected range
       ansible.builtin.set_fact:
         curl_version_norm: "{{ (curl_version | regex_search('([0-9]+\\.[0-9]+\\.[0-9]+)')) | default('') }}"
+        curl_v: "{{ ( (curl_version | regex_search('([0-9]+\\.[0-9]+\\.[0-9]+)')) | default('0.0.0') ).split('.') | map('int') | list }}"
+        min_v: "{{ affected_min.split('.') | map('int') | list }}"
+        max_v: "{{ affected_max.split('.') | map('int') | list }}"
+
+
+    - name: Evaluate affected range using numeric compare
+      ansible.builtin.set_fact:
         affected_bundle: >-
           {{
             curl_installed
             and (curl_version_norm | length > 0)
-            and (curl_version_norm is version(affected_min, '>='))
-            and (curl_version_norm is version(affected_max, '<='))
+            and (
+              (curl_v[0] > min_v[0]) or
+              (curl_v[0] == min_v[0] and curl_v[1] > min_v[1]) or
+              (curl_v[0] == min_v[0] and curl_v[1] == min_v[1] and curl_v[2] >= min_v[2])
+            )
+            and (
+              (curl_v[0] < max_v[0]) or
+              (curl_v[0] == max_v[0] and curl_v[1] < max_v[1]) or
+              (curl_v[0] == max_v[0] and curl_v[1] == max_v[1] and curl_v[2] <= max_v[2])
+            )
           }}
 
 

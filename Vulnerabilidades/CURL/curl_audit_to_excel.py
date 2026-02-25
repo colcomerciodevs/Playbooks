@@ -5,6 +5,9 @@ curl_audit_to_excel.py
 Lee un JSON consolidado (lista de dicts) generado por Ansible y produce un Excel
 con formato para auditoría de curl/libcurl.
 
+Incluye normalización robusta del campo affected_bundle para evitar casos donde
+llegue como string ("True"/"False") y el Excel quede mal marcado.
+
 Uso:
   python3 curl_audit_to_excel.py curl_audit.json curl_audit_report.xlsx
 """
@@ -19,7 +22,7 @@ from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 
 
-# Orden de columnas en el Excel (ajústalo si quieres)
+# Orden de columnas en el Excel
 COLUMNS = [
     "ip_from_inventory",
     "hostname",
@@ -53,7 +56,7 @@ COLUMNS = [
     "evidence_features_line",
 ]
 
-# Encabezados “bonitos” (opcional)
+# Encabezados “bonitos”
 HEADERS = {
     "ip_from_inventory": "IP (Inventario)",
     "hostname": "Hostname",
@@ -89,20 +92,52 @@ HEADERS = {
 
 
 def read_json(path: Path) -> List[Dict[str, Any]]:
-    """Lee el JSON y valida que sea una lista."""
+    """Lee el JSON y valida que sea una lista de dicts."""
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, list):
         raise ValueError("El JSON esperado debe ser una LISTA de registros por host.")
+    # Validación suave: cada item debe ser dict
+    for i, item in enumerate(data):
+        if not isinstance(item, dict):
+            raise ValueError(f"El item #{i} del JSON no es un dict.")
     return data
 
 
+def normalize_bool(value: Any) -> Any:
+    """
+    Normaliza valores booleanos que pueden venir como:
+      - bool True/False
+      - string "true"/"false"/"si"/"no"/"yes"/"0"/"1"
+      - int 0/1
+
+    Retorna:
+      - True/False si logra interpretarlo
+      - el valor original si no puede normalizarlo
+    """
+    if isinstance(value, bool):
+        return value
+
+    if isinstance(value, int):
+        if value == 1:
+            return True
+        if value == 0:
+            return False
+        return value
+
+    if isinstance(value, str):
+        s = value.strip().lower()
+        if s in ("true", "yes", "y", "si", "sí", "1"):
+            return True
+        if s in ("false", "no", "n", "0"):
+            return False
+        return value
+
+    return value
+
+
 def autosize_columns(ws) -> None:
-    """
-    Ajusta ancho de columnas aproximado.
-    (Excel real puede variar, pero esto ayuda bastante)
-    """
+    """Ajusta ancho de columnas aproximado con límites razonables."""
     for col_idx, col_name in enumerate(COLUMNS, start=1):
-        # mínimo
         max_len = len(HEADERS.get(col_name, col_name))
         for row in ws.iter_rows(min_row=2, min_col=col_idx, max_col=col_idx):
             v = row[0].value
@@ -112,8 +147,13 @@ def autosize_columns(ws) -> None:
             if len(s) > max_len:
                 max_len = len(s)
 
-        # límites para que no quede gigante por evidencias largas
-        if col_name in ("libcurl_whatrequires", "evidence_protocols_line", "evidence_features_line", "evidence_curl_version_line"):
+        # límites para columnas largas
+        if col_name in (
+            "libcurl_whatrequires",
+            "evidence_protocols_line",
+            "evidence_features_line",
+            "evidence_curl_version_line",
+        ):
             width = min(max_len, 80)
         else:
             width = min(max_len, 40)
@@ -139,41 +179,40 @@ def main() -> int:
     ws = wb.active
     ws.title = "curl_audit"
 
-    # Estilos básicos
+    # Estilos
     header_font = Font(bold=True)
     header_fill = PatternFill("solid", fgColor="D9E1F2")  # azul claro
     wrap = Alignment(wrap_text=True, vertical="top")
     top_left = Alignment(vertical="top", horizontal="left", wrap_text=True)
 
-    # Llenar encabezados
+    # Encabezados
     for col_idx, col_name in enumerate(COLUMNS, start=1):
         cell = ws.cell(row=1, column=col_idx, value=HEADERS.get(col_name, col_name))
         cell.font = header_font
         cell.fill = header_fill
         cell.alignment = Alignment(vertical="center", horizontal="center", wrap_text=True)
 
-    # Congelar encabezado
+    # Congelar encabezado y autofiltro
     ws.freeze_panes = "A2"
-
-    # Autofiltro
     ws.auto_filter.ref = f"A1:{get_column_letter(len(COLUMNS))}1"
 
     # Colores para afectación
-    fill_affected = PatternFill("solid", fgColor="FFC7CE")   # rojo claro
+    fill_affected = PatternFill("solid", fgColor="FFC7CE")      # rojo claro
     fill_not_affected = PatternFill("solid", fgColor="C6EFCE")  # verde claro
-    fill_unknown = PatternFill("solid", fgColor="FFEB9C")    # amarillo claro
+    fill_unknown = PatternFill("solid", fgColor="FFEB9C")       # amarillo claro
+
+    affected_col = COLUMNS.index("affected_bundle") + 1
 
     # Escribir filas
     for row_idx, rec in enumerate(records, start=2):
+        # Volcar celdas (raw)
         for col_idx, col_name in enumerate(COLUMNS, start=1):
             val = rec.get(col_name, "")
-            cell = ws.cell(row=row_idx, column=col_idx, value=val)
-            cell.alignment = top_left
+            ws.cell(row=row_idx, column=col_idx, value=val).alignment = top_left
 
-        # Formato especial por “affected_bundle”
-        affected_value = rec.get("affected_bundle", "")
-        # Ubicar columna affected_bundle para pintar
-        affected_col = COLUMNS.index("affected_bundle") + 1
+        # Normalizar y pintar la celda AFECTADO (SI/NO)
+        raw_affected = rec.get("affected_bundle", "")
+        affected_value = normalize_bool(raw_affected)
         affected_cell = ws.cell(row=row_idx, column=affected_col)
 
         if isinstance(affected_value, bool):
@@ -182,14 +221,19 @@ def main() -> int:
             affected_cell.alignment = Alignment(horizontal="center", vertical="top", wrap_text=True)
             affected_cell.fill = fill_affected if affected_value else fill_not_affected
         else:
-            # Si viene vacío o raro, lo marcamos como “N/A”
-            affected_cell.value = str(affected_value) if affected_value != "" else "N/A"
+            # Si viene vacío o no interpretable, marcamos N/A y amarillo
+            affected_cell.value = "N/A" if (affected_value == "" or affected_value is None) else str(affected_value)
             affected_cell.font = Font(bold=True)
             affected_cell.alignment = Alignment(horizontal="center", vertical="top", wrap_text=True)
             affected_cell.fill = fill_unknown
 
         # Mejor lectura en campos largos
-        long_fields = ["libcurl_whatrequires", "evidence_curl_version_line", "evidence_protocols_line", "evidence_features_line"]
+        long_fields = [
+            "libcurl_whatrequires",
+            "evidence_curl_version_line",
+            "evidence_protocols_line",
+            "evidence_features_line",
+        ]
         for lf in long_fields:
             lf_col = COLUMNS.index(lf) + 1
             ws.cell(row=row_idx, column=lf_col).alignment = wrap
