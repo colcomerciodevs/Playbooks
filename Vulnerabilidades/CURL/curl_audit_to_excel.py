@@ -2,11 +2,13 @@
 """
 curl_audit_to_excel.py
 
-Lee un JSON consolidado (lista de dicts) generado por Ansible y produce un Excel
-con formato para auditoría de curl/libcurl.
+Genera un Excel a partir de un JSON consolidado (lista de dicts) producido por
+el playbook de auditoría curl/libcurl.
 
-Incluye normalización robusta del campo affected_bundle para evitar casos donde
-llegue como string ("True"/"False") y el Excel quede mal marcado.
+Este .py está alineado con el PLAYBOOK "simple" basado en rpm -q, por lo tanto:
+- NO requiere las llaves curl_pkg_name / libcurl_pkg_name (se removieron).
+- Convierte booleanos a VERDADERO/FALSO en columnas booleanas.
+- Colorea la columna AFECTADO (SI/NO).
 
 Uso:
   python3 curl_audit_to_excel.py curl_audit.json curl_audit_report.xlsx
@@ -22,15 +24,13 @@ from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 
 
-# Orden de columnas en el Excel
+# Columnas esperadas (alineadas con el playbook "simple")
 COLUMNS = [
     "ip_from_inventory",
     "hostname",
     "os",
 
     "curl_installed",
-    "curl_pkg_name",
-    "libcurl_pkg_name",
 
     "curl_version",
     "curl_version_norm",
@@ -56,15 +56,12 @@ COLUMNS = [
     "evidence_features_line",
 ]
 
-# Encabezados “bonitos”
 HEADERS = {
     "ip_from_inventory": "IP (Inventario)",
     "hostname": "Hostname",
     "os": "OS",
 
     "curl_installed": "curl instalado",
-    "curl_pkg_name": "Paquete curl detectado",
-    "libcurl_pkg_name": "Paquete libcurl detectado",
 
     "curl_version": "curl (raw)",
     "curl_version_norm": "curl (X.Y.Z)",
@@ -90,13 +87,24 @@ HEADERS = {
     "evidence_features_line": "Evidencia: Features",
 }
 
+# Columnas que queremos mostrar como VERDADERO/FALSO (no aplica a affected_bundle)
+BOOL_COLUMNS = {
+    "curl_installed",
+    "uses_gnutls",
+    "uses_libssh",
+    "supports_ldap",
+    "supports_ldaps",
+    "supports_sftp",
+    "supports_scp",
+    "supports_http3",
+}
+
 
 def read_json(path: Path) -> List[Dict[str, Any]]:
     """Lee el JSON y valida que sea una lista de dicts."""
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, list):
         raise ValueError("El JSON esperado debe ser una LISTA de registros por host.")
-    # Validación suave: cada item debe ser dict
     for i, item in enumerate(data):
         if not isinstance(item, dict):
             raise ValueError(f"El item #{i} del JSON no es un dict.")
@@ -109,10 +117,7 @@ def normalize_bool(value: Any) -> Any:
       - bool True/False
       - string "true"/"false"/"si"/"no"/"yes"/"0"/"1"
       - int 0/1
-
-    Retorna:
-      - True/False si logra interpretarlo
-      - el valor original si no puede normalizarlo
+    Retorna True/False si logra interpretarlo; si no, retorna el valor original.
     """
     if isinstance(value, bool):
         return value
@@ -132,6 +137,14 @@ def normalize_bool(value: Any) -> Any:
             return False
         return value
 
+    return value
+
+
+def bool_to_spanish(value: Any) -> Any:
+    """Convierte True/False a VERDADERO/FALSO si es booleano (o normalizable)."""
+    v = normalize_bool(value)
+    if isinstance(v, bool):
+        return "VERDADERO" if v else "FALSO"
     return value
 
 
@@ -205,9 +218,13 @@ def main() -> int:
 
     # Escribir filas
     for row_idx, rec in enumerate(records, start=2):
-        # Volcar celdas (raw)
         for col_idx, col_name in enumerate(COLUMNS, start=1):
             val = rec.get(col_name, "")
+
+            # Convertir booleanos a VERDADERO/FALSO (excepto affected_bundle)
+            if col_name in BOOL_COLUMNS:
+                val = bool_to_spanish(val)
+
             ws.cell(row=row_idx, column=col_idx, value=val).alignment = top_left
 
         # Normalizar y pintar la celda AFECTADO (SI/NO)
@@ -221,20 +238,18 @@ def main() -> int:
             affected_cell.alignment = Alignment(horizontal="center", vertical="top", wrap_text=True)
             affected_cell.fill = fill_affected if affected_value else fill_not_affected
         else:
-            # Si viene vacío o no interpretable, marcamos N/A y amarillo
             affected_cell.value = "N/A" if (affected_value == "" or affected_value is None) else str(affected_value)
             affected_cell.font = Font(bold=True)
             affected_cell.alignment = Alignment(horizontal="center", vertical="top", wrap_text=True)
             affected_cell.fill = fill_unknown
 
         # Mejor lectura en campos largos
-        long_fields = [
+        for lf in (
             "libcurl_whatrequires",
             "evidence_curl_version_line",
             "evidence_protocols_line",
             "evidence_features_line",
-        ]
-        for lf in long_fields:
+        ):
             lf_col = COLUMNS.index(lf) + 1
             ws.cell(row=row_idx, column=lf_col).alignment = wrap
 

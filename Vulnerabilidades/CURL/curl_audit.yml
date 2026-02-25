@@ -15,9 +15,10 @@
     # Script Python (debe estar al lado del playbook)
     python_script: "{{ playbook_dir }}/curl_audit_to_excel.py"
 
-    # Rango “bundle” solicitado por Ciber
-    affected_min: "7.17.0"
-    affected_max: "8.17.0"
+    # Rango fijo solicitado por Ciber
+    affected_range_str: "7.17.0 - 8.17.0 (inclusive)"
+    affected_min_str: "7.17.0"
+    affected_max_str: "8.17.0"
 
   tasks:
 
@@ -34,15 +35,7 @@
 
 
     #####################################################################
-    # 2) Obtener facts de paquetes instalados (rpm / zypper / apt, etc.)
-    #####################################################################
-    - name: Gather installed package facts
-      ansible.builtin.package_facts:
-        manager: auto
-
-
-    #####################################################################
-    # 3) Construir OS completo (incluye versión y SP para SLES)
+    # 2) Construir OS completo (incluye versión y SP para SLES)
     #####################################################################
     - name: Build OS full name
       ansible.builtin.set_fact:
@@ -59,7 +52,7 @@
 
 
     #####################################################################
-    # 4) Inicializar variables (evita undefined aunque un "when" no corra)
+    # 3) Inicializar variables (evita undefined aunque un "when" no corra)
     #####################################################################
     - name: Initialize evidence variables to avoid undefined
       ansible.builtin.set_fact:
@@ -70,117 +63,107 @@
         parsed_curl_version_str: ""
         parsed_libcurl_version_str: ""
 
-        # Paquetes detectados en fallback (curl/curl-minimal y libcurl*)
-        curl_pkg_name: ""
         curl_pkg_version: ""
-        libcurl_pkg_name: ""
         libcurl_pkg_version: ""
+        curl_pkg_release: ""
+        libcurl_pkg_release: ""
 
-        # Normalización para comparar versiones
-        curl_version_norm: ""
+        curl_installed: false
+        curl_version: ""
+        libcurl_version: ""
+        curl_version_norm: "0.0.0"
 
-        # Resultado final “AFECTADO SI/NO” (rango 7.17.0–8.17.0)
-        affected_bundle: false
+        backend_ssl: ""
+        uses_gnutls: false
+        uses_libssh: false
 
-        # Capacidades/soporte en curl
         supports_ldap: false
         supports_ldaps: false
         supports_sftp: false
         supports_scp: false
         supports_http3: false
 
-        # Backend y features ya existentes
-        backend_ssl: ""
-        uses_gnutls: false
-        uses_libssh: false
+        affected_bundle: false
 
-        # Evidencia de paquetes que requieren libcurl
         libcurl_whatrequires: ""
 
 
     #####################################################################
-    # 5) Verificar si existe el binario curl en PATH
+    # 4) Verificar si existe el binario curl en PATH (para evidencias)
     #####################################################################
     - name: Check if curl binary exists
-      ansible.builtin.command: "command -v curl"
+      ansible.builtin.shell: "command -v curl 2>/dev/null || true"
       register: curl_path
       changed_when: false
       failed_when: false
 
 
     #####################################################################
-    # 6) Fallback de versiones desde package_facts (soporta curl-minimal y libcurl*)
+    # 5) Obtener versión de curl/libcurl por rpm -q (universal en distros RPM)
     #####################################################################
-    - name: Set package versions fallback (supports curl-minimal & libcurl variants)
+    - name: Get curl package VERSION/RELEASE by rpm -q
+      ansible.builtin.shell: "rpm -q curl --qf '%{VERSION} %{RELEASE}\\n' 2>/dev/null || true"
+      register: rpm_q_curl
+      changed_when: false
+      failed_when: false
+
+    - name: Get libcurl package VERSION/RELEASE by rpm -q (try common names)
+      ansible.builtin.shell: |
+        set -o pipefail
+        (rpm -q libcurl --qf '%{VERSION} %{RELEASE}\n' 2>/dev/null) || \
+        (rpm -q libcurl4 --qf '%{VERSION} %{RELEASE}\n' 2>/dev/null) || \
+        (rpm -q libcurl4-gnutls --qf '%{VERSION} %{RELEASE}\n' 2>/dev/null) || \
+        true
+      register: rpm_q_libcurl
+      changed_when: false
+      failed_when: false
+
+
+    #####################################################################
+    # 6) Parsear VERSION/RELEASE desde rpm -q
+    #####################################################################
+    - name: Parse rpm -q outputs into variables
       ansible.builtin.set_fact:
-        curl_pkg_name: >-
-          {{
-            'curl'
-            if ('curl' in ansible_facts.packages)
-            else ('curl-minimal' if ('curl-minimal' in ansible_facts.packages) else '')
-          }}
-        curl_pkg_version: >-
-          {{
-            (ansible_facts.packages[curl_pkg_name][0].version)
-            if (curl_pkg_name | length > 0 and ansible_facts.packages[curl_pkg_name] | length > 0)
-            else ""
-          }}
-
-        libcurl_pkg_name: >-
-          {{
-            (
-              ansible_facts.packages.keys()
-              | select('match','^libcurl')
-              | list
-              | first
-            ) | default('')
-          }}
-        libcurl_pkg_version: >-
-          {{
-            (ansible_facts.packages[libcurl_pkg_name][0].version)
-            if (libcurl_pkg_name | length > 0 and ansible_facts.packages[libcurl_pkg_name] | length > 0)
-            else ""
-          }}
+        curl_pkg_version: "{{ (rpm_q_curl.stdout | default('') | trim).split(' ')[0] | default('') }}"
+        curl_pkg_release: "{{ (rpm_q_curl.stdout | default('') | trim).split(' ')[1] | default('') }}"
+        libcurl_pkg_version: "{{ (rpm_q_libcurl.stdout | default('') | trim).split(' ')[0] | default('') }}"
+        libcurl_pkg_release: "{{ (rpm_q_libcurl.stdout | default('') | trim).split(' ')[1] | default('') }}"
 
 
     #####################################################################
-    # 7) Evidencia - curl --version primera línea (si curl existe)
+    # 7) Evidencia - curl --version / -V (solo si hay binario)
     #####################################################################
     - name: Evidence - curl --version first line
       ansible.builtin.shell: "curl --version 2>/dev/null | head -1"
       register: ev_curl_version
       changed_when: false
       failed_when: false
-      when: curl_path.rc == 0
+      when: (curl_path.stdout | default('') | trim) | length > 0
 
-
-    #####################################################################
-    # 8) Evidencia - Protocols: y Features: desde curl -V (si curl existe)
-    #####################################################################
     - name: Evidence - curl -V Protocols line
       ansible.builtin.shell: "curl -V 2>/dev/null | awk '/^Protocols:/{print $0}'"
       register: ev_protocols
       changed_when: false
       failed_when: false
-      when: curl_path.rc == 0
+      when: (curl_path.stdout | default('') | trim) | length > 0
 
     - name: Evidence - curl -V Features line
       ansible.builtin.shell: "curl -V 2>/dev/null | awk '/^Features:/{print $0}'"
       register: ev_features
       changed_when: false
       failed_when: false
-      when: curl_path.rc == 0
+      when: (curl_path.stdout | default('') | trim) | length > 0
 
 
     #####################################################################
-    # 9) Parsear curl/libcurl/backend con awk (solo si curl existe)
+    # 8) Parsear curl/libcurl/backend desde curl --version (si hay binario)
     #####################################################################
     - name: Parse curl version (awk)
       ansible.builtin.shell: "curl --version 2>/dev/null | head -1 | awk '{print $2}'"
       register: parsed_curl_version
       changed_when: false
       failed_when: false
-      when: curl_path.rc == 0
+      when: (curl_path.stdout | default('') | trim) | length > 0
 
     - name: Parse libcurl version (awk)
       ansible.builtin.shell: |
@@ -195,7 +178,7 @@
       register: parsed_libcurl_version
       changed_when: false
       failed_when: false
-      when: curl_path.rc == 0
+      when: (curl_path.stdout | default('') | trim) | length > 0
 
     - name: Parse backend SSL (awk)
       ansible.builtin.shell: |
@@ -209,11 +192,11 @@
       register: parsed_backend_ssl
       changed_when: false
       failed_when: false
-      when: curl_path.rc == 0
+      when: (curl_path.stdout | default('') | trim) | length > 0
 
 
     #####################################################################
-    # 10) Normalizar outputs registrados a strings seguros (si curl existe)
+    # 9) Normalizar outputs registrados a strings seguros (si hay binario)
     #####################################################################
     - name: Normalize registered outputs into safe strings
       ansible.builtin.set_fact:
@@ -223,18 +206,20 @@
         parsed_curl_version_str: "{{ (parsed_curl_version.stdout | default('') | trim) }}"
         parsed_libcurl_version_str: "{{ (parsed_libcurl_version.stdout | default('') | trim) }}"
         parsed_backend_ssl_str: "{{ (parsed_backend_ssl.stdout | default('') | trim) }}"
-      when: curl_path.rc == 0
+      when: (curl_path.stdout | default('') | trim) | length > 0
 
 
     #####################################################################
-    # 11) Consolidar valores finales (usa comando si hay; si no, paquete)
+    # 10) Consolidar valores finales (prefiere comando, si no rpm)
     #####################################################################
     - name: Consolidate final values
       ansible.builtin.set_fact:
-        # Consideramos instalado si: existe binario curl o hay paquete curl/curl-minimal
-        curl_installed: "{{ (curl_path.rc == 0) or (curl_pkg_version | length > 0) }}"
+        curl_installed: >-
+          {{
+            ((curl_path.stdout | default('') | trim) | length > 0)
+            or (curl_pkg_version | length > 0)
+          }}
 
-        # Versión de curl: preferimos la que reporta el comando, si no, paquete
         curl_version: >-
           {{
             parsed_curl_version_str
@@ -242,7 +227,6 @@
             else (curl_pkg_version | default(''))
           }}
 
-        # Versión de libcurl: preferimos la que reporta el comando, si no, paquete
         libcurl_version: >-
           {{
             parsed_libcurl_version_str
@@ -250,20 +234,16 @@
             else (libcurl_pkg_version | default(''))
           }}
 
-        # Backend TLS que detectamos desde la primera línea de curl --version
         backend_ssl: "{{ parsed_backend_ssl_str }}"
 
-        # Bandera de GnuTLS (importante para validaciones)
         uses_gnutls: "{{ parsed_backend_ssl_str is search('^GnuTLS/') }}"
 
-        # “uses_libssh”: inferimos por aparición en Protocols/Features
         uses_libssh: >-
           {{
             (evidence_features_line ~ ' ' ~ evidence_protocols_line) is search('libssh')
             or (evidence_features_line ~ ' ' ~ evidence_protocols_line) is search('libssh2')
           }}
 
-        # Capacidades que pide Ciber (capability / soporte en curl)
         supports_ldap: "{{ (evidence_protocols_line | lower) is search('\\bldap\\b') }}"
         supports_ldaps: "{{ (evidence_protocols_line | lower) is search('\\bldaps\\b') }}"
         supports_sftp: "{{ (evidence_protocols_line | lower) is search('\\bsftp\\b') }}"
@@ -272,44 +252,49 @@
 
 
     #####################################################################
-    # 12) Normalizar versiones a listas de enteros para comparar sin "version()"
+    # 11) Normalizar versión a X.Y.Z (task separado)
     #####################################################################
-    - name: Build version parts (int) for curl and affected range
+    - name: Normalize curl version to X.Y.Z
       ansible.builtin.set_fact:
-        curl_version_norm: "{{ (curl_version | regex_search('([0-9]+\\.[0-9]+\\.[0-9]+)')) | default('') }}"
-        curl_v: "{{ ( (curl_version | regex_search('([0-9]+\\.[0-9]+\\.[0-9]+)')) | default('0.0.0') ).split('.') | map('int') | list }}"
-        min_v: "{{ affected_min.split('.') | map('int') | list }}"
-        max_v: "{{ affected_max.split('.') | map('int') | list }}"
-
-
-    - name: Evaluate affected range using numeric compare
-      ansible.builtin.set_fact:
-        affected_bundle: >-
-          {{
-            curl_installed
-            and (curl_version_norm | length > 0)
-            and (
-              (curl_v[0] > min_v[0]) or
-              (curl_v[0] == min_v[0] and curl_v[1] > min_v[1]) or
-              (curl_v[0] == min_v[0] and curl_v[1] == min_v[1] and curl_v[2] >= min_v[2])
-            )
-            and (
-              (curl_v[0] < max_v[0]) or
-              (curl_v[0] == max_v[0] and curl_v[1] < max_v[1]) or
-              (curl_v[0] == max_v[0] and curl_v[1] == max_v[1] and curl_v[2] <= max_v[2])
-            )
-          }}
+        curl_version_norm: "{{ (curl_version | default('') | regex_search('([0-9]+\\.[0-9]+\\.[0-9]+)')) | default('0.0.0', true) }}"
 
 
     #####################################################################
-    # 13) Identificar paquetes que dependen de libcurl (whatrequires)
-    #     - Esto da evidencia de “aplicaciones/paquetes que consumen libcurl”
+    # 12) Construir listas de enteros (task separado)
+    #####################################################################
+    - name: Build version arrays for comparison
+      ansible.builtin.set_fact:
+        curl_v: "{{ curl_version_norm.split('.') | map('int') | list }}"
+        min_v: "{{ affected_min_str.split('.') | map('int') | list }}"
+        max_v: "{{ affected_max_str.split('.') | map('int') | list }}"
+
+
+    #####################################################################
+    # 13) Evaluar afectación (task separado)
+    #####################################################################
+    - name: Compute affected range (safe list compare)
+      ansible.builtin.set_fact:
+        affected_bundle: "{{ (curl_installed | bool) and (curl_version_norm != '0.0.0') and (curl_v >= min_v) and (curl_v <= max_v) }}"
+
+
+    #####################################################################
+    # 14) Identificar paquetes que dependen de libcurl (rpm whatrequires)
     #####################################################################
     - name: Get packages that require libcurl (rpm whatrequires)
       ansible.builtin.shell: |
         set -o pipefail
-        if [ -n "{{ libcurl_pkg_name }}" ]; then
-          rpm -q --whatrequires "{{ libcurl_pkg_name }}" 2>/dev/null \
+        if rpm -q libcurl >/dev/null 2>&1; then
+          PKG="libcurl"
+        elif rpm -q libcurl4 >/dev/null 2>&1; then
+          PKG="libcurl4"
+        elif rpm -q libcurl4-gnutls >/dev/null 2>&1; then
+          PKG="libcurl4-gnutls"
+        else
+          PKG=""
+        fi
+
+        if [ -n "$PKG" ]; then
+          rpm -q --whatrequires "$PKG" 2>/dev/null \
             | sed '/^no package requires/d' \
             | sort -u \
             | head -200
@@ -328,7 +313,7 @@
 
 
     #####################################################################
-    # 14) Registro por host (mínimo + evidencias)
+    # 15) Registro por host (mínimo + evidencias)
     #####################################################################
     - name: Build per-host audit record
       ansible.builtin.set_fact:
@@ -338,12 +323,13 @@
           os: "{{ os_full }}"
 
           curl_installed: "{{ curl_installed }}"
-          curl_pkg_name: "{{ curl_pkg_name }}"
-          libcurl_pkg_name: "{{ libcurl_pkg_name }}"
 
           curl_version: "{{ curl_version }}"
           curl_version_norm: "{{ curl_version_norm }}"
           libcurl_version: "{{ libcurl_version }}"
+
+          affected_range: "{{ affected_range_str }}"
+          affected_bundle: "{{ affected_bundle }}"
 
           backend_ssl: "{{ backend_ssl }}"
           uses_gnutls: "{{ uses_gnutls }}"
@@ -355,9 +341,6 @@
           supports_scp: "{{ supports_scp }}"
           supports_http3: "{{ supports_http3 }}"
 
-          affected_range: "{{ affected_min }} - {{ affected_max }} (inclusive)"
-          affected_bundle: "{{ affected_bundle }}"
-
           libcurl_whatrequires: "{{ libcurl_whatrequires }}"
 
           evidence_curl_version_line: "{{ evidence_curl_version_line }}"
@@ -366,7 +349,7 @@
 
 
     #####################################################################
-    # 15) Consolidar todos los registros en el controlador (run_once)
+    # 16) Consolidar todos los registros en el controlador (run_once)
     #####################################################################
     - name: Aggregate all host records on controller
       ansible.builtin.set_fact:
@@ -377,7 +360,7 @@
 
 
     #####################################################################
-    # 16) Guardar JSON consolidado en el controlador
+    # 17) Guardar JSON consolidado en el controlador
     #####################################################################
     - name: Write consolidated JSON on controller
       ansible.builtin.copy:
@@ -389,7 +372,7 @@
 
 
     #####################################################################
-    # 17) Generar Excel desde el JSON (controller)
+    # 18) Generar Excel desde el JSON (controller)
     #####################################################################
     - name: Generate Excel report from JSON on controller
       ansible.builtin.command: >
