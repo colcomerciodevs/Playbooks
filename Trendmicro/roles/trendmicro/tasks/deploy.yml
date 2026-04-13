@@ -108,6 +108,7 @@
     mode: '0755'
   loop:
     - "{{ tm_server_agent_dirname }}"
+    - "{{ tm_server_agent_dirname_2 }}"
     - "{{ tm_sensor_dirname }}"
   when: ds_install_required or sensor_required
 
