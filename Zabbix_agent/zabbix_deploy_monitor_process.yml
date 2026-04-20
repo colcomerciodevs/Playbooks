@@ -1,6 +1,6 @@
 ---
 - name: Auditoría Zabbix Agent1/Agent2 (independiente)
-  hosts: ktuno-nuevo
+  hosts: prueba
   become: true
   gather_facts: true
 
