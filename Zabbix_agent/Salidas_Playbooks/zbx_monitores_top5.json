@@ -1,0 +1,11 @@
+[
+    {
+        "Estado_Zabbix": "active",
+        "Hostname": "mongo-prd-n2",
+        "IP": "10.181.34.4",
+        "InventoryHostname": "mongo-prd-n2",
+        "Monitores_Creados": "si",
+        "Reinicio_Zabbix": "aplicado",
+        "Version_Zabbix": "zabbix_agent2 (Zabbix) 7.0.10"
+    }
+]
