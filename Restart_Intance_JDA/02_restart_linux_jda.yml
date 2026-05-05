@@ -1,6 +1,6 @@
 ---
 - name: Reiniciar servicios Linux JDA AKT NODO3
-  hosts: linux_jda_akt_nodo3
+  hosts: Linux-JDA
   gather_facts: false
   remote_user: root
 

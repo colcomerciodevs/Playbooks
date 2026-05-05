@@ -1,6 +1,6 @@
 ---
 - name: Iniciar servicios Windows con sc.exe
-  hosts: windows_jda_akt_nodo3
+  hosts: Windows-JDA
   gather_facts: false
 
   vars:
