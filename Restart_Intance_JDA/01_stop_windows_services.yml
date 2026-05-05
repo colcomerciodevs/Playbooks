@@ -1,6 +1,6 @@
 ---
 - name: Detener servicios Windows con sc.exe
-  hosts: Windows-JDA
+  hosts: Windows_JDA
   gather_facts: false
 
   vars:
