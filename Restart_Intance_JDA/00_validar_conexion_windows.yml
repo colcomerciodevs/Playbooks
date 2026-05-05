@@ -1,0 +1,13 @@
+---
+- name: 00 - Validar conexión Windows JDA
+  hosts: Windows_JDA
+  gather_facts: false
+  any_errors_fatal: true
+
+  tasks:
+    - name: Validar conexión WinRM contra servidores Windows
+      ansible.windows.win_ping:
+
+    - name: Mostrar resultado conexión Windows
+      ansible.builtin.debug:
+        msg: "Conexión WinRM OK contra {{ inventory_hostname }}"

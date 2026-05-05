@@ -1,0 +1,13 @@
+---
+- name: 00 - Validar conexión Linux JDA
+  hosts: Linux_JDA
+  gather_facts: false
+  any_errors_fatal: true
+
+  tasks:
+    - name: Validar conexión SSH contra servidores Linux
+      ansible.builtin.ping:
+
+    - name: Mostrar resultado conexión Linux
+      ansible.builtin.debug:
+        msg: "Conexión SSH OK contra {{ inventory_hostname }}"
