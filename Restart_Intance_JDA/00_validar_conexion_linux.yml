@@ -1,6 +1,19 @@
 ---
+- name: 00 - Validar que el inventario Linux tenga hosts
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Fallar si el inventario no tiene hosts Linux disponibles
+      ansible.builtin.assert:
+        that:
+          - groups['all'] is defined
+          - groups['all'] | difference(['localhost']) | length > 0
+        fail_msg: "ERROR: El inventario seleccionado no tiene hosts Linux disponibles. Revisar inventario/grupo en AWX."
+        success_msg: "Inventario Linux con hosts disponibles."
+
 - name: 00 - Validar conexión Linux JDA
-  hosts: Linux_JDA
+  hosts: all
   gather_facts: false
   any_errors_fatal: true
 

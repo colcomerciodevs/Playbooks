@@ -1,6 +1,19 @@
 ---
+- name: 00 - Validar que el inventario Windows tenga hosts
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Fallar si el inventario no tiene hosts Windows disponibles
+      ansible.builtin.assert:
+        that:
+          - groups['all'] is defined
+          - groups['all'] | difference(['localhost']) | length > 0
+        fail_msg: "ERROR: El inventario seleccionado no tiene hosts Windows disponibles. Revisar inventario/grupo en AWX."
+        success_msg: "Inventario Windows con hosts disponibles."
+
 - name: 00 - Validar conexión Windows JDA
-  hosts: Windows_JDA
+  hosts: all
   gather_facts: false
   any_errors_fatal: true
 
