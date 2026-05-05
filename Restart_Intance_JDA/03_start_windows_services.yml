@@ -4,26 +4,56 @@
   gather_facts: false
 
   vars:
-    windows_services:
-      - 'REFS (ALKWEBEMS)'
-      - 'REFS (ALKWEBWMS)'
+    stopped_services_file: 'C:\ProgramData\awx_jda_services_stopped.txt'
 
   tasks:
-    - name: Iniciar servicio con sc.exe
+    - name: Validar si existe archivo de servicios detenidos
+      ansible.windows.win_stat:
+        path: "{{ stopped_services_file }}"
+      register: stopped_file
+
+    - name: Leer servicios que fueron detenidos previamente
+      ansible.windows.win_shell: |
+        Get-Content "{{ stopped_services_file }}"
+      register: stopped_services
+      when: stopped_file.stat.exists
+      changed_when: false
+
+    - name: Mostrar mensaje si no hay servicios para iniciar
+      ansible.builtin.debug:
+        msg: "No hay archivo de referencia o no se detuvo ningún servicio previamente en {{ inventory_hostname }}. Se omite inicio."
+      when: not stopped_file.stat.exists
+
+    - name: Iniciar solo servicios detenidos previamente
       ansible.windows.win_shell: |
         sc.exe start "{{ item }}"
-      loop: "{{ windows_services }}"
+      loop: "{{ stopped_services.stdout_lines | default([]) }}"
       register: start_result
+      when:
+        - stopped_file.stat.exists
+        - item | length > 0
       failed_when: >
         start_result.rc != 0 and
         ('already been started' not in start_result.stdout | lower) and
         ('1056' not in start_result.stdout)
 
-    - name: Esperar hasta que el servicio quede RUNNING
+    - name: Esperar hasta que los servicios queden RUNNING
       ansible.windows.win_shell: |
         sc.exe query "{{ item }}"
+      loop: "{{ stopped_services.stdout_lines | default([]) }}"
       register: query_result
-      loop: "{{ windows_services }}"
+      when:
+        - stopped_file.stat.exists
+        - item | length > 0
       until: "'RUNNING' in query_result.stdout"
       retries: 20
       delay: 15
+      changed_when: false
+
+    - name: Limpiar archivo temporal de servicios detenidos
+      ansible.windows.win_shell: |
+        if (Test-Path "{{ stopped_services_file }}") {
+          Remove-Item "{{ stopped_services_file }}" -Force
+        }
+      when: stopped_file.stat.exists
+      changed_when: false

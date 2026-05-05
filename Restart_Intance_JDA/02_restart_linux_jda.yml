@@ -14,11 +14,80 @@
     mocaserver_delay: 30
 
   tasks:
+    ###########################################################################
+    # VALIDAR ESTADO WMS
+    ###########################################################################
+
+    - name: Validar estado WMS con rp status
+      ansible.builtin.shell: |
+        su - {{ linux_wms_user }} -c 'command -v rp >/dev/null 2>&1 && rp status'
+      args:
+        executable: /bin/bash
+      register: wms_status
+      changed_when: false
+      failed_when: false
+
+    - name: Definir si WMS está disponible y corriendo
+      ansible.builtin.set_fact:
+        wms_disponible: >-
+          {{
+            wms_status.rc == 0 and
+            'not running' not in (wms_status.stdout | lower) and
+            'not found' not in (wms_status.stderr | lower)
+          }}
+
+    - name: Mostrar estado WMS
+      ansible.builtin.debug:
+        msg: >-
+          WMS {{ linux_wms_user }} en {{ inventory_hostname }}:
+          {% if wms_disponible %}
+          disponible y corriendo. Se ejecutará reinicio.
+          {% else %}
+          no disponible, no está corriendo o no existe rp. Se omite.
+          {% endif %}
+
+    ###########################################################################
+    # VALIDAR ESTADO EMS
+    ###########################################################################
+
+    - name: Validar estado EMS con rp status
+      ansible.builtin.shell: |
+        su - {{ linux_ems_user }} -c 'command -v rp >/dev/null 2>&1 && rp status'
+      args:
+        executable: /bin/bash
+      register: ems_status
+      changed_when: false
+      failed_when: false
+
+    - name: Definir si EMS está disponible y corriendo
+      ansible.builtin.set_fact:
+        ems_disponible: >-
+          {{
+            ems_status.rc == 0 and
+            'not running' not in (ems_status.stdout | lower) and
+            'not found' not in (ems_status.stderr | lower)
+          }}
+
+    - name: Mostrar estado EMS
+      ansible.builtin.debug:
+        msg: >-
+          EMS {{ linux_ems_user }} en {{ inventory_hostname }}:
+          {% if ems_disponible %}
+          disponible y corriendo. Se ejecutará reinicio.
+          {% else %}
+          no disponible, no está corriendo o no existe rp. Se omite.
+          {% endif %}
+
+    ###########################################################################
+    # DETENER WMS SOLO SI ESTÁ DISPONIBLE
+    ###########################################################################
+
     - name: Detener WMS como alktstwms
       ansible.builtin.shell: |
         su - {{ linux_wms_user }} -c 'rp stop'
       args:
         executable: /bin/bash
+      when: wms_disponible
       changed_when: false
 
     - name: Ejecutar kill para procesos del usuario alktstwms
@@ -26,13 +95,19 @@
         su - {{ linux_wms_user }} -c 'kill -7 -1 -1 || true'
       args:
         executable: /bin/bash
+      when: wms_disponible
       changed_when: false
+
+    ###########################################################################
+    # DETENER EMS SOLO SI ESTÁ DISPONIBLE
+    ###########################################################################
 
     - name: Detener EMS como alktstems
       ansible.builtin.shell: |
         su - {{ linux_ems_user }} -c 'rp stop'
       args:
         executable: /bin/bash
+      when: ems_disponible
       changed_when: false
 
     - name: Ejecutar kill para procesos del usuario alktstems
@@ -40,13 +115,19 @@
         su - {{ linux_ems_user }} -c 'kill -7 -1 -1 || true'
       args:
         executable: /bin/bash
+      when: ems_disponible
       changed_when: false
+
+    ###########################################################################
+    # INICIAR WMS SOLO SI ESTABA DISPONIBLE AL INICIO
+    ###########################################################################
 
     - name: Iniciar WMS como alktstwms
       ansible.builtin.shell: |
         su - {{ linux_wms_user }} -c 'rp start'
       args:
         executable: /bin/bash
+      when: wms_disponible
       changed_when: false
 
     - name: Esperar a que mocaserver.log supere 100 KB
@@ -58,14 +139,21 @@
         mocaserver_stat.stat.size | int > mocaserver_min_size
       retries: "{{ mocaserver_timeout // mocaserver_delay }}"
       delay: "{{ mocaserver_delay }}"
+      when: wms_disponible
 
     - name: Mostrar tamaño final de mocaserver.log
       ansible.builtin.debug:
         msg: "El archivo {{ mocaserver_log }} ya superó los 100 KB. Tamaño actual: {{ mocaserver_stat.stat.size }} bytes."
+      when: wms_disponible
+
+    ###########################################################################
+    # INICIAR EMS SOLO SI ESTABA DISPONIBLE AL INICIO
+    ###########################################################################
 
     - name: Iniciar EMS como alktstems
       ansible.builtin.shell: |
         su - {{ linux_ems_user }} -c 'rp start'
       args:
         executable: /bin/bash
+      when: ems_disponible
       changed_when: false

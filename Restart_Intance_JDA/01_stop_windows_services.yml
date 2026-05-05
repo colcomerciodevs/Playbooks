@@ -8,22 +8,68 @@
       - 'REFS (ALKWEBEMS)'
       - 'REFS (ALKWEBWMS)'
 
+    stopped_services_file: 'C:\ProgramData\awx_jda_services_stopped.txt'
+
   tasks:
-    - name: Detener servicio con sc.exe
+    - name: Limpiar archivo temporal de servicios detenidos previamente
       ansible.windows.win_shell: |
-        sc.exe stop "{{ item }}"
+        if (Test-Path "{{ stopped_services_file }}") {
+          Remove-Item "{{ stopped_services_file }}" -Force
+        }
+      changed_when: false
+
+    - name: Consultar estado inicial de los servicios
+      ansible.windows.win_shell: |
+        sc.exe query "{{ item }}"
       loop: "{{ windows_services }}"
+      register: service_query
+      changed_when: false
+      failed_when: false
+
+    - name: Guardar referencia solo de servicios que estaban RUNNING
+      ansible.windows.win_shell: |
+        Add-Content -Path "{{ stopped_services_file }}" -Value "{{ item.item }}"
+      loop: "{{ service_query.results }}"
+      when:
+        - item.rc == 0
+        - "'RUNNING' in item.stdout"
+      changed_when: false
+
+    - name: Detener solo servicios que estaban RUNNING
+      ansible.windows.win_shell: |
+        sc.exe stop "{{ item.item }}"
+      loop: "{{ service_query.results }}"
       register: stop_result
+      when:
+        - item.rc == 0
+        - "'RUNNING' in item.stdout"
       failed_when: >
         stop_result.rc != 0 and
         ('service has not been started' not in stop_result.stdout | lower) and
         ('1062' not in stop_result.stdout)
 
-    - name: Esperar hasta que el servicio quede STOPPED
+    - name: Esperar hasta que los servicios queden STOPPED
       ansible.windows.win_shell: |
-        sc.exe query "{{ item }}"
+        sc.exe query "{{ item.item }}"
+      loop: "{{ service_query.results }}"
       register: query_result
-      loop: "{{ windows_services }}"
+      when:
+        - item.rc == 0
+        - "'RUNNING' in item.stdout"
       until: "'STOPPED' in query_result.stdout"
       retries: 20
       delay: 15
+      changed_when: false
+
+    - name: Mostrar resumen de servicios evaluados
+      ansible.builtin.debug:
+        msg: >-
+          Servicio {{ item.item }} en {{ inventory_hostname }}:
+          {% if item.rc != 0 %}
+          no existe, se omite.
+          {% elif 'RUNNING' not in item.stdout %}
+          no estaba RUNNING, no se detiene ni se marcará para iniciar.
+          {% else %}
+          estaba RUNNING, fue detenido y será iniciado al final.
+          {% endif %}
+      loop: "{{ service_query.results }}"
