@@ -9,7 +9,7 @@
     linux_ems_user: "alktstems"
 
     mocaserver_log: "/app/jda/alktstwms/les/log/mocaserver.log"
-    mocaserver_min_size: 102400
+    mocaserver_min_size: 61440
     mocaserver_timeout: 1200
     mocaserver_delay: 30
 
