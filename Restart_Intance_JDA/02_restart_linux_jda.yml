@@ -1,12 +1,13 @@
 ---
 - name: Reiniciar servicios Linux JDA AKT NODO3
-  hosts: Linux-JDA
+  hosts: Linux_JDA
   gather_facts: false
   remote_user: root
 
   vars:
     linux_wms_user: "alktstwms"
     linux_ems_user: "alktstems"
+
     mocaserver_log: "/app/jda/alktstwms/les/log/mocaserver.log"
     mocaserver_min_size: 102400
     mocaserver_timeout: 1200
@@ -15,50 +16,35 @@
   tasks:
     - name: Detener WMS como alktstwms
       ansible.builtin.shell: |
-        rp stop
-      become: true
-      become_method: su
-      become_user: "{{ linux_wms_user }}"
+        su - {{ linux_wms_user }} -c 'rp stop'
       args:
         executable: /bin/bash
       changed_when: false
 
     - name: Ejecutar kill para procesos del usuario alktstwms
       ansible.builtin.shell: |
-        kill -7 -1 -1 || true
-      become: true
-      become_method: su
-      become_user: "{{ linux_wms_user }}"
+        su - {{ linux_wms_user }} -c 'kill -7 -1 -1 || true'
       args:
         executable: /bin/bash
       changed_when: false
 
     - name: Detener EMS como alktstems
       ansible.builtin.shell: |
-        rp stop
-      become: true
-      become_method: su
-      become_user: "{{ linux_ems_user }}"
+        su - {{ linux_ems_user }} -c 'rp stop'
       args:
         executable: /bin/bash
       changed_when: false
 
     - name: Ejecutar kill para procesos del usuario alktstems
       ansible.builtin.shell: |
-        kill -7 -1 -1 || true
-      become: true
-      become_method: su
-      become_user: "{{ linux_ems_user }}"
+        su - {{ linux_ems_user }} -c 'kill -7 -1 -1 || true'
       args:
         executable: /bin/bash
       changed_when: false
 
     - name: Iniciar WMS como alktstwms
       ansible.builtin.shell: |
-        rp start
-      become: true
-      become_method: su
-      become_user: "{{ linux_wms_user }}"
+        su - {{ linux_wms_user }} -c 'rp start'
       args:
         executable: /bin/bash
       changed_when: false
@@ -79,10 +65,7 @@
 
     - name: Iniciar EMS como alktstems
       ansible.builtin.shell: |
-        rp start
-      become: true
-      become_method: su
-      become_user: "{{ linux_ems_user }}"
+        su - {{ linux_ems_user }} -c 'rp start'
       args:
         executable: /bin/bash
       changed_when: false
