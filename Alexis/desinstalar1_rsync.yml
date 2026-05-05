@@ -1,9 +1,0 @@
----
-- name: Eliminar paquete rsync del host remoto
-  hosts: tu_grupo_de_hosts
-  become: true
-  tasks:
-    - name: Eliminar rsync si estánstalado
-      ansible.builtin.yum:
-        name: rsync
-        state: absent

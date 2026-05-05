@@ -1,0 +1,16 @@
+---
+- name: Notificar fallo en reinicio JDA AKT NODO3
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Enviar notificación de fallo a Teams
+      ansible.builtin.uri:
+        url: "{{ teams_webhook_url }}"
+        method: POST
+        body_format: json
+        body:
+          text: "Falló el workflow de reinicio del {{ nodo }} de {{ ambiente }}. Por favor revisar la ejecución en AWX antes de continuar."
+        status_code:
+          - 200
+          - 202

@@ -1,0 +1,88 @@
+---
+- name: Reiniciar servicios Linux JDA AKT NODO3
+  hosts: linux_jda_akt_nodo3
+  gather_facts: false
+  remote_user: root
+
+  vars:
+    linux_wms_user: "alktstwms"
+    linux_ems_user: "alktstems"
+    mocaserver_log: "/app/jda/alktstwms/les/log/mocaserver.log"
+    mocaserver_min_size: 102400
+    mocaserver_timeout: 1200
+    mocaserver_delay: 30
+
+  tasks:
+    - name: Detener WMS como alktstwms
+      ansible.builtin.shell: |
+        rp stop
+      become: true
+      become_method: su
+      become_user: "{{ linux_wms_user }}"
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Ejecutar kill para procesos del usuario alktstwms
+      ansible.builtin.shell: |
+        kill -7 -1 -1 || true
+      become: true
+      become_method: su
+      become_user: "{{ linux_wms_user }}"
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Detener EMS como alktstems
+      ansible.builtin.shell: |
+        rp stop
+      become: true
+      become_method: su
+      become_user: "{{ linux_ems_user }}"
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Ejecutar kill para procesos del usuario alktstems
+      ansible.builtin.shell: |
+        kill -7 -1 -1 || true
+      become: true
+      become_method: su
+      become_user: "{{ linux_ems_user }}"
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Iniciar WMS como alktstwms
+      ansible.builtin.shell: |
+        rp start
+      become: true
+      become_method: su
+      become_user: "{{ linux_wms_user }}"
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Esperar a que mocaserver.log supere 100 KB
+      ansible.builtin.stat:
+        path: "{{ mocaserver_log }}"
+      register: mocaserver_stat
+      until: >
+        mocaserver_stat.stat.exists and
+        mocaserver_stat.stat.size | int > mocaserver_min_size
+      retries: "{{ mocaserver_timeout // mocaserver_delay }}"
+      delay: "{{ mocaserver_delay }}"
+
+    - name: Mostrar tamaño final de mocaserver.log
+      ansible.builtin.debug:
+        msg: "El archivo {{ mocaserver_log }} ya superó los 100 KB. Tamaño actual: {{ mocaserver_stat.stat.size }} bytes."
+
+    - name: Iniciar EMS como alktstems
+      ansible.builtin.shell: |
+        rp start
+      become: true
+      become_method: su
+      become_user: "{{ linux_ems_user }}"
+      args:
+        executable: /bin/bash
+      changed_when: false

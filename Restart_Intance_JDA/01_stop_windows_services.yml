@@ -1,0 +1,29 @@
+---
+- name: Detener servicios Windows con sc.exe
+  hosts: windows_jda_akt_nodo3
+  gather_facts: false
+
+  vars:
+    windows_services:
+      - 'REFS (ALKWEBEMS)'
+      - 'REFS (ALKWEBWMS)'
+
+  tasks:
+    - name: Detener servicio con sc.exe
+      ansible.windows.win_shell: |
+        sc.exe stop "{{ item }}"
+      loop: "{{ windows_services }}"
+      register: stop_result
+      failed_when: >
+        stop_result.rc != 0 and
+        ('service has not been started' not in stop_result.stdout | lower) and
+        ('1062' not in stop_result.stdout)
+
+    - name: Esperar hasta que el servicio quede STOPPED
+      ansible.windows.win_shell: |
+        sc.exe query "{{ item }}"
+      register: query_result
+      loop: "{{ windows_services }}"
+      until: "'STOPPED' in query_result.stdout"
+      retries: 20
+      delay: 15

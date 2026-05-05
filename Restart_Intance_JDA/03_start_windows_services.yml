@@ -1,0 +1,29 @@
+---
+- name: Iniciar servicios Windows con sc.exe
+  hosts: windows_jda_akt_nodo3
+  gather_facts: false
+
+  vars:
+    windows_services:
+      - 'REFS (ALKWEBEMS)'
+      - 'REFS (ALKWEBWMS)'
+
+  tasks:
+    - name: Iniciar servicio con sc.exe
+      ansible.windows.win_shell: |
+        sc.exe start "{{ item }}"
+      loop: "{{ windows_services }}"
+      register: start_result
+      failed_when: >
+        start_result.rc != 0 and
+        ('already been started' not in start_result.stdout | lower) and
+        ('1056' not in start_result.stdout)
+
+    - name: Esperar hasta que el servicio quede RUNNING
+      ansible.windows.win_shell: |
+        sc.exe query "{{ item }}"
+      register: query_result
+      loop: "{{ windows_services }}"
+      until: "'RUNNING' in query_result.stdout"
+      retries: 20
+      delay: 15
