@@ -1,5 +1,5 @@
 - name: Recolectar info de usuarios y exportar a Excel
-  hosts: SERVERS_LINUX
+  hosts: SERVIDORES_GEOPOS
   become: true
   gather_facts: false
 
