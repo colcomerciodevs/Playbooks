@@ -1,0 +1,10 @@
+[
+    {
+        "estado_servicio_final": "active",
+        "hostname": "co100-n0",
+        "ip": "10.185.0.60",
+        "nueva_version_instalada": "7.0.18",
+        "version_zabbix_agent1": "No instalado",
+        "version_zabbix_agent2": "7.0.18"
+    }
+]
