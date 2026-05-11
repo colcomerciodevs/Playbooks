@@ -1,0 +1,24 @@
+---
+- name: Crear directorio local para almacenar llaves SSH
+  ansible.builtin.file:
+    path: "{{ llaves.ruta_llaves_local }}"
+    state: directory
+    mode: "0700"
+  delegate_to: localhost
+  become: false
+  run_once: true
+
+- name: Generar llave SSH local por cada usuario definido
+  community.crypto.openssh_keypair:
+    path: "{{ llaves.ruta_llaves_local }}/{{ item.username }}"
+    type: "{{ item.key_type | default(llaves.key_type) }}"
+    size: "{{ item.key_bits | default(llaves.key_bits) }}"
+    comment: "{{ item.key_comment | default(item.username ~ '@ansible') }}"
+    mode: "{{ llaves.private_key_mode }}"
+    force: "{{ item.force_key | default(llaves.force) }}"
+  loop: "{{ usuarios }}"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  when:
+    - item.generar_llave | default(true) | bool

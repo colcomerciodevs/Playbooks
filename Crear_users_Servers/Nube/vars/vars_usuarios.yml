@@ -1,0 +1,23 @@
+---
+usuarios:
+  - username: seti_monitor
+    group: seti_monitor
+    comment: "Usuario de monitoreo Observabilidad SETI"
+    shell_linux: /bin/bash
+    shell_solaris: /usr/bin/bash
+    home: /home/seti_monitor
+    create_home: true
+    state: present
+    generar_llave: true
+    key_comment: "seti_monitor@seti"
+
+  # Ejemplo futuro:
+  # - username: db_monitor
+  #   group: db_monitor
+  #   comment: "Usuario de monitoreo Base de Datos"
+  #   shell_linux: /bin/bash
+  #   shell_solaris: /usr/bin/bash
+  #   home: /home/db_monitor
+  #   create_home: true
+  #   state: present
+  #   generar_llave: true

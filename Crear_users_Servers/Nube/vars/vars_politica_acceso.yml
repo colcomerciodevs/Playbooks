@@ -1,0 +1,7 @@
+---
+permisos:
+  sudo_readonly: false
+
+  home_mode: "0750"
+  ssh_dir_mode: "0700"
+  authorized_keys_mode: "0600"

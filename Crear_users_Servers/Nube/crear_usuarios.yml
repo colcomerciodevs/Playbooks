@@ -1,0 +1,25 @@
+---
+- name: Crear usuarios con llave SSH
+  hosts: all
+  gather_facts: true
+  become: true
+
+  vars_files:
+    - vars/vars_usuarios.yml
+    - vars/vars_llaves_ssh.yml
+    - vars/vars_politica_acceso.yml
+
+  pre_tasks:
+    - name: Generar llaves SSH localmente
+      ansible.builtin.include_tasks: tasks/task_generar_llaves_ssh.yml
+      when: llaves.generar_automaticamente | bool
+
+  tasks:
+    - name: Crear usuarios y grupos
+      ansible.builtin.include_tasks: tasks/task_crear_usuarios.yml
+
+    - name: Instalar llaves SSH autorizadas
+      ansible.builtin.include_tasks: tasks/task_instalar_llaves_ssh.yml
+
+    - name: Aplicar permisos del usuario
+      ansible.builtin.include_tasks: tasks/task_aplicar_permisos.yml
