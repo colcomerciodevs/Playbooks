@@ -1,0 +1,67 @@
+---
+- name: Validar si el usuario existe antes de eliminar
+  ansible.builtin.command: "id {{ item.username }}"
+  loop: "{{ usuarios }}"
+  register: usuarios_a_eliminar
+  changed_when: false
+  failed_when: false
+
+- name: Eliminar usuario en Linux incluyendo home
+  ansible.builtin.user:
+    name: "{{ item.item.username }}"
+    state: absent
+    remove: true
+    force: false
+  loop: "{{ usuarios_a_eliminar.results }}"
+  when:
+    - ansible_system == "Linux"
+    - item.rc == 0
+
+- name: Eliminar usuario en Solaris 11 incluyendo home
+  ansible.builtin.command: "userdel -r {{ item.item.username }}"
+  loop: "{{ usuarios_a_eliminar.results }}"
+  register: eliminar_solaris
+  changed_when: eliminar_solaris.rc == 0
+  failed_when: false
+  when:
+    - ansible_system == "SunOS"
+    - item.rc == 0
+
+- name: Validar si el grupo existe
+  ansible.builtin.command: "getent group {{ item.group | default(item.username) }}"
+  loop: "{{ usuarios }}"
+  register: grupos_a_eliminar
+  changed_when: false
+  failed_when: false
+
+- name: Eliminar grupo si existe
+  ansible.builtin.group:
+    name: "{{ item.item.group | default(item.item.username) }}"
+    state: absent
+  loop: "{{ grupos_a_eliminar.results }}"
+  when:
+    - item.rc == 0
+
+- name: Eliminar llave privada local generada
+  ansible.builtin.file:
+    path: "{{ llaves.ruta_llaves_local }}/{{ item.username }}"
+    state: absent
+  loop: "{{ usuarios }}"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  when:
+    - llaves.generar_automaticamente | bool
+    - item.generar_llave | default(true) | bool
+
+- name: Eliminar llave pública local generada
+  ansible.builtin.file:
+    path: "{{ llaves.ruta_llaves_local }}/{{ item.username }}.pub"
+    state: absent
+  loop: "{{ usuarios }}"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  when:
+    - llaves.generar_automaticamente | bool
+    - item.generar_llave | default(true) | bool

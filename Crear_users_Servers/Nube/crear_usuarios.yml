@@ -1,6 +1,6 @@
 ---
 - name: Crear usuarios con llave SSH
-  hosts: all
+  hosts: linux
   gather_facts: true
   become: true
 
