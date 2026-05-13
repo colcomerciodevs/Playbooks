@@ -1,6 +1,6 @@
 ---
 - name: 00 - Validar conexión Linux JDA
-  hosts: Linux_JDA
+  hosts: localhost
   gather_facts: false
 
   tasks:
