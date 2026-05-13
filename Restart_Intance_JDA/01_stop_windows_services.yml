@@ -1,5 +1,5 @@
 ---
-- name: Detener servicios Windows con sc.exe
+- name: Detener servicios Windows con win_service
   hosts: Windows_JDA
   gather_facts: false
 
@@ -11,65 +11,68 @@
     stopped_services_file: 'C:\ProgramData\awx_jda_services_stopped.txt'
 
   tasks:
+
     - name: Limpiar archivo temporal de servicios detenidos previamente
-      ansible.windows.win_shell: |
-        if (Test-Path "{{ stopped_services_file }}") {
-          Remove-Item "{{ stopped_services_file }}" -Force
-        }
-      changed_when: false
+      ansible.windows.win_file:
+        path: "{{ stopped_services_file }}"
+        state: absent
 
     - name: Consultar estado inicial de los servicios
-      ansible.windows.win_shell: |
-        sc.exe query "{{ item }}"
+      ansible.windows.win_service:
+        name: "{{ item }}"
       loop: "{{ windows_services }}"
-      register: service_query
-      changed_when: false
+      register: service_info
       failed_when: false
-
-    - name: Guardar referencia solo de servicios que estaban RUNNING
-      ansible.windows.win_shell: |
-        Add-Content -Path "{{ stopped_services_file }}" -Value "{{ item.item }}"
-      loop: "{{ service_query.results }}"
-      when:
-        - item.rc == 0
-        - "'RUNNING' in item.stdout"
-      changed_when: false
-
-    - name: Detener solo servicios que estaban RUNNING
-      ansible.windows.win_shell: |
-        sc.exe stop "{{ item.item }}"
-      loop: "{{ service_query.results }}"
-      register: stop_result
-      when:
-        - item.rc == 0
-        - "'RUNNING' in item.stdout"
-      failed_when: >
-        stop_result.rc != 0 and
-        ('service has not been started' not in stop_result.stdout | lower) and
-        ('1062' not in stop_result.stdout)
-
-    - name: Esperar hasta que los servicios queden STOPPED
-      ansible.windows.win_shell: |
-        sc.exe query "{{ item.item }}"
-      loop: "{{ service_query.results }}"
-      register: query_result
-      when:
-        - item.rc == 0
-        - "'RUNNING' in item.stdout"
-      until: "'STOPPED' in query_result.stdout"
-      retries: 20
-      delay: 15
-      changed_when: false
 
     - name: Mostrar resumen de servicios evaluados
       ansible.builtin.debug:
         msg: >-
-          Servicio {{ item.item }} en {{ inventory_hostname }}:
-          {% if item.rc != 0 %}
-          no existe, se omite.
-          {% elif 'RUNNING' not in item.stdout %}
-          no estaba RUNNING, no se detiene ni se marcará para iniciar.
+          Servicio '{{ item.item }}' en {{ inventory_hostname }}:
+          {% if item.exists is not defined or not item.exists %}
+          no existe en el sistema, se omite.
+          {% elif item.state != 'running' %}
+          estado actual '{{ item.state }}', no estaba RUNNING, se omite.
           {% else %}
-          estaba RUNNING, fue detenido y será iniciado al final.
+          estado actual 'running', será detenido y marcado para reinicio.
           {% endif %}
-      loop: "{{ service_query.results }}"
+      loop: "{{ service_info.results }}"
+
+    - name: Guardar referencia solo de servicios que estaban RUNNING
+      ansible.windows.win_shell: |
+        Add-Content -Path "{{ stopped_services_file }}" -Value "{{ item.item }}"
+      loop: "{{ service_info.results }}"
+      when:
+        - item.exists is defined
+        - item.exists
+        - item.state == 'running'
+      changed_when: false
+
+    - name: Detener solo servicios que estaban RUNNING
+      ansible.windows.win_service:
+        name: "{{ item.item }}"
+        state: stopped
+        force_dependent_services: true
+      loop: "{{ service_info.results }}"
+      when:
+        - item.exists is defined
+        - item.exists
+        - item.state == 'running'
+
+    - name: Validar que los servicios quedaron efectivamente STOPPED
+      ansible.windows.win_service:
+        name: "{{ item.item }}"
+      loop: "{{ service_info.results }}"
+      register: post_stop_info
+      when:
+        - item.exists is defined
+        - item.exists
+        - item.state == 'running'
+      failed_when: >
+        post_stop_info.state is defined and
+        post_stop_info.state != 'stopped'
+
+    - name: Mostrar estado final de servicios detenidos
+      ansible.builtin.debug:
+        msg: "Servicio '{{ item.item.item }}' en {{ inventory_hostname }}: estado final -> {{ item.state | default('no consultado') }}"
+      loop: "{{ post_stop_info.results | default([]) }}"
+      when: item.skipped is not defined or not item.skipped

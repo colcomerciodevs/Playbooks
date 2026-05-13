@@ -1,6 +1,6 @@
 ---
-- name: 00 - Validar que el inventario Linux tenga hosts
-  hosts: localhost
+- name: 00 - Validar conexión Linux JDA
+  hosts: Linux_JDA
   gather_facts: false
 
   tasks:

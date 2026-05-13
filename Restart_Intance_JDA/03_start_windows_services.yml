@@ -1,5 +1,5 @@
 ---
-- name: Iniciar servicios Windows con sc.exe
+- name: Iniciar servicios Windows con win_service
   hosts: Windows_JDA
   gather_facts: false
 
@@ -7,10 +7,16 @@
     stopped_services_file: 'C:\ProgramData\awx_jda_services_stopped.txt'
 
   tasks:
+
     - name: Validar si existe archivo de servicios detenidos
       ansible.windows.win_stat:
         path: "{{ stopped_services_file }}"
       register: stopped_file
+
+    - name: Mostrar mensaje si no hay servicios para iniciar
+      ansible.builtin.debug:
+        msg: "No hay archivo de referencia o no se detuvo ningún servicio previamente en {{ inventory_hostname }}. Se omite inicio."
+      when: not stopped_file.stat.exists
 
     - name: Leer servicios que fueron detenidos previamente
       ansible.windows.win_shell: |
@@ -19,41 +25,62 @@
       when: stopped_file.stat.exists
       changed_when: false
 
-    - name: Mostrar mensaje si no hay servicios para iniciar
+    - name: Consultar estado actual de los servicios a iniciar
+      ansible.windows.win_service:
+        name: "{{ item }}"
+      loop: "{{ stopped_services.stdout_lines | default([]) }}"
+      register: pre_start_info
+      when:
+        - stopped_file.stat.exists
+        - item | length > 0
+      failed_when: false
+
+    - name: Mostrar estado previo al inicio de cada servicio
       ansible.builtin.debug:
-        msg: "No hay archivo de referencia o no se detuvo ningún servicio previamente en {{ inventory_hostname }}. Se omite inicio."
-      when: not stopped_file.stat.exists
+        msg: >-
+          Servicio '{{ item.item }}' en {{ inventory_hostname }}:
+          {% if item.exists is not defined or not item.exists %}
+          no existe en el sistema, se omite.
+          {% else %}
+          estado actual '{{ item.state }}', se procederá a iniciar.
+          {% endif %}
+      loop: "{{ pre_start_info.results | default([]) }}"
+      when: item.skipped is not defined or not item.skipped
 
     - name: Iniciar solo servicios detenidos previamente
-      ansible.windows.win_shell: |
-        sc.exe start "{{ item }}"
-      loop: "{{ stopped_services.stdout_lines | default([]) }}"
-      register: start_result
+      ansible.windows.win_service:
+        name: "{{ item.item }}"
+        state: started
+      loop: "{{ pre_start_info.results | default([]) }}"
       when:
         - stopped_file.stat.exists
-        - item | length > 0
-      failed_when: >
-        start_result.rc != 0 and
-        ('already been started' not in start_result.stdout | lower) and
-        ('1056' not in start_result.stdout)
+        - item.skipped is not defined or not item.skipped
+        - item.exists is defined
+        - item.exists
+        - item.state != 'running'
 
-    - name: Esperar hasta que los servicios queden RUNNING
-      ansible.windows.win_shell: |
-        sc.exe query "{{ item }}"
-      loop: "{{ stopped_services.stdout_lines | default([]) }}"
-      register: query_result
+    - name: Validar que los servicios quedaron efectivamente RUNNING
+      ansible.windows.win_service:
+        name: "{{ item.item }}"
+      loop: "{{ pre_start_info.results | default([]) }}"
+      register: post_start_info
       when:
         - stopped_file.stat.exists
-        - item | length > 0
-      until: "'RUNNING' in query_result.stdout"
-      retries: 20
-      delay: 15
-      changed_when: false
+        - item.skipped is not defined or not item.skipped
+        - item.exists is defined
+        - item.exists
+      failed_when: >
+        post_start_info.state is defined and
+        post_start_info.state != 'running'
+
+    - name: Mostrar estado final de servicios iniciados
+      ansible.builtin.debug:
+        msg: "Servicio '{{ item.item.item }}' en {{ inventory_hostname }}: estado final -> {{ item.state | default('no consultado') }}"
+      loop: "{{ post_start_info.results | default([]) }}"
+      when: item.skipped is not defined or not item.skipped
 
     - name: Limpiar archivo temporal de servicios detenidos
-      ansible.windows.win_shell: |
-        if (Test-Path "{{ stopped_services_file }}") {
-          Remove-Item "{{ stopped_services_file }}" -Force
-        }
+      ansible.windows.win_file:
+        path: "{{ stopped_services_file }}"
+        state: absent
       when: stopped_file.stat.exists
-      changed_when: false
