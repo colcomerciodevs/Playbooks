@@ -14,8 +14,8 @@ grupos_app:
   PPS:
     - "10.0.0.21"
     - "10.0.0.22"
-  GP:
-    - "10.0.0.31"
+  GEOPOS:
+    - "10.232.3.5"
 
 # Entrada del usuario (la encuesta la rellena). Default = todos los grupos.
 entrada_usuario: "JD,PPS,GP"
