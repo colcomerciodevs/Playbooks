@@ -27,6 +27,6 @@ fecha_fin: "2026-04-30 23:59:59"
 # Directorio de artefactos del job.
 # En AWX el filesystem es efímero por job: usa la carpeta del proyecto,
 # o mejor publica el resultado (ver README: opciones de entrega).
-dir_salida: "{{ lookup('env', 'AWX_ARTIFACTS_DIR') | default(playbook_dir + '/output', true) }}"
+dir_salida: "/data/work/reportes_zabbix"
 
 nombre_base: "Reporte_Zabbix"
