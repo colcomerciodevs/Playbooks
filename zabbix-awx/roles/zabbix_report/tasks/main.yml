@@ -51,11 +51,12 @@
   ansible.builtin.debug:
     msg: "Objetivos a procesar ({{ objetivos_final | length }}): {{ objetivos_final | join(', ') }}"
 
-- name: Crear directorio de salida
+- name: Crear directorio de salida (en el volumen persistente)
   ansible.builtin.file:
     path: "{{ dir_salida }}"
     state: directory
-    mode: "0755"
+    mode: "0775"
+    recurse: true
 
 - name: Calcular timestamp del run
   ansible.builtin.set_fact:
@@ -89,6 +90,27 @@
 - name: Salida de la extracción
   ansible.builtin.debug:
     var: extraccion.stdout_lines
+
+# ---------------------------------------------------------------------------
+# Control: si no se encontró ninguna máquina, terminar con mensaje claro
+# (en vez del error críptico de Python al generar el Excel vacío).
+# ---------------------------------------------------------------------------
+- name: Detectar cuántas máquinas se procesaron
+  ansible.builtin.set_fact:
+    maquinas_encontradas: >-
+      {{ extraccion.stdout
+         | regex_search('Máquinas procesadas: (\d+)', '\1')
+         | first | default('0') | int }}
+
+- name: Verificar que se encontró al menos una máquina
+  ansible.builtin.fail:
+    msg: >-
+      No se encontró ninguna máquina en Zabbix para los objetivos:
+      {{ objetivos_final | join(', ') }}.
+      Revisa que las IPs/nombres existan en Zabbix y que el token tenga
+      permiso para verlas. (Las IPs de defaults/main.yml son de ejemplo:
+      reemplázalas por las reales.)
+  when: maquinas_encontradas | int == 0
 
 # ---------------------------------------------------------------------------
 # ETAPA 4: JSON gzip -> Excel (datos + Summary)
