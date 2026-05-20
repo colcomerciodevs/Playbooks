@@ -1,0 +1,32 @@
+---
+# ===========================================================================
+# Variables por defecto. En AWX, las que aparecen en el SURVEY
+# (entrada_usuario, fecha_inicio, fecha_fin) se sobrescriben con las
+# respuestas del usuario al lanzar el Job Template.
+# ===========================================================================
+
+# Grupos de aplicación (equivalente a JD_APP/PPS_APP/GP_APP del .env).
+# Edítalos aquí o muévelos a las "extra_vars" del Job Template en AWX.
+grupos_app:
+  JD:
+    - "10.0.0.11"
+    - "10.0.0.12"
+  PPS:
+    - "10.0.0.21"
+    - "10.0.0.22"
+  GP:
+    - "10.0.0.31"
+
+# Entrada del usuario (la encuesta la rellena). Default = todos los grupos.
+entrada_usuario: "JD,PPS,GP"
+
+# Rango de fechas (la encuesta los puede pedir como campos de texto).
+fecha_inicio: "2026-04-01 00:00:00"
+fecha_fin: "2026-04-30 23:59:59"
+
+# Directorio de artefactos del job.
+# En AWX el filesystem es efímero por job: usa la carpeta del proyecto,
+# o mejor publica el resultado (ver README: opciones de entrega).
+dir_salida: "{{ lookup('env', 'AWX_ARTIFACTS_DIR') | default(playbook_dir + '/output', true) }}"
+
+nombre_base: "Reporte_Zabbix"

@@ -1,0 +1,23 @@
+---
+# ===========================================================================
+# Execution Environment para AWX.
+# Construir con:  ansible-builder build -t zabbix-report-ee:latest
+# Luego subir la imagen a tu registry y registrarla en AWX como
+# Execution Environment, y asignarla al Job Template.
+#
+# Las dependencias Python (pandas, openpyxl, requests...) DEBEN ir en el EE;
+# AWX no las instala en tiempo de ejecución.
+# ===========================================================================
+version: 3
+
+images:
+  base_image:
+    name: quay.io/ansible/awx-ee:latest
+
+dependencies:
+  python: requirements.txt
+  galaxy: collections/requirements.yml
+  system: []
+
+options:
+  package_manager_path: /usr/bin/microdnf

@@ -1,0 +1,6 @@
+---
+# Colecciones Ansible necesarias. AWX las instala automáticamente al
+# sincronizar el proyecto si este archivo está en collections/requirements.yml.
+collections:
+  - name: ansible.builtin
+  - name: community.general

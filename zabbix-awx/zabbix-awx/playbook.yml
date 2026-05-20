@@ -1,0 +1,17 @@
+---
+# ===========================================================================
+# Playbook para AWX: Reporte de capacidad Zabbix
+#
+# En AWX NO se usa vars_prompt. La ENCUESTA (survey) del Job Template
+# inyecta las respuestas como extra_vars (entrada_usuario, fecha_inicio,
+# fecha_fin) y la programación (schedule) se hace desde la UI de AWX.
+#
+# Ejecución local de prueba (fuera de AWX):
+#   ansible-playbook playbook.yml -e 'entrada_usuario=JD,PPS,10.0.0.99'
+# ===========================================================================
+- name: Reporte de capacidad Zabbix
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  roles:
+    - zabbix_report
