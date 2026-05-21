@@ -1,42 +1,4 @@
 #!/usr/bin/env python3
-"""
-extraer_zabbix.py
------------------
-Etapa de EXTRACCIÓN del flujo Zabbix.
-
-Hace las llamadas a la API JSON-RPC de Zabbix y genera un JSON optimizado:
-
-    - Para métricas estáticas:
-        Number of CPUs/Cores
-        Total memory
-
-      Solo toma el último valor disponible.
-
-    - Para métricas de utilización:
-        CPU utilization
-        Memory utilization
-
-      Usa trend.get si el rango es mayor a 3 días.
-      Usa history.get si el rango es menor o igual a 3 días.
-
-IMPORTANTE:
-    Ya no guarda todos los puntos crudos dentro del JSON.
-    Guarda solo un resumen:
-
-        {
-          "avg": 10.25,
-          "max": 80.5,
-          "min": 2.1,
-          "puntos": 720
-        }
-
-Esto reduce mucho el tamaño del JSON y mejora el tiempo del procesamiento posterior.
-
-Ansible invoca este script pasándole por --objetivos la lista ya resuelta
-de IPs/nombres.
-
-NO genera Excel. Eso lo hace procesar_reporte.py.
-"""
 
 import argparse
 import gzip
@@ -57,229 +19,191 @@ except ImportError:
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
-METRICAS_REQUERIDAS = [
+METRICAS = [
     {
-        "nombre_reporte": "Number of CPUs/Cores",
-        "variaciones": ["number of cpus", "number of cores"],
+        "reporte": "Number of CPUs/Cores",
+        "buscar": ["number of cpus", "number of cores"],
         "tipo": "estatica",
+        "preferidos": ["Linux: Number of CPUs", "Linux: Number of cores", "Number of CPUs", "Number of cores"],
     },
     {
-        "nombre_reporte": "Total memory",
-        "variaciones": ["total memory"],
+        "reporte": "Total memory",
+        "buscar": ["total memory"],
         "tipo": "estatica",
+        "preferidos": ["Linux: Total memory", "Total memory"],
     },
     {
-        "nombre_reporte": "CPU utilization",
-        "variaciones": ["cpu utilization"],
+        "reporte": "CPU utilization",
+        "buscar": ["cpu utilization"],
         "tipo": "utilizacion",
+        "preferidos": ["Linux: CPU utilization", "CPU utilization"],
     },
     {
-        "nombre_reporte": "Memory utilization",
-        "variaciones": ["memory utilization"],
+        "reporte": "Memory utilization",
+        "buscar": ["memory utilization"],
         "tipo": "utilizacion",
+        "preferidos": ["Linux: Memory utilization", "Memory utilization"],
     },
 ]
 
 
-class ZabbixClient:
-    def __init__(self, url, token, timeout=60):
+class Zabbix:
+    def __init__(self, url, token):
         self.url = url
         self.token = token
-        self.timeout = timeout
-        self.headers = {
-            "Content-Type": "application/json",
-            "Accept-Encoding": "gzip, deflate",
-        }
         self.bytes_subida = 0
         self.bytes_bajada = 0
 
-    def peticion(self, payload):
-        payload["auth"] = self.token
-
-        try:
-            resp = requests.post(
-                self.url,
-                json=payload,
-                headers=self.headers,
-                verify=False,
-                timeout=self.timeout,
-            )
-            self.bytes_subida += len(resp.request.body or b"")
-            self.bytes_bajada += len(resp.content or b"")
-            resp.raise_for_status()
-
-            respuesta = resp.json()
-
-            if "error" in respuesta:
-                print(
-                    f"[!] Error API Zabbix en método {payload.get('method')}: "
-                    f"{respuesta['error']}",
-                    file=sys.stderr,
-                )
-                return []
-
-            return respuesta.get("result", [])
-
-        except requests.exceptions.RequestException as exc:
-            print(f"[!] Error HTTP contra Zabbix: {exc}", file=sys.stderr)
-            return []
-        except ValueError as exc:
-            print(f"[!] Respuesta no JSON desde Zabbix: {exc}", file=sys.stderr)
-            return []
-
-    def resolver_host(self, objetivo):
-        """
-        Resuelve host por IP. Si no encuentra, intenta por nombre.
-        """
-        hosts = self.peticion({
+    def api(self, method, params):
+        payload = {
             "jsonrpc": "2.0",
-            "method": "host.get",
+            "method": method,
+            "params": params,
+            "auth": self.token,
             "id": 1,
-            "params": {
-                "output": ["hostid", "name"],
-                "filter": {"ip": [objetivo]},
-            },
+        }
+
+        r = requests.post(
+            self.url,
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            verify=False,
+            timeout=60,
+        )
+
+        self.bytes_subida += len(r.request.body or b"")
+        self.bytes_bajada += len(r.content or b"")
+
+        r.raise_for_status()
+        data = r.json()
+
+        if "error" in data:
+            print(f"[!] Error API {method}: {data['error']}", file=sys.stderr)
+            return []
+
+        return data.get("result", [])
+
+    def buscar_host(self, objetivo):
+        # Primero intenta por IP
+        hosts = self.api("host.get", {
+            "output": ["hostid", "name", "host"],
+            "selectInterfaces": ["ip", "dns", "main", "type"],
+            "filter": {"ip": [objetivo]},
         })
 
+        # Luego por nombre visible
         if not hosts:
-            hosts = self.peticion({
-                "jsonrpc": "2.0",
-                "method": "host.get",
-                "id": 1,
-                "params": {
-                    "output": ["hostid", "name"],
-                    "filter": {"name": [objetivo]},
-                },
+            hosts = self.api("host.get", {
+                "output": ["hostid", "name", "host"],
+                "selectInterfaces": ["ip", "dns", "main", "type"],
+                "filter": {"name": [objetivo]},
+            })
+
+        # Luego por host técnico
+        if not hosts:
+            hosts = self.api("host.get", {
+                "output": ["hostid", "name", "host"],
+                "selectInterfaces": ["ip", "dns", "main", "type"],
+                "filter": {"host": [objetivo]},
             })
 
         return hosts[0] if hosts else None
 
-    def get_items(self, host_id, terminos):
-        """
-        Obtiene los items candidatos del host usando searchByAny.
-        """
-        return self.peticion({
-            "jsonrpc": "2.0",
-            "method": "item.get",
-            "id": 2,
-            "params": {
-                "output": ["itemid", "name", "units", "value_type"],
-                "hostids": host_id,
-                "search": {"name": terminos},
-                "searchByAny": True,
-            },
+    def obtener_items(self, hostid, terminos):
+        return self.api("item.get", {
+            "output": ["itemid", "name", "key_", "units", "value_type"],
+            "hostids": hostid,
+            "search": {"name": terminos},
+            "searchByAny": True,
+            "sortfield": "name",
         })
 
-    def get_ultimo_valor_history(self, item):
-        """
-        Para métricas estáticas:
-            - Number of CPUs/Cores
-            - Total memory
-
-        Solo trae el último valor conocido.
-        Esto evita consultar un mes completo de tendencias para datos que
-        normalmente no cambian.
-        """
-        params = {
+    def ultimo_valor(self, item):
+        return self.api("history.get", {
             "output": ["clock", "value"],
             "itemids": [item["itemid"]],
             "history": item["value_type"],
             "sortfield": "clock",
             "sortorder": "DESC",
             "limit": 1,
-        }
-
-        return self.peticion({
-            "jsonrpc": "2.0",
-            "method": "history.get",
-            "id": 3,
-            "params": params,
         })
 
-    def get_datos_utilizacion(self, item, ts_inicio, ts_fin, usar_tendencias):
-        """
-        Para métricas de utilización:
-            - CPU utilization
-            - Memory utilization
-
-        Si el rango es mayor a 3 días usa trend.get.
-        Si el rango es corto usa history.get.
-        """
-        if usar_tendencias:
-            metodo = "trend.get"
-            params = {
+    def datos_rango(self, item, inicio, fin, usar_trends):
+        if usar_trends:
+            return self.api("trend.get", {
                 "output": ["clock", "value_avg", "value_max", "value_min"],
                 "itemids": [item["itemid"]],
-                "time_from": ts_inicio,
-                "time_till": ts_fin,
+                "time_from": inicio,
+                "time_till": fin,
                 "sortfield": "clock",
                 "sortorder": "ASC",
-            }
-        else:
-            metodo = "history.get"
-            params = {
-                "output": ["clock", "value"],
-                "itemids": [item["itemid"]],
-                "history": item["value_type"],
-                "time_from": ts_inicio,
-                "time_till": ts_fin,
-                "sortfield": "clock",
-                "sortorder": "ASC",
-            }
+            })
 
-        return self.peticion({
-            "jsonrpc": "2.0",
-            "method": metodo,
-            "id": 3,
-            "params": params,
+        return self.api("history.get", {
+            "output": ["clock", "value"],
+            "itemids": [item["itemid"]],
+            "history": item["value_type"],
+            "time_from": inicio,
+            "time_till": fin,
+            "sortfield": "clock",
+            "sortorder": "ASC",
         })
 
-    def get_triggers(self, item_id):
-        return self.peticion({
-            "jsonrpc": "2.0",
-            "method": "trigger.get",
-            "id": 4,
-            "params": {
-                "output": ["description", "expression"],
-                "itemids": [item_id],
-                "expandDescription": True,
-                "expandExpression": True,
-            },
+    def triggers(self, itemid):
+        return self.api("trigger.get", {
+            "output": ["description", "expression"],
+            "itemids": [itemid],
+            "expandDescription": True,
+            "expandExpression": True,
         })
 
 
-def ip_a_grupo_map(grupos):
-    mapa = {}
-
-    for grupo, objetivos in grupos.items():
-        for objetivo in objetivos:
-            mapa[objetivo] = grupo
-
-    return mapa
+def normalizar(texto):
+    return " ".join(str(texto).lower().strip().split())
 
 
-def convertir_float(valor):
+def seleccionar_item(items, metrica):
+    """
+    Selecciona primero por nombre exacto/preferido.
+    Si no encuentra, usa coincidencia parcial.
+    Esto ayuda a que las IPs adicionales tomen el mismo item que se ve en Zabbix.
+    """
+    preferidos = [normalizar(x) for x in metrica["preferidos"]]
+    buscar = [normalizar(x) for x in metrica["buscar"]]
+
+    # 1. Nombre exacto
+    for esperado in preferidos:
+        for item in items:
+            if normalizar(item.get("name", "")) == esperado:
+                return item
+
+    # 2. Nombre que termine igual
+    for esperado in preferidos:
+        for item in items:
+            if normalizar(item.get("name", "")).endswith(esperado):
+                return item
+
+    # 3. Coincidencia parcial
+    for item in items:
+        nombre = normalizar(item.get("name", ""))
+        if any(x in nombre for x in buscar):
+            return item
+
+    return None
+
+
+def to_float(valor):
     try:
         return float(valor)
-    except (TypeError, ValueError):
+    except Exception:
         return None
 
 
-def resumir_ultimo_valor(puntos):
-    """
-    Convierte una respuesta de history.get con limit 1 a formato resumen.
-    """
+def resumir_ultimo(puntos):
     if not puntos:
-        return {
-            "avg": None,
-            "max": None,
-            "min": None,
-            "ultimo": None,
-            "puntos": 0,
-        }
+        return {"avg": None, "max": None, "min": None, "ultimo": None, "puntos": 0}
 
-    valor = convertir_float(puntos[0].get("value"))
-
+    valor = to_float(puntos[0].get("value"))
     return {
         "avg": valor,
         "max": valor,
@@ -289,70 +213,34 @@ def resumir_ultimo_valor(puntos):
     }
 
 
-def resumir_serie(puntos, usar_tendencias):
-    """
-    Resume una serie de history.get o trend.get.
-
-    Para trend.get:
-        usa value_avg, value_max y value_min.
-
-    Para history.get:
-        usa value.
-    """
+def resumir_serie(puntos, usar_trends):
     if not puntos:
-        return {
-            "avg": None,
-            "max": None,
-            "min": None,
-            "ultimo": None,
-            "puntos": 0,
-        }
+        return {"avg": None, "max": None, "min": None, "ultimo": None, "puntos": 0}
 
-    if usar_tendencias:
-        valores_avg = []
-        valores_max = []
-        valores_min = []
+    if usar_trends:
+        avgs = [to_float(p.get("value_avg")) for p in puntos]
+        maxs = [to_float(p.get("value_max")) for p in puntos]
+        mins = [to_float(p.get("value_min")) for p in puntos]
 
-        for punto in puntos:
-            avg = convertir_float(punto.get("value_avg"))
-            maximo = convertir_float(punto.get("value_max"))
-            minimo = convertir_float(punto.get("value_min"))
+        avgs = [x for x in avgs if x is not None]
+        maxs = [x for x in maxs if x is not None]
+        mins = [x for x in mins if x is not None]
 
-            if avg is not None:
-                valores_avg.append(avg)
-            if maximo is not None:
-                valores_max.append(maximo)
-            if minimo is not None:
-                valores_min.append(minimo)
-
-        promedio = (
-            sum(valores_avg) / len(valores_avg)
-            if valores_avg else None
-        )
+        promedio = sum(avgs) / len(avgs) if avgs else None
 
         return {
             "avg": round(promedio, 4) if promedio is not None else None,
-            "max": round(max(valores_max), 4) if valores_max else None,
-            "min": round(min(valores_min), 4) if valores_min else None,
-            "ultimo": round(valores_avg[-1], 4) if valores_avg else None,
+            "max": round(max(maxs), 4) if maxs else None,
+            "min": round(min(mins), 4) if mins else None,
+            "ultimo": round(avgs[-1], 4) if avgs else None,
             "puntos": len(puntos),
         }
 
-    valores = []
-
-    for punto in puntos:
-        valor = convertir_float(punto.get("value"))
-        if valor is not None:
-            valores.append(valor)
+    valores = [to_float(p.get("value")) for p in puntos]
+    valores = [x for x in valores if x is not None]
 
     if not valores:
-        return {
-            "avg": None,
-            "max": None,
-            "min": None,
-            "ultimo": None,
-            "puntos": len(puntos),
-        }
+        return {"avg": None, "max": None, "min": None, "ultimo": None, "puntos": len(puntos)}
 
     promedio = sum(valores) / len(valores)
 
@@ -365,177 +253,122 @@ def resumir_serie(puntos, usar_tendencias):
     }
 
 
-def seleccionar_item(items, variaciones):
-    """
-    Selecciona el primer item cuyo nombre contenga alguna variación esperada.
-    """
-    for item in items:
-        nombre = item.get("name", "").lower()
-        if any(v in nombre for v in variaciones):
-            return item
-
-    return None
+def grupo_por_objetivo(grupos):
+    mapa = {}
+    for grupo, objetivos in grupos.items():
+        for objetivo in objetivos:
+            mapa[objetivo] = grupo
+    return mapa
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Extrae métricas Zabbix y genera JSON optimizado"
-    )
-
-    parser.add_argument(
-        "--objetivos",
-        required=True,
-        help="IPs/nombres separados por coma",
-    )
-    parser.add_argument(
-        "--grupos-json",
-        required=True,
-        help="JSON con el mapeo grupo->IPs/nombres para etiquetar",
-    )
-    parser.add_argument(
-        "--fecha-inicio",
-        required=True,
-        help="Fecha inicio en formato YYYY-MM-DD HH:MM:SS",
-    )
-    parser.add_argument(
-        "--fecha-fin",
-        required=True,
-        help="Fecha fin en formato YYYY-MM-DD HH:MM:SS",
-    )
-    parser.add_argument(
-        "--salida",
-        required=True,
-        help="Ruta base sin extensión",
-    )
-    parser.add_argument(
-        "--solo-gzip",
-        action="store_true",
-        help="Si se indica, solo genera .json.gz y no genera .json plano",
-    )
-
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--objetivos", required=True)
+    parser.add_argument("--grupos-json", required=True)
+    parser.add_argument("--fecha-inicio", required=True)
+    parser.add_argument("--fecha-fin", required=True)
+    parser.add_argument("--salida", required=True)
+    parser.add_argument("--solo-gzip", action="store_true")
     args = parser.parse_args()
 
     url = os.getenv("ZABBIX_URL")
     token = os.getenv("ZABBIX_TOKEN")
 
     if not url or not token:
-        print("[!] Faltan ZABBIX_URL / ZABBIX_TOKEN en el entorno.", file=sys.stderr)
+        print("[!] Faltan ZABBIX_URL / ZABBIX_TOKEN", file=sys.stderr)
         sys.exit(2)
 
-    try:
-        grupos = json.loads(args.grupos_json)
-    except json.JSONDecodeError as exc:
-        print(f"[!] --grupos-json no es un JSON válido: {exc}", file=sys.stderr)
-        sys.exit(2)
+    grupos = json.loads(args.grupos_json)
+    mapa_grupos = grupo_por_objetivo(grupos)
 
-    try:
-        ts_inicio = int(datetime.strptime(args.fecha_inicio, "%Y-%m-%d %H:%M:%S").timestamp())
-        ts_fin = int(datetime.strptime(args.fecha_fin, "%Y-%m-%d %H:%M:%S").timestamp())
-    except ValueError as exc:
-        print(f"[!] Formato de fecha inválido: {exc}", file=sys.stderr)
-        sys.exit(2)
+    ts_inicio = int(datetime.strptime(args.fecha_inicio, "%Y-%m-%d %H:%M:%S").timestamp())
+    ts_fin = int(datetime.strptime(args.fecha_fin, "%Y-%m-%d %H:%M:%S").timestamp())
 
-    if ts_fin <= ts_inicio:
-        print("[!] La fecha fin debe ser mayor que la fecha inicio.", file=sys.stderr)
-        sys.exit(2)
+    usar_trends = (ts_fin - ts_inicio) / 86400 > 3
 
-    mapa_grupo = ip_a_grupo_map(grupos)
-    usar_tendencias_global = (ts_fin - ts_inicio) / 86400 > 3
-
-    objetivos = [o.strip() for o in args.objetivos.split(",") if o.strip()]
+    objetivos = [x.strip() for x in args.objetivos.split(",") if x.strip()]
     objetivos = list(dict.fromkeys(objetivos))
 
-    if not objetivos:
-        print("[!] No se recibieron objetivos válidos.", file=sys.stderr)
-        sys.exit(2)
+    terminos = []
+    for metrica in METRICAS:
+        terminos.extend(metrica["buscar"])
 
-    terminos = [
-        variacion
-        for metrica in METRICAS_REQUERIDAS
-        for variacion in metrica["variaciones"]
-    ]
-
-    cli = ZabbixClient(url, token)
+    zbx = Zabbix(url, token)
     maquinas = []
 
     for objetivo in objetivos:
-        grupo = mapa_grupo.get(objetivo, "SIN GRUPO ASIGNADO")
+        grupo = mapa_grupos.get(objetivo, "SIN GRUPO ASIGNADO")
 
-        host = cli.resolver_host(objetivo)
+        host = zbx.buscar_host(objetivo)
         if not host:
-            print(f"[!] No se encontró máquina: {objetivo}", file=sys.stderr)
+            print(f"[!] No se encontró host: {objetivo}", file=sys.stderr)
             continue
 
-        items = cli.get_items(host["hostid"], terminos)
-        bloque_metricas = []
+        print(f"[host] {objetivo} -> {host['name']} | grupo={grupo}")
 
-        for metrica in METRICAS_REQUERIDAS:
-            item = seleccionar_item(items, metrica["variaciones"])
+        items = zbx.obtener_items(host["hostid"], terminos)
+        metricas_host = []
+
+        for metrica in METRICAS:
+            item = seleccionar_item(items, metrica)
 
             if not item:
-                print(
-                    f"[!] Item no encontrado para {metrica['nombre_reporte']} "
-                    f"en {host['name']} ({objetivo})",
-                    file=sys.stderr,
-                )
+                print(f"  [!] No se encontró item: {metrica['reporte']}", file=sys.stderr)
                 continue
 
             if metrica["tipo"] == "estatica":
-                usar_tendencias_metrica = False
-                datos_crudos = cli.get_ultimo_valor_history(item)
-                datos_resumen = resumir_ultimo_valor(datos_crudos)
+                metodo = "history.get"
+                datos = resumir_ultimo(zbx.ultimo_valor(item))
+                usa_trend_metrica = False
             else:
-                usar_tendencias_metrica = usar_tendencias_global
-                datos_crudos = cli.get_datos_utilizacion(
-                    item,
-                    ts_inicio,
-                    ts_fin,
-                    usar_tendencias_metrica,
-                )
-                datos_resumen = resumir_serie(
-                    datos_crudos,
-                    usar_tendencias_metrica,
-                )
+                metodo = "trend.get" if usar_trends else "history.get"
+                crudos = zbx.datos_rango(item, ts_inicio, ts_fin, usar_trends)
+                datos = resumir_serie(crudos, usar_trends)
+                usa_trend_metrica = usar_trends
 
-            triggers = []
+            triggers = zbx.triggers(item["itemid"]) if metrica["tipo"] == "utilizacion" else []
 
-            if metrica["tipo"] == "utilizacion":
-                triggers = cli.get_triggers(item["itemid"])
-
-            bloque_metricas.append({
-                "nombre_reporte": metrica["nombre_reporte"],
-                "item_name": item["name"],
-                "itemid": item["itemid"],
+            metricas_host.append({
+                "nombre_reporte": metrica["reporte"],
+                "item_name": item.get("name", ""),
+                "itemid": item.get("itemid", ""),
+                "key_": item.get("key_", ""),
                 "units": item.get("units", ""),
                 "value_type": item.get("value_type", ""),
-                "usar_tendencias": usar_tendencias_metrica,
-                "datos": datos_resumen,
+                "metodo_usado": metodo,
+                "usar_tendencias": usa_trend_metrica,
+                "datos": datos,
                 "triggers": triggers,
             })
 
+            print(
+                f"  [item] {metrica['reporte']} -> "
+                f"{item.get('name', '')} | "
+                f"key={item.get('key_', '')} | "
+                f"metodo={metodo} | "
+                f"avg={datos.get('avg')} | "
+                f"max={datos.get('max')}"
+            )
+
         maquinas.append({
             "objetivo": objetivo,
-            "nombre_maquina": host["name"],
+            "nombre_maquina": host.get("name", ""),
+            "hostid": host.get("hostid", ""),
             "grupo": grupo,
-            "metricas": bloque_metricas,
+            "metricas": metricas_host,
         })
-
-        print(
-            f"[ok] {host['name']} ({objetivo}) - "
-            f"{len(bloque_metricas)} métrica(s)"
-        )
 
     payload = {
         "generado": datetime.now().isoformat(),
         "rango": {
             "inicio": args.fecha_inicio,
             "fin": args.fecha_fin,
-            "usar_tendencias": usar_tendencias_global,
+            "usar_tendencias": usar_trends,
             "modo_datos": "resumido",
         },
         "trafico": {
-            "subida_bytes": cli.bytes_subida,
-            "bajada_bytes": cli.bytes_bajada,
+            "subida_bytes": zbx.bytes_subida,
+            "bajada_bytes": zbx.bytes_bajada,
         },
         "maquinas": maquinas,
     }
@@ -546,7 +379,6 @@ def main():
     if not args.solo_gzip:
         with open(ruta_json, "w", encoding="utf-8") as fh:
             json.dump(payload, fh, ensure_ascii=False, indent=2)
-
         print(f"JSON puro: {ruta_json}")
 
     with gzip.open(ruta_gz, "wt", encoding="utf-8") as fh:
@@ -554,8 +386,8 @@ def main():
 
     print(f"JSON gzip: {ruta_gz}")
     print(f"Máquinas procesadas: {len(maquinas)}")
-    print(f"Tráfico subida: {cli.bytes_subida / (1024 ** 2):.2f} MB")
-    print(f"Tráfico bajada: {cli.bytes_bajada / (1024 ** 2):.2f} MB")
+    print(f"Tráfico subida: {zbx.bytes_subida / (1024 ** 2):.2f} MB")
+    print(f"Tráfico bajada: {zbx.bytes_bajada / (1024 ** 2):.2f} MB")
 
 
 if __name__ == "__main__":

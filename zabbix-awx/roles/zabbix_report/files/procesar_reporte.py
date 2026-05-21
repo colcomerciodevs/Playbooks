@@ -1,286 +1,117 @@
 #!/usr/bin/env python3
-"""
-procesar_reporte.py
--------------------
-Etapa de PROCESAMIENTO del flujo Zabbix.
-
-NO se conecta a Zabbix.
-
-Lee el JSON producido por extraer_zabbix.py, calcula/lee promedios y máximos,
-parsea umbrales, convierte unidades y genera el Excel.
-
-Es compatible con dos formatos:
-
-1. Formato nuevo recomendado:
-    "datos": {
-        "avg": 10.5,
-        "max": 80.2,
-        "min": 2.1,
-        "ultimo": 11.0,
-        "puntos": 720
-    }
-
-2. Formato viejo:
-    "datos": [
-        {"value_avg": "10", "value_max": "20"},
-        {"value_avg": "11", "value_max": "30"}
-    ]
-
-Uso:
-
-    python3 procesar_reporte.py \
-      --input datos.json.gz \
-      --output Reporte.xlsx
-"""
 
 import argparse
 import gzip
 import json
 import re
-import sys
 from datetime import datetime
 
 import pandas as pd
 
-from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-from openpyxl.utils import get_column_letter
-
 
 def cargar_json(ruta):
     abrir = gzip.open if ruta.endswith(".gz") else open
+    with abrir(ruta, "rt", encoding="utf-8") as f:
+        return json.load(f)
 
-    with abrir(ruta, "rt", encoding="utf-8") as fh:
-        return json.load(fh)
 
-
-def convertir_float(valor):
+def valor(datos, campo):
     try:
-        return float(valor)
+        return float(datos.get(campo))
     except (TypeError, ValueError):
         return None
 
 
-def extraer_umbrales(triggers):
-    """
-    Extrae umbrales desde los triggers de Zabbix.
+def formato_pct(v):
+    return f"{v:.4f} %" if v is not None else "N/A"
 
-    Retorna lista tipo:
-        [
-          "Memoria-Critico [> 96]",
-          "Memoria-Warning [> 90]"
-        ]
-    """
+
+def bytes_a_gb(v):
+    if v is None:
+        return "N/A"
+    return f"{v / (1024 ** 3):.2f} GB"
+
+
+def extraer_umbrales(triggers):
     umbrales = []
 
-    for trigger in triggers:
-        desc = trigger.get("description", "")
-        expr = trigger.get("expression", "")
+    for t in triggers:
+        desc = t.get("description", "")
+        expr = t.get("expression", "")
 
-        match = re.search(
-            r"([><=]+)\s*(\d+(?:\.\d+)?|\{\$[^\}]+})",
-            expr,
-        )
+        match = re.search(r"([><=]+)\s*(\d+(?:\.\d+)?|\{\$[^\}]+})", expr)
 
         if match:
-            umbrales.append(
-                f"{desc} [{match.group(1)} {match.group(2)}]"
-            )
+            umbrales.append(f"{desc} [{match.group(1)} {match.group(2)}]")
         else:
             umbrales.append(desc)
 
     return umbrales
 
 
-def reducir_serie_vieja(puntos, usar_tendencias):
-    """
-    Compatibilidad con el formato viejo:
-
-        "datos": [
-            {"value_avg": "...", "value_max": "..."},
-            ...
-        ]
-
-    Retorna:
-        promedio, maximo, minimo, ultimo, puntos
-    """
-    if not puntos:
-        return None, None, None, None, 0
-
-    if usar_tendencias:
-        valores_avg = []
-        valores_max = []
-        valores_min = []
-
-        for punto in puntos:
-            avg = convertir_float(punto.get("value_avg"))
-            maximo = convertir_float(punto.get("value_max"))
-            minimo = convertir_float(punto.get("value_min"))
-
-            if avg is not None:
-                valores_avg.append(avg)
-            if maximo is not None:
-                valores_max.append(maximo)
-            if minimo is not None:
-                valores_min.append(minimo)
-
-        if not valores_avg and not valores_max:
-            return None, None, None, None, len(puntos)
-
-        promedio = (
-            sum(valores_avg) / len(valores_avg)
-            if valores_avg else None
-        )
-
-        maximo = max(valores_max) if valores_max else None
-        minimo = min(valores_min) if valores_min else None
-        ultimo = valores_avg[-1] if valores_avg else None
-
-        return promedio, maximo, minimo, ultimo, len(puntos)
-
-    valores = []
-
-    for punto in puntos:
-        valor = convertir_float(punto.get("value"))
-        if valor is not None:
-            valores.append(valor)
-
-    if not valores:
-        return None, None, None, None, len(puntos)
-
-    promedio = sum(valores) / len(valores)
-    maximo = max(valores)
-    minimo = min(valores)
-    ultimo = valores[-1]
-
-    return promedio, maximo, minimo, ultimo, len(puntos)
-
-
-def obtener_resumen_datos(datos, usar_tendencias):
-    """
-    Normaliza datos nuevos o datos viejos.
-
-    Formato nuevo:
-        datos es dict con avg/max/min/ultimo/puntos.
-
-    Formato viejo:
-        datos es list y se reduce aquí.
-    """
-    if isinstance(datos, dict):
-        promedio = convertir_float(datos.get("avg"))
-        maximo = convertir_float(datos.get("max"))
-        minimo = convertir_float(datos.get("min"))
-        ultimo = convertir_float(datos.get("ultimo"))
-
-        try:
-            puntos = int(datos.get("puntos", 0))
-        except (TypeError, ValueError):
-            puntos = 0
-
-        return promedio, maximo, minimo, ultimo, puntos
-
-    if isinstance(datos, list):
-        return reducir_serie_vieja(datos, usar_tendencias)
-
-    return None, None, None, None, 0
-
-
-def bytes_a_gb(valor):
-    if valor is None:
-        return None
-
-    return valor / (1024 ** 3)
-
-
-def construir_fila_metricas(maquina):
-    """
-    Construye una fila para la hoja principal:
-        Metricas_Infraestructura
-
-    Se quitaron:
-        - Puntos CPU
-        - Puntos RAM
-    """
+def construir_fila_principal(maquina):
     fila = {
         "Nombre Activo": maquina.get("nombre_maquina", ""),
-        "ip": maquina.get("objetivo", ""),
-        "servicio": maquina.get("grupo", ""),
-        "memoria actual": 0,
-        "% uso memoria ram AVG": 0,
-        "% uso memoria ram MAX": 0,
-        "CPU actual asignada": 0,
-        "% uso procesador AVG": 0,
-        "% uso procesador MAX": 0,
+        "IP": maquina.get("objetivo", ""),
+        "Grupo": maquina.get("grupo", ""),
+        "Memoria actual": "N/A",
+        "CPU actual asignada": "N/A",
+        "% uso procesador AVG": "N/A",
+        "% uso procesador MAX": "N/A",
+        "% uso memoria ram AVG": "N/A",
+        "% uso memoria ram MAX": "N/A",
+        "Item CPU usado": "",
+        "Item RAM usado": "",
+        "Key CPU": "",
+        "Key RAM": "",
+        "Umbrales detectados": "—",
     }
 
-    notas_umbrales = []
+    umbrales_total = []
 
     for metrica in maquina.get("metricas", []):
-        concepto = metrica.get("nombre_reporte", "")
-        usar_tendencias = metrica.get("usar_tendencias", False)
+        nombre = metrica.get("nombre_reporte", "")
+        item_name = metrica.get("item_name", "")
+        key = metrica.get("key_", "")
         datos = metrica.get("datos", {})
 
-        promedio, maximo, minimo, ultimo, puntos = obtener_resumen_datos(
-            datos,
-            usar_tendencias,
-        )
+        avg = valor(datos, "avg")
+        maximo = valor(datos, "max")
+        ultimo = valor(datos, "ultimo")
 
-        if promedio is None and maximo is None and ultimo is None:
-            continue
+        base = maximo if maximo is not None else ultimo
+        if base is None:
+            base = avg
 
-        valor_base = maximo
-        if valor_base is None:
-            valor_base = ultimo
-        if valor_base is None:
-            valor_base = promedio
+        if nombre == "Number of CPUs/Cores":
+            fila["CPU actual asignada"] = int(round(base)) if base is not None else "N/A"
 
-        if "Number" in concepto:
-            fila["CPU actual asignada"] = int(round(valor_base))
+        elif nombre == "Total memory":
+            fila["Memoria actual"] = bytes_a_gb(base)
 
-        elif "Total memory" in concepto:
-            memoria_gb = bytes_a_gb(valor_base)
-            if memoria_gb is not None:
-                fila["memoria actual"] = f"{memoria_gb:.2f} GB"
+        elif nombre == "CPU utilization":
+            fila["% uso procesador AVG"] = formato_pct(avg)
+            fila["% uso procesador MAX"] = formato_pct(maximo)
+            fila["Item CPU usado"] = item_name
+            fila["Key CPU"] = key
 
-        elif "utilization" in concepto.lower():
-            if "CPU" in concepto:
-                fila["% uso procesador AVG"] = (
-                    f"{promedio:.4f} %" if promedio is not None else 0
-                )
-                fila["% uso procesador MAX"] = (
-                    f"{maximo:.4f} %" if maximo is not None else 0
-                )
+        elif nombre == "Memory utilization":
+            fila["% uso memoria ram AVG"] = formato_pct(avg)
+            fila["% uso memoria ram MAX"] = formato_pct(maximo)
+            fila["Item RAM usado"] = item_name
+            fila["Key RAM"] = key
 
-            else:
-                fila["% uso memoria ram AVG"] = (
-                    f"{promedio:.4f} %" if promedio is not None else 0
-                )
-                fila["% uso memoria ram MAX"] = (
-                    f"{maximo:.4f} %" if maximo is not None else 0
-                )
+        if "utilization" in nombre.lower():
+            for u in extraer_umbrales(metrica.get("triggers", [])):
+                umbrales_total.append(f"{item_name}: {u}")
 
-            for umbral in extraer_umbrales(metrica.get("triggers", [])):
-                notas_umbrales.append(f"{concepto}: {umbral}")
-
-    fila["Umbrales detectados"] = (
-        " | ".join(notas_umbrales)
-        if notas_umbrales else "—"
-    )
+    if umbrales_total:
+        fila["Umbrales detectados"] = " | ".join(umbrales_total)
 
     return fila
 
 
-def construir_filas_summary(maquinas):
-    """
-    Construye la hoja Summary por servidor y por métrica.
-
-    Formato:
-        Grupo
-        Nombre maquina
-        METRICA
-        Promedio
-        Maximo
-        Umbrales detectados
-    """
+def construir_summary(maquinas):
     filas = []
 
     for maquina in maquinas:
@@ -288,50 +119,27 @@ def construir_filas_summary(maquinas):
         nombre_maquina = maquina.get("nombre_maquina", "")
         ip = maquina.get("objetivo", "")
 
-        metricas_utilizacion = [
-            m for m in maquina.get("metricas", [])
-            if "utilization" in m.get("nombre_reporte", "").lower()
-        ]
+        for metrica in maquina.get("metricas", []):
+            nombre = metrica.get("nombre_reporte", "")
 
-        if not metricas_utilizacion:
-            filas.append({
-                "Grupo": grupo,
-                "Nombre maquina": nombre_maquina,
-                "IP": ip,
-                "Metrica": "Sin métricas de utilización",
-                "Promedio": "N/A",
-                "Maximo": "N/A",
-                "Umbrales detectados": "—",
-            })
-            continue
+            if "utilization" not in nombre.lower():
+                continue
 
-        for metrica in metricas_utilizacion:
-            concepto = metrica.get("nombre_reporte", "")
-            item_name = metrica.get("item_name", "")
-            usar_tendencias = metrica.get("usar_tendencias", False)
             datos = metrica.get("datos", {})
-
-            promedio, maximo, minimo, ultimo, puntos = obtener_resumen_datos(
-                datos,
-                usar_tendencias,
-            )
+            avg = valor(datos, "avg")
+            maximo = valor(datos, "max")
 
             umbrales = extraer_umbrales(metrica.get("triggers", []))
-
-            if umbrales:
-                umbrales_txt = "\n".join([f"- {u}" for u in umbrales])
-            else:
-                umbrales_txt = "—"
-
-            nombre_metrica = item_name if item_name else concepto
+            umbrales_txt = "\n".join(f"- {u}" for u in umbrales) if umbrales else "—"
 
             filas.append({
                 "Grupo": grupo,
                 "Nombre maquina": nombre_maquina,
                 "IP": ip,
-                "Metrica": nombre_metrica,
-                "Promedio": f"{promedio:.4f} %" if promedio is not None else "N/A",
-                "Maximo": f"{maximo:.4f} %" if maximo is not None else "N/A",
+                "Metrica": metrica.get("item_name", nombre),
+                "Key": metrica.get("key_", ""),
+                "Promedio": formato_pct(avg),
+                "Maximo": formato_pct(maximo),
                 "Umbrales detectados": umbrales_txt,
             })
 
@@ -340,6 +148,7 @@ def construir_filas_summary(maquinas):
             "Nombre maquina": "",
             "IP": "",
             "Metrica": "",
+            "Key": "",
             "Promedio": "",
             "Maximo": "",
             "Umbrales detectados": "",
@@ -348,180 +157,84 @@ def construir_filas_summary(maquinas):
     return filas
 
 
-def aplicar_formato_excel(writer):
-    """
-    Aplica formato básico a las hojas del Excel.
-    """
-    header_fill = PatternFill(
-        start_color="1F4E78",
-        end_color="1F4E78",
-        fill_type="solid",
-    )
-
-    header_font = Font(
-        color="FFFFFF",
-        bold=True,
-    )
-
-    bold_font = Font(bold=True)
-
-    thin_border = Border(
-        left=Side(style="thin"),
-        right=Side(style="thin"),
-        top=Side(style="thin"),
-        bottom=Side(style="thin"),
-    )
-
-    for nombre_hoja in writer.sheets:
-        ws = writer.sheets[nombre_hoja]
-
+def ajustar_excel(writer):
+    for hoja in writer.sheets:
+        ws = writer.sheets[hoja]
         ws.freeze_panes = "A2"
 
-        for cell in ws[1]:
-            cell.fill = header_fill
-            cell.font = header_font
-            cell.alignment = Alignment(
-                horizontal="center",
-                vertical="center",
-                wrap_text=True,
-            )
-            cell.border = thin_border
-
-        for row in ws.iter_rows(min_row=2):
-            for cell in row:
-                cell.alignment = Alignment(
-                    vertical="top",
-                    wrap_text=True,
-                )
-                cell.border = thin_border
-
         for col in ws.columns:
-            max_length = 0
-            column = col[0].column_letter
+            letra = col[0].column_letter
+            ancho = 18
 
-            for cell in col:
-                valor = str(cell.value) if cell.value is not None else ""
-                max_length = max(max_length, len(valor))
+            for celda in col:
+                texto = str(celda.value) if celda.value is not None else ""
+                ancho = max(ancho, min(len(texto) + 2, 55))
 
-            ancho = min(max(max_length + 2, 18), 55)
-            ws.column_dimensions[column].width = ancho
-
-        if nombre_hoja == "Summary":
-            ws.column_dimensions["A"].width = 18
-            ws.column_dimensions["B"].width = 28
-            ws.column_dimensions["C"].width = 18
-            ws.column_dimensions["D"].width = 38
-            ws.column_dimensions["E"].width = 18
-            ws.column_dimensions["F"].width = 18
-            ws.column_dimensions["G"].width = 45
-
-            for row in ws.iter_rows(min_row=2):
-                grupo = row[0].value
-                nombre = row[1].value
-                metrica = row[3].value
-
-                if grupo:
-                    row[0].font = bold_font
-                    row[1].font = bold_font
-
-                if metrica:
-                    row[3].font = bold_font
+            ws.column_dimensions[letra].width = ancho
 
 
-def generar_excel(filas_metricas, filas_summary, ruta_salida, trafico):
-    df_metricas = pd.DataFrame(filas_metricas)
-    df_summary = pd.DataFrame(filas_summary)
+def generar_excel(payload, salida):
+    maquinas = payload.get("maquinas", [])
+    trafico = payload.get("trafico", {})
 
-    if df_metricas.empty:
-        raise ValueError("No hay filas para generar el Excel.")
+    filas_principal = [construir_fila_principal(m) for m in maquinas]
+    filas_summary = construir_summary(maquinas)
 
-    resumen_general = {
-        "Indicador": [
-            "Máquinas procesadas",
-            "Tráfico subida (MB)",
-            "Tráfico bajada (MB)",
-            "Generado",
-        ],
-        "Valor": [
-            len(df_metricas),
-            f"{trafico.get('subida_bytes', 0) / (1024 ** 2):.2f}",
-            f"{trafico.get('bajada_bytes', 0) / (1024 ** 2):.2f}",
-            datetime.now().strftime("%Y-%m-%d %H:%M"),
-        ],
-    }
+    resumen_general = [
+        {
+            "Indicador": "Máquinas procesadas",
+            "Valor": len(maquinas),
+        },
+        {
+            "Indicador": "Tráfico subida (MB)",
+            "Valor": f"{trafico.get('subida_bytes', 0) / (1024 ** 2):.2f}",
+        },
+        {
+            "Indicador": "Tráfico bajada (MB)",
+            "Valor": f"{trafico.get('bajada_bytes', 0) / (1024 ** 2):.2f}",
+        },
+        {
+            "Indicador": "Generado",
+            "Valor": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        },
+    ]
 
-    df_resumen_general = pd.DataFrame(resumen_general)
-
-    with pd.ExcelWriter(ruta_salida, engine="openpyxl") as writer:
-        df_metricas.to_excel(
+    with pd.ExcelWriter(salida, engine="openpyxl") as writer:
+        pd.DataFrame(filas_principal).to_excel(
             writer,
             index=False,
             sheet_name="Metricas_Infraestructura",
         )
 
-        df_summary.to_excel(
+        pd.DataFrame(filas_summary).to_excel(
             writer,
             index=False,
             sheet_name="Summary",
         )
 
-        df_resumen_general.to_excel(
+        pd.DataFrame(resumen_general).to_excel(
             writer,
             index=False,
             sheet_name="Resumen_General",
         )
 
-        aplicar_formato_excel(writer)
-
-    return ruta_salida
+        ajustar_excel(writer)
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Procesa JSON de Zabbix y genera Excel"
-    )
-
-    parser.add_argument(
-        "--input",
-        required=True,
-        help="JSON de entrada .json o .json.gz",
-    )
-
-    parser.add_argument(
-        "--output",
-        required=True,
-        help="Ruta del Excel a generar",
-    )
-
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input", required=True, help="Archivo .json o .json.gz generado por extraer_zabbix.py")
+    parser.add_argument("--output", required=True, help="Archivo Excel de salida")
     args = parser.parse_args()
 
     payload = cargar_json(args.input)
-    maquinas = payload.get("maquinas", [])
-    trafico = payload.get("trafico", {})
 
-    if not maquinas:
-        print("[!] No hay máquinas en el JSON de entrada.", file=sys.stderr)
-        sys.exit(1)
+    if not payload.get("maquinas"):
+        raise SystemExit("[!] No hay máquinas en el JSON de entrada.")
 
-    filas_metricas = [
-        construir_fila_metricas(maquina)
-        for maquina in maquinas
-    ]
+    generar_excel(payload, args.output)
 
-    filas_summary = construir_filas_summary(maquinas)
-
-    try:
-        ruta = generar_excel(
-            filas_metricas,
-            filas_summary,
-            args.output,
-            trafico,
-        )
-    except Exception as exc:
-        print(f"[!] Error generando Excel: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-    print(f"Excel generado: {ruta} ({len(filas_metricas)} máquina(s))")
+    print(f"Excel generado: {args.output}")
 
 
 if __name__ == "__main__":
