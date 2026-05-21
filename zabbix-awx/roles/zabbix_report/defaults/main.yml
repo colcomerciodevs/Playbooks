@@ -45,7 +45,7 @@ grupos_app:
     - "10.181.34.5"
 
 # Entrada del usuario (la encuesta la rellena). Default = todos los grupos.
-entrada_usuario: "JDA,PeopleSoft,GEOPOS"
+entrada_usuario: "JDA,PEOPLESOFT,GEOPOS"
 
 # Rango de fechas (la encuesta los puede pedir como campos de texto).
 fecha_inicio: "2026-04-01 00:00:00"
