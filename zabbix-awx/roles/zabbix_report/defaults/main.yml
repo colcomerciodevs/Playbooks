@@ -19,10 +19,30 @@ grupos_app:
     - "10.181.3.97"
     - "10.181.3.13"
   PeopleSoft:
-    - "10.0.0.21"
-    - "10.0.0.22"
+    - "172.25.87.120"
+    - "172.25.87.110"
+    - "172.25.96.96"
+    - "172.25.96.209"
+    - "172.25.99.10"
+    - "172.25.99.176"
+    - "172.25.96.193"
+    - "172.25.98.111"
+    - "10.181.5.196"
+    - "10.181.5.195"
+    - "172.25.97.201"
+    - "172.25.97.44"
+    - "172.25.97.108"
+    - "172.25.98.228"
   GEOPOS:
-    - "10.232.3.5"
+    - "10.181.0.113"
+    - "10.181.0.117"
+    - "192.168.71.10"
+    - "192.168.71.20"
+    - "10.181.3.218"
+    - "10.181.4.248"
+    - "10.181.34.3"
+    - "10.181.34.4"
+    - "10.181.34.5"
 
 # Entrada del usuario (la encuesta la rellena). Default = todos los grupos.
 entrada_usuario: "JDA,PeopleSoft,GEOPOS"
@@ -34,6 +54,7 @@ fecha_fin: "2026-04-30 23:59:59"
 # Directorio de artefactos del job.
 # En AWX el filesystem es efímero por job: usa la carpeta del proyecto,
 # o mejor publica el resultado (ver README: opciones de entrega).
-dir_salida: "/data/work/reportes_zabbix"
+
+dir_salida: "/data/work/reportes_zabbix" #Salida del excel.
 
 nombre_base: "Reporte_Zabbix"
