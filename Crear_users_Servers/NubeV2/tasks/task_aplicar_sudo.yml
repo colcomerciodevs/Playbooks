@@ -1,0 +1,60 @@
+---
+# Configura privilegios sudo por usuario de forma idempotente.
+# Escribe un archivo por usuario en /etc/sudoers.d/ y SIEMPRE valida con visudo
+# antes de dejarlo (validate), para no romper el sudo del servidor.
+
+- name: Configurar sudo por usuario (Linux)
+  ansible.builtin.template:
+    src: templates/sudoers_usuario.j2
+    dest: "/etc/sudoers.d/{{ item.username }}"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: "visudo -cf %s"
+  loop: "{{ usuarios }}"
+  loop_control:
+    label: "{{ item.username }}"
+  when:
+    - ansible_system == "Linux"
+    - item.state | default('present') == 'present'
+    - item.sudo | default(false) | bool
+
+- name: Eliminar sudo de usuarios sin permiso o ausentes (Linux)
+  ansible.builtin.file:
+    path: "/etc/sudoers.d/{{ item.username }}"
+    state: absent
+  loop: "{{ usuarios }}"
+  loop_control:
+    label: "{{ item.username }}"
+  when:
+    - ansible_system == "Linux"
+    - (item.sudo | default(false) | bool == false)
+      or (item.state | default('present') == 'absent')
+
+- name: Configurar sudo por usuario (Solaris 11)
+  ansible.builtin.template:
+    src: templates/sudoers_usuario.j2
+    dest: "/etc/sudoers.d/{{ item.username }}"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: "/usr/bin/visudo -cf %s"
+  loop: "{{ usuarios }}"
+  loop_control:
+    label: "{{ item.username }}"
+  when:
+    - ansible_system == "SunOS"
+    - item.state | default('present') == 'present'
+    - item.sudo | default(false) | bool
+
+- name: Eliminar sudo de usuarios sin permiso o ausentes (Solaris 11)
+  ansible.builtin.file:
+    path: "/etc/sudoers.d/{{ item.username }}"
+    state: absent
+  loop: "{{ usuarios }}"
+  loop_control:
+    label: "{{ item.username }}"
+  when:
+    - ansible_system == "SunOS"
+    - (item.sudo | default(false) | bool == false)
+      or (item.state | default('present') == 'absent')

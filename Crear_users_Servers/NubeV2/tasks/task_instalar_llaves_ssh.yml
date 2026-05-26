@@ -1,0 +1,33 @@
+---
+- name: Crear directorio .ssh del usuario
+  ansible.builtin.file:
+    path: "{{ item.home | default('/home/' ~ item.username) }}/.ssh"
+    state: directory
+    owner: "{{ item.username }}"
+    group: "{{ item.group | default(item.username) }}"
+    mode: "{{ permisos.ssh_dir_mode }}"
+  loop: "{{ usuarios }}"
+  when: item.state | default('present') == 'present'
+
+- name: Instalar llave pública generada automáticamente
+  ansible.posix.authorized_key:
+    user: "{{ item.username }}"
+    key: "{{ lookup('ansible.builtin.file', llaves.ruta_llaves_local + '/' + item.username + '.pub') }}"
+    state: present
+    manage_dir: false
+    exclusive: true
+  loop: "{{ usuarios }}"
+  when:
+    - llaves.generar_automaticamente | bool
+    - item.generar_llave | default(true) | bool
+    - item.state | default('present') == 'present'
+
+- name: Asegurar permisos del authorized_keys
+  ansible.builtin.file:
+    path: "{{ item.home | default('/home/' ~ item.username) }}/.ssh/authorized_keys"
+    state: file
+    owner: "{{ item.username }}"
+    group: "{{ item.group | default(item.username) }}"
+    mode: "{{ permisos.authorized_keys_mode }}"
+  loop: "{{ usuarios }}"
+  when: item.state | default('present') == 'present'

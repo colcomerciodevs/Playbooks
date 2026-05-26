@@ -1,0 +1,51 @@
+---
+- name: Crear grupo del usuario
+  ansible.builtin.group:
+    name: "{{ item.group | default(item.username) }}"
+    state: present
+  loop: "{{ usuarios }}"
+
+- name: Crear usuarios en Linux
+  ansible.builtin.user:
+    name: "{{ item.username }}"
+    group: "{{ item.group | default(item.username) }}"
+    comment: "{{ item.comment | default(item.username) }}"
+    uid: "{{ item.uid | default(omit) }}"
+    shell: "{{ item.shell_linux | default('/bin/bash') }}"
+    home: "{{ item.home | default('/home/' ~ item.username) }}"
+    create_home: "{{ item.create_home | default(true) }}"
+    state: "{{ item.state | default('present') }}"
+    password_lock: true
+  loop: "{{ usuarios }}"
+  when: ansible_system == "Linux"
+
+- name: Crear usuarios en Solaris 11
+  ansible.builtin.user:
+    name: "{{ item.username }}"
+    group: "{{ item.group | default(item.username) }}"
+    comment: "{{ item.comment | default(item.username) }}"
+    uid: "{{ item.uid | default(omit) }}"
+    shell: "{{ item.shell_solaris | default('/usr/bin/sh') }}"
+    home: "{{ item.home | default('/home/' ~ item.username) }}"
+    create_home: "{{ item.create_home | default(true) }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ usuarios }}"
+  when: ansible_system == "SunOS"
+
+- name: Bloquear password en Linux
+  ansible.builtin.command: "passwd -l {{ item.username }}"
+  loop: "{{ usuarios }}"
+  changed_when: false
+  failed_when: false
+  when:
+    - ansible_system == "Linux"
+    - item.state | default('present') == 'present'
+
+- name: Bloquear password en Solaris 11
+  ansible.builtin.command: "passwd -l {{ item.username }}"
+  loop: "{{ usuarios }}"
+  changed_when: false
+  failed_when: false
+  when:
+    - ansible_system == "SunOS"
+    - item.state | default('present') == 'present'

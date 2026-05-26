@@ -1,0 +1,14 @@
+---
+- name: Eliminar usuarios creados por el proyecto
+  hosts: all
+  gather_facts: true
+  become: true
+
+  vars_files:
+    - vars/vars_usuarios.yml
+    - vars/vars_llaves_ssh.yml
+    - vars/vars_politica_acceso.yml
+
+  tasks:
+    - name: Eliminar usuarios definidos en variables
+      ansible.builtin.include_tasks: tasks/task_eliminar_usuarios.yml

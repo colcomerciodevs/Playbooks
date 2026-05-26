@@ -1,0 +1,19 @@
+---
+permisos:
+  # Si un usuario tiene sudo: true pero NO define item.sudo_commands,
+  # esta política decide qué se le concede por defecto:
+  #   sudo_readonly: true  -> solo los comandos de la lista readonly_commands
+  #   sudo_readonly: false -> ALL (sudo completo)
+  sudo_readonly: false
+
+  # Comandos permitidos cuando sudo_readonly es true (ajusta a tu necesidad).
+  readonly_commands:
+    - /usr/bin/cat
+    - /usr/bin/less
+    - /usr/bin/tail
+    - /usr/bin/journalctl
+    - /usr/bin/systemctl status *
+
+  home_mode: "0750"
+  ssh_dir_mode: "0700"
+  authorized_keys_mode: "0600"

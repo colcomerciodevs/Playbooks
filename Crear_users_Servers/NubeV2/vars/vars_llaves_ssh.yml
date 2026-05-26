@@ -1,0 +1,12 @@
+---
+llaves:
+  generar_automaticamente: true
+  ruta_llaves_local: "./keys"
+
+  key_type: rsa
+  key_bits: 4096
+
+  private_key_mode: "0600"
+  public_key_mode: "0644"
+
+  force: false

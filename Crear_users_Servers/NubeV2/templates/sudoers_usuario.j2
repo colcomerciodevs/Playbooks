@@ -1,0 +1,16 @@
+# {{ ansible_managed }}
+# Archivo gestionado por Ansible - NO editar manualmente.
+# Usuario: {{ item.username }}
+{# Precedencia: item.sudo_commands -> sudo_readonly -> ALL #}
+{% if item.sudo_commands is defined %}
+{%   set comandos = item.sudo_commands | join(', ') %}
+{% elif permisos.sudo_readonly | default(false) | bool %}
+{%   set comandos = permisos.readonly_commands | join(', ') %}
+{% else %}
+{%   set comandos = 'ALL' %}
+{% endif %}
+{% if item.sudo_nopasswd | default(false) | bool %}
+{{ item.username }} ALL=(ALL) NOPASSWD: {{ comandos }}
+{% else %}
+{{ item.username }} ALL=(ALL) {{ comandos }}
+{% endif %}

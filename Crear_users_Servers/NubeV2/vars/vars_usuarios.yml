@@ -1,0 +1,40 @@
+---
+usuarios:
+  # Usuario CON sudo completo, sin pedir contraseña.
+  # Recomendado cuando password_lock está activo (no tiene contraseña).
+  - username: oalvarez
+    group: soporte
+    comment: "Oscar Andres Alvarez Tabares"
+    shell_linux: /bin/bash
+    shell_solaris: /usr/bin/bash
+    home: /home/oalvarez
+    create_home: true
+    state: present
+    generar_llave: true
+    sudo: true
+    sudo_nopasswd: true
+
+  # Usuaria SIN sudo (comportamiento por defecto si se omite el campo).
+  - username: dgonzalez
+    group: soporte
+    comment: "Daniela González Echavarría"
+    shell_linux: /bin/bash
+    shell_solaris: /usr/bin/bash
+    home: /home/dgonzalez
+    create_home: true
+    state: present
+    generar_llave: true
+    sudo: false
+
+  # Usuario con sudo LIMITADO a comandos específicos (ignora sudo_readonly).
+  - username: jmonitor
+    comment: "Usuario de monitoreo"
+    home: /home/jmonitor
+    create_home: true
+    state: present
+    generar_llave: true
+    sudo: true
+    sudo_nopasswd: true
+    sudo_commands:
+      - /usr/bin/systemctl status *
+      - /usr/bin/journalctl
