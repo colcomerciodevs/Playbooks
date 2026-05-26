@@ -1,8 +1,8 @@
 [
     {
         "estado_servicio_final": "active",
-        "hostname": "manhattancups",
-        "ip": "10.181.11.174",
+        "hostname": "snnetworker",
+        "ip": "10.181.8.42",
         "nueva_version_instalada": "7.0.18",
         "version_zabbix_agent1": "6.0.45",
         "version_zabbix_agent2": "7.0.18"
