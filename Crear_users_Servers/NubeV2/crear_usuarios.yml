@@ -1,6 +1,6 @@
 ---
 - name: Crear usuarios con llave SSH
-  hosts: CKPRU1
+  hosts: REPORTES
   gather_facts: true
   become: true
 

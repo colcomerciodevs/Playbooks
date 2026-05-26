@@ -28,7 +28,7 @@
     label: "{{ item.username }}"
   when:
     - ansible_system == "Linux"
-    - (item.sudo | default(false) | bool == false)
+    - (not (item.sudo | default(false) | bool))
       or (item.state | default('present') == 'absent')
 
 - name: Configurar sudo por usuario (Solaris 11)
@@ -56,5 +56,5 @@
     label: "{{ item.username }}"
   when:
     - ansible_system == "SunOS"
-    - (item.sudo | default(false) | bool == false)
+    - (not (item.sudo | default(false) | bool))
       or (item.state | default('present') == 'absent')
