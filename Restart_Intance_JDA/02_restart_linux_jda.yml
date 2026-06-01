@@ -13,6 +13,9 @@
     mocaserver_timeout: 1200
     mocaserver_delay: 30
 
+    kill_grace_seconds: 10      # espera tras rp stop antes de forzar
+    kill_drain_seconds: 5       # espera entre SIGTERM y SIGKILL
+
   tasks:
     ###########################################################################
     # VALIDAR ESTADO WMS
@@ -82,41 +85,101 @@
     # DETENER WMS SOLO SI ESTÁ DISPONIBLE
     ###########################################################################
 
-    - name: Detener WMS como alktstwms
+    - name: Detener WMS como alktstwms (rp stop)
       ansible.builtin.shell: |
         su - {{ linux_wms_user }} -c 'rp stop'
       args:
         executable: /bin/bash
       when: wms_disponible
       changed_when: false
+      failed_when: false
 
-    - name: Ejecutar kill para procesos del usuario alktstwms
-      ansible.builtin.shell: |
-        su - {{ linux_wms_user }} -c 'kill -7 -1 -1 || true'
-      args:
-        executable: /bin/bash
+    - name: Esperar a que rp stop cierre (WMS)
+      ansible.builtin.pause:
+        seconds: "{{ kill_grace_seconds }}"
+      when: wms_disponible
+
+    - name: SIGTERM a procesos restantes del usuario WMS
+      ansible.builtin.shell: "pkill -TERM -u {{ linux_wms_user }} || true"
       when: wms_disponible
       changed_when: false
+
+    - name: Esperar drenaje WMS
+      ansible.builtin.pause:
+        seconds: "{{ kill_drain_seconds }}"
+      when: wms_disponible
+
+    - name: SIGKILL a lo que sobreviva (WMS)
+      ansible.builtin.shell: "pkill -KILL -u {{ linux_wms_user }} || true"
+      when: wms_disponible
+      changed_when: false
+
+    - name: Verificar procesos restantes del usuario WMS
+      ansible.builtin.shell: "pgrep -u {{ linux_wms_user }} -l || true"
+      register: wms_remaining
+      changed_when: false
+      when: wms_disponible
+
+    - name: Mostrar procesos restantes WMS
+      ansible.builtin.debug:
+        msg: >-
+          {% if (wms_remaining.stdout | trim) | length == 0 %}
+          Sin procesos colgados de {{ linux_wms_user }}. Limpieza OK.
+          {% else %}
+          ATENCIÓN: siguen vivos procesos de {{ linux_wms_user }}:
+          {{ wms_remaining.stdout_lines }}
+          {% endif %}
+      when: wms_disponible
 
     ###########################################################################
     # DETENER EMS SOLO SI ESTÁ DISPONIBLE
     ###########################################################################
 
-    - name: Detener EMS como alktstems
+    - name: Detener EMS como alktstems (rp stop)
       ansible.builtin.shell: |
         su - {{ linux_ems_user }} -c 'rp stop'
       args:
         executable: /bin/bash
       when: ems_disponible
       changed_when: false
+      failed_when: false
 
-    - name: Ejecutar kill para procesos del usuario alktstems
-      ansible.builtin.shell: |
-        su - {{ linux_ems_user }} -c 'kill -7 -1 -1 || true'
-      args:
-        executable: /bin/bash
+    - name: Esperar a que rp stop cierre (EMS)
+      ansible.builtin.pause:
+        seconds: "{{ kill_grace_seconds }}"
+      when: ems_disponible
+
+    - name: SIGTERM a procesos restantes del usuario EMS
+      ansible.builtin.shell: "pkill -TERM -u {{ linux_ems_user }} || true"
       when: ems_disponible
       changed_when: false
+
+    - name: Esperar drenaje EMS
+      ansible.builtin.pause:
+        seconds: "{{ kill_drain_seconds }}"
+      when: ems_disponible
+
+    - name: SIGKILL a lo que sobreviva (EMS)
+      ansible.builtin.shell: "pkill -KILL -u {{ linux_ems_user }} || true"
+      when: ems_disponible
+      changed_when: false
+
+    - name: Verificar procesos restantes del usuario EMS
+      ansible.builtin.shell: "pgrep -u {{ linux_ems_user }} -l || true"
+      register: ems_remaining
+      changed_when: false
+      when: ems_disponible
+
+    - name: Mostrar procesos restantes EMS
+      ansible.builtin.debug:
+        msg: >-
+          {% if (ems_remaining.stdout | trim) | length == 0 %}
+          Sin procesos colgados de {{ linux_ems_user }}. Limpieza OK.
+          {% else %}
+          ATENCIÓN: siguen vivos procesos de {{ linux_ems_user }}:
+          {{ ems_remaining.stdout_lines }}
+          {% endif %}
+      when: ems_disponible
 
     ###########################################################################
     # INICIAR WMS SOLO SI ESTABA DISPONIBLE AL INICIO
@@ -127,8 +190,14 @@
         su - {{ linux_wms_user }} -c 'rp start'
       args:
         executable: /bin/bash
-      when: wms_disponible
+      register: wms_start
       changed_when: false
+      when: wms_disponible
+
+    - name: Mostrar salida de rp start (WMS)
+      ansible.builtin.debug:
+        var: wms_start.stdout_lines
+      when: wms_disponible
 
     - name: Esperar a que mocaserver.log supere 40 KB
       ansible.builtin.stat:
@@ -143,7 +212,22 @@
 
     - name: Mostrar tamaño final de mocaserver.log
       ansible.builtin.debug:
-        msg: "El archivo {{ mocaserver_log }} ya superó los 60 KB. Tamaño actual: {{ mocaserver_stat.stat.size }} bytes."
+        msg: "El archivo {{ mocaserver_log }} superó los 40 KB. Tamaño actual: {{ mocaserver_stat.stat.size }} bytes."
+      when: wms_disponible
+
+    - name: Consultar estado WMS tras el arranque
+      ansible.builtin.shell: |
+        su - {{ linux_wms_user }} -c 'rp status'
+      args:
+        executable: /bin/bash
+      register: wms_status_post
+      changed_when: false
+      failed_when: false
+      when: wms_disponible
+
+    - name: Mostrar estado WMS tras el arranque
+      ansible.builtin.debug:
+        var: wms_status_post.stdout_lines
       when: wms_disponible
 
     ###########################################################################
@@ -155,5 +239,26 @@
         su - {{ linux_ems_user }} -c 'rp start'
       args:
         executable: /bin/bash
-      when: ems_disponible
+      register: ems_start
       changed_when: false
+      when: ems_disponible
+
+    - name: Mostrar salida de rp start (EMS)
+      ansible.builtin.debug:
+        var: ems_start.stdout_lines
+      when: ems_disponible
+
+    - name: Consultar estado EMS tras el arranque
+      ansible.builtin.shell: |
+        su - {{ linux_ems_user }} -c 'rp status'
+      args:
+        executable: /bin/bash
+      register: ems_status_post
+      changed_when: false
+      failed_when: false
+      when: ems_disponible
+
+    - name: Mostrar estado EMS tras el arranque
+      ansible.builtin.debug:
+        var: ems_status_post.stdout_lines
+      when: ems_disponible
