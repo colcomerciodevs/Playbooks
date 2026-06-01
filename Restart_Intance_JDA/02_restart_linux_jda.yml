@@ -199,6 +199,21 @@
         var: wms_start.stdout_lines
       when: wms_disponible
 
+    - name: Consultar estado WMS tras el arranque
+      ansible.builtin.shell: |
+        su - {{ linux_wms_user }} -c 'rp status'
+      args:
+        executable: /bin/bash
+      register: wms_status_post
+      changed_when: false
+      failed_when: false
+      when: wms_disponible
+
+    - name: Mostrar estado WMS tras el arranque
+      ansible.builtin.debug:
+        var: wms_status_post.stdout_lines
+      when: wms_disponible
+
     - name: Esperar a que mocaserver.log supere 40 KB
       ansible.builtin.stat:
         path: "{{ mocaserver_log }}"
@@ -215,20 +230,6 @@
         msg: "El archivo {{ mocaserver_log }} superó los 40 KB. Tamaño actual: {{ mocaserver_stat.stat.size }} bytes."
       when: wms_disponible
 
-    - name: Consultar estado WMS tras el arranque
-      ansible.builtin.shell: |
-        su - {{ linux_wms_user }} -c 'rp status'
-      args:
-        executable: /bin/bash
-      register: wms_status_post
-      changed_when: false
-      failed_when: false
-      when: wms_disponible
-
-    - name: Mostrar estado WMS tras el arranque
-      ansible.builtin.debug:
-        var: wms_status_post.stdout_lines
-      when: wms_disponible
 
     ###########################################################################
     # INICIAR EMS SOLO SI ESTABA DISPONIBLE AL INICIO
