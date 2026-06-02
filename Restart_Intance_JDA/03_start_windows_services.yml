@@ -7,7 +7,8 @@
     stopped_services_file: 'C:\ProgramData\awx_jda_services_stopped.txt'
 
     # --- Validación del portal JDA ---
-    portal_url: "https://prdn3jda.colcomercio.com.co/rp/login"
+    #portal_url: "https://prdn3jda.colcomercio.com.co/rp/login"
+    portal_url: "https://qan2jda.colcomercio.com.co/rp/login"
     portal_retries: 20            # 20 intentos
     portal_delay: 15              # 15s entre intentos (20 x 15s = 5 min máx)
     portal_error_string: "Invalid subsite"
