@@ -13,6 +13,8 @@
     mocaserver_timeout: 1200
     mocaserver_delay: 30
 
+    final_wait_seconds: 120     # espera final para que los servicios terminen de cargar
+
     kill_grace_seconds: 10      # espera tras rp stop antes de forzar
     kill_drain_seconds: 5       # espera entre SIGTERM y SIGKILL
 
@@ -263,3 +265,11 @@
       ansible.builtin.debug:
         var: ems_status_post.stdout_lines
       when: ems_disponible
+
+    ###########################################################################
+    # ESPERA FINAL PARA QUE LOS SERVICIOS TERMINEN DE CARGAR
+    ###########################################################################
+
+    - name: Esperar 2 minutos al final para que todo termine de cargar
+      ansible.builtin.pause:
+        seconds: "{{ final_wait_seconds }}"
