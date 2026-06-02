@@ -6,6 +6,13 @@
   vars:
     stopped_services_file: 'C:\ProgramData\awx_jda_services_stopped.txt'
 
+    # --- Validación del portal JDA ---
+    portal_url: "https://prdn3jda.colcomercio.com.co/rp/login"
+    portal_retries: 20            # 20 intentos
+    portal_delay: 15              # 15s entre intentos (20 x 15s = 5 min máx)
+    portal_error_string: "Invalid subsite"
+    portal_validate_certs: false  # true si el certificado es válido/confiable
+
   tasks:
 
     - name: Validar si existe archivo de servicios detenidos
@@ -78,6 +85,55 @@
         msg: "Servicio '{{ item.item.item }}' en {{ inventory_hostname }}: estado final -> {{ item.state | default('no consultado') }}"
       loop: "{{ post_start_info.results | default([]) }}"
       when: item.skipped is not defined or not item.skipped
+
+    ###########################################################################
+    # VALIDAR DISPONIBILIDAD DEL PORTAL JDA (solo si se iniciaron servicios)
+    ###########################################################################
+
+    - name: Esperar a que el portal JDA responda correctamente
+      ansible.windows.win_uri:
+        url: "{{ portal_url }}"
+        method: GET
+        status_code: 200
+        validate_certs: "{{ portal_validate_certs }}"
+        return_content: true
+      register: portal_check
+      until:
+        - portal_check.status_code == 200
+        - portal_error_string not in (portal_check.content | default(''))
+      retries: "{{ portal_retries }}"
+      delay: "{{ portal_delay }}"
+      failed_when: false   # no aborta en el primer fallo; se evalúa más abajo
+      when: stopped_file.stat.exists
+
+    - name: Reportar resultado de la validación del portal
+      ansible.builtin.debug:
+        msg: >-
+          Portal en {{ inventory_hostname }}:
+          {% if portal_check.status_code is defined and portal_check.status_code == 200
+                and portal_error_string not in (portal_check.content | default('')) %}
+          OK -> responde 200 y el subsite cargó correctamente.
+          {% else %}
+          ATENCIÓN -> status '{{ portal_check.status_code | default("sin respuesta") }}',
+          el portal NO quedó disponible.
+          {% endif %}
+      when: stopped_file.stat.exists
+
+    - name: Fallar el play si el portal nunca quedó disponible
+      ansible.builtin.fail:
+        msg: >-
+          El portal sigue devolviendo error (posible '{{ portal_error_string }}')
+          en {{ inventory_hostname }} tras {{ portal_retries }} intentos.
+      when:
+        - stopped_file.stat.exists
+        - >
+          portal_check.status_code is not defined or
+          portal_check.status_code != 200 or
+          (portal_error_string in (portal_check.content | default('')))
+
+    ###########################################################################
+    # LIMPIEZA
+    ###########################################################################
 
     - name: Limpiar archivo temporal de servicios detenidos
       ansible.windows.win_file:
