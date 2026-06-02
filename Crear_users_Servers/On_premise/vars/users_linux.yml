@@ -1,14 +1,73 @@
 users:
-  - name: orodriguez
-    comment: "Oscar Rodriguez"
-    home: /home/orodriguez
+  - name: sperez
+    comment: "Sergio Perez Munevar"
+    home: /home/sperez
     group: soporte
     shell: /bin/bash
-    password: "Soporte2025$"
-  - name: lcubillos
-    comment: "Lisandro Cubillos"
-    home: /home/lcubillos
+    password: "Soporte2026$"
+  - name: aroa
+    comment: "Andres Humberto Roa Irreño"
+    home: /home/aroa
     group: soporte
     shell: /bin/bash
-    password: "Soporte2025$"
-  
+    password: "Soporte2026$"
+  - name: carango
+    comment: "Cristhian David Arango Ruiz"
+    home: /home/carango
+    group: soporte
+    shell: /bin/bash
+    password: "Soporte2026$"
+  - name: jmelo
+    comment: "Jhon Jairo Melo Acero"
+    home: /home/jmelo
+    group: soporte
+    shell: /bin/bash
+    password: "Soporte2026$"
+  - name: mguerrero
+    comment: "Maria Alejandra Guerrero Martinez"
+    home: /home/mguerrero
+    group: soporte
+    shell: /bin/bash
+    password: "Soporte2026$"
+  - name: jgaitan
+    comment: "Jhojan Gaitan (Geocom)"
+    home: /home/jgaitan
+    group: soporte
+    shell: /bin/bash
+    password: "Soporte2026$"
+  - name: jcuadros
+    comment: "Jhon Alexander Cuadros Rico (Geocom)"
+    home: /home/jcuadros
+    group: soporte
+    shell: /bin/bash
+    password: "Soporte2026$"
+  - name: cmalagon
+    comment: "Cristian David Malagon (Geocom)"
+    home: /home/cmalagon
+    group: soporte
+    shell: /bin/bash
+    password: "Soporte2026$"
+  - name: hramirez
+    comment: "Harold Ramirez (Geocom)"
+    home: /home/hramirez
+    group: soporte
+    shell: /bin/bash
+    password: "Soporte2026$"
+  - name: jvelasco
+    comment: "Jhon Velasco (Geocom)"
+    home: /home/jvelasco
+    group: soporte
+    shell: /bin/bash
+    password: "Soporte2026$"
+  - name: aangelucci
+    comment: "Alesandro Angelucci (Geocom)"
+    home: /home/aangelucci
+    group: soporte
+    shell: /bin/bash
+    password: "Soporte2026$"
+  - name: acardona
+    comment: "Alvaro Cardona (Geocom)"
+    home: /home/acardona
+    group: soporte
+    shell: /bin/bash
+    password: "Soporte2026$"
