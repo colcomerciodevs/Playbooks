@@ -7,8 +7,6 @@
     stopped_services_file: 'C:\ProgramData\awx_jda_services_stopped.txt'
 
     # --- Validación del portal JDA ---
-    portal_url: "https://prdn3jda.colcomercio.com.co/rp/login"
-    #portal_url: "https://qan2jda.colcomercio.com.co/rp/login"
     portal_retries: 20            # 20 intentos
     portal_delay: 15              # 15s entre intentos (20 x 15s = 5 min máx)
     portal_error_string: "Invalid subsite"
@@ -102,6 +100,29 @@
     # VALIDAR DISPONIBILIDAD DEL PORTAL JDA (solo si se iniciaron servicios)
     ###########################################################################
 
+    ###########################################################################
+    # VALIDAR DISPONIBILIDAD DEL PORTAL JDA (solo si se iniciaron servicios)
+    ###########################################################################
+
+    - name: Mostrar la URL del portal que se va a validar
+      ansible.builtin.debug:
+        msg: >-
+          Portal a validar en {{ inventory_hostname }}:
+          '{{ portal_url | default("NO DEFINIDA") }}'
+      when: stopped_file.stat.exists
+
+    - name: Verificar que portal_url esté definida
+      ansible.builtin.assert:
+        that:
+          - portal_url is defined
+          - portal_url | length > 0
+        fail_msg: >-
+          La variable 'portal_url' no está definida (o está vacía) para
+          {{ inventory_hostname }}. Defínela en las variables del host
+          en el inventario.
+        success_msg: "portal_url definida correctamente en {{ inventory_hostname }}."
+      when: stopped_file.stat.exists
+
     - name: Esperar a que el portal JDA responda correctamente
       ansible.windows.win_uri:
         url: "{{ portal_url }}"
@@ -115,7 +136,7 @@
         - portal_error_string not in (portal_check.content | default(''))
       retries: "{{ portal_retries }}"
       delay: "{{ portal_delay }}"
-      failed_when: false   # no aborta en el primer fallo; se evalúa más abajo
+      failed_when: false
       when: stopped_file.stat.exists
 
     - name: Reportar resultado de la validación del portal
