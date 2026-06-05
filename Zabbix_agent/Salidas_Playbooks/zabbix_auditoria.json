@@ -1,10 +1,10 @@
 [
     {
         "estado_servicio_final": "active",
-        "hostname": "snnetworker",
-        "ip": "10.181.8.42",
+        "hostname": "vm-eu2-appdru04-prd",
+        "ip": "10.0.16.109",
         "nueva_version_instalada": "7.0.18",
-        "version_zabbix_agent1": "6.0.45",
+        "version_zabbix_agent1": "6.0.31",
         "version_zabbix_agent2": "7.0.18"
     }
 ]
