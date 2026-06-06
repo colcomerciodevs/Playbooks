@@ -36,40 +36,7 @@
         or (zabbix_agent2_version | default('') != zabbix_desired_version)
       }}
 
-# =====================================================================
-# AÑADIDO UBUNTU — Detección real con dpkg (rpm no aplica en Ubuntu)
-# Las tareas 02/04/06 devuelven "not_installed" en Ubuntu porque no hay
-# rpm; por eso aquí re-detectamos con dpkg y recalculamos reinstall_required.
-# =====================================================================
-
-# 06.1) (Debian) Detectar versión de Agent 2 con dpkg
-- name: (Debian) Verificar versión de Zabbix Agent 2
-  ansible.builtin.shell: "dpkg-query -W -f='${Version}' zabbix-agent2 2>/dev/null || echo not_installed"
-  register: deb_v2_ver_q
-  changed_when: false
-  when: ansible_os_family == "Debian"
-
-# 06.2) (Debian) Extraer X.Y.Z del string tipo 1:7.0.18-1+ubuntu22.04
-- name: (Debian) Normalizar versión Zabbix Agent 2
-  ansible.builtin.set_fact:
-    zabbix_agent2_version: "{{ (deb_v2_ver_q.stdout | regex_findall('([0-9]+\\.[0-9]+\\.[0-9]+)') | first) }}"
-  when:
-    - ansible_os_family == "Debian"
-    - "'not_installed' not in deb_v2_ver_q.stdout"
-
-# 06.3) (Debian) Recalcular reinstall_required (la tarea 06 da siempre 'true' en Ubuntu)
-- name: (Debian) Determinar si se requiere instalar/reinstalar Agent 2
-  ansible.builtin.set_fact:
-    reinstall_required: >-
-      {{
-        'not_installed' in deb_v2_ver_q.stdout
-        or (zabbix_agent2_version | default('') != zabbix_desired_version)
-      }}
-  when: ansible_os_family == "Debian"
-
 # 07) Construir URL del repo local según distribución/versión mayor
-#     (AÑADIDO: ramas de Ubuntu por codename; el repo local cuelga de
-#      {{ repo_base_url }}/ubuntu/<codename> con su Packages.gz)
 - name: Determinar URL del repositorio según sistema
   ansible.builtin.set_fact:
     zabbix_repo_url: >-
@@ -79,10 +46,6 @@
         else repo_base_url ~ '/el9/'   if ansible_distribution in ['RedHat','OracleLinux'] and ansible_distribution_major_version == '9'
         else repo_base_url ~ '/sles12/' if ansible_distribution in ['SLES','SUSE Linux Enterprise Server'] and ansible_distribution_major_version == '12'
         else repo_base_url ~ '/sles15/' if ansible_distribution in ['SLES','SUSE Linux Enterprise Server'] and ansible_distribution_major_version == '15'
-        else repo_base_url ~ '/ubuntu/bionic' if ansible_distribution == 'Ubuntu' and ansible_distribution_release == 'bionic'
-        else repo_base_url ~ '/ubuntu/focal'  if ansible_distribution == 'Ubuntu' and ansible_distribution_release == 'focal'
-        else repo_base_url ~ '/ubuntu/jammy'  if ansible_distribution == 'Ubuntu' and ansible_distribution_release == 'jammy'
-        else repo_base_url ~ '/ubuntu/noble'  if ansible_distribution == 'Ubuntu' and ansible_distribution_release == 'noble'
         else ''
       }}
 
@@ -276,58 +239,6 @@
     - ansible_os_family == "Suse"
     - reinstall_required
 
-# =====================================================================
-# AÑADIDO UBUNTU — Remoción + repo APT local + instalación
-# Repo plano por codename: deb [trusted=yes] {{ zabbix_repo_url }} ./
-# =====================================================================
-
-# 24.1) (Debian) Remover Agent 1 (zabbix-agent / agentd)
-- name: (Debian) Remover zabbix-agent (Agent 1)
-  ansible.builtin.apt:
-    name: zabbix-agent
-    state: absent
-    purge: true
-  when: ansible_os_family == "Debian"
-
-# 24.2) (Debian) Remover Agent 2 si se reinstala
-- name: (Debian) Remover zabbix-agent2 (si se reinstala)
-  ansible.builtin.apt:
-    name: zabbix-agent2
-    state: absent
-    purge: true
-  when:
-    - ansible_os_family == "Debian"
-    - reinstall_required
-
-# 24.3) (Debian) Crear repo APT local del codename (trusted=yes = sin firma, como gpgcheck=0)
-- name: (Debian) Agregar repositorio Zabbix local (APT)
-  ansible.builtin.copy:
-    dest: /etc/apt/sources.list.d/zabbix-local.list
-    mode: "0644"
-    content: |
-      deb [trusted=yes] {{ zabbix_repo_url }} ./
-  when: ansible_os_family == "Debian"
-
-# 24.4) (Debian) Actualizar índice SOLO del repo local (no toca repos de internet)
-- name: (Debian) apt update solo del repo local
-  ansible.builtin.command: >
-    apt-get update
-    -o Dir::Etc::sourcelist="sources.list.d/zabbix-local.list"
-    -o Dir::Etc::sourceparts="-"
-    -o APT::Get::List-Cleanup="0"
-  changed_when: false
-  when: ansible_os_family == "Debian"
-
-# 24.5) (Debian) Instalar Agent 2 (el repo del codename solo contiene la versión deseada)
-- name: (Debian) Instalar Zabbix Agent 2
-  ansible.builtin.apt:
-    name: zabbix-agent2
-    state: present
-    update_cache: false
-  when:
-    - ansible_os_family == "Debian"
-    - reinstall_required
-
 # 25) Detectar plugins de Agent2 instalados
 - name: Detectar plugins instalados de zabbix-agent2
   ansible.builtin.shell: "rpm -qa --qf '%{NAME}\n' 'zabbix-agent2-plugin*' || true"
@@ -440,13 +351,6 @@
     path: /etc/zypp/repos.d/zabbix-local.repo
     state: absent
   when: ansible_os_family == "Suse"
-
-# 32.1) (Debian) Eliminar repositorio temporal APT
-- name: (Debian) Eliminar repositorio temporal APT
-  ansible.builtin.file:
-    path: /etc/apt/sources.list.d/zabbix-local.list
-    state: absent
-  when: ansible_os_family == "Debian"
 
 # 34) Verificación: estado final del servicio (solo lectura)
 - name: Verificar estado final del servicio

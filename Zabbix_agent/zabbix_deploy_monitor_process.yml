@@ -1,6 +1,6 @@
 ---
 - name: Auditoría Zabbix Agent1/Agent2 (independiente)
-  hosts: vm-eu2-appdru04-prd
+  hosts: NUBE
   become: true
   gather_facts: true
 
