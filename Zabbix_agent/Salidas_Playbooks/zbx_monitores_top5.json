@@ -1,0 +1,11 @@
+[
+    {
+        "Estado_Zabbix": "active",
+        "Hostname": "VM-EU2-DEVOPSCOMP-PRD",
+        "IP": "10.0.16.61",
+        "InventoryHostname": "vm-eu2-devopscomp-prd",
+        "Monitores_Creados": "si",
+        "Reinicio_Zabbix": "aplicado",
+        "Version_Zabbix": "zabbix_agent2 (Zabbix) 7.0.18"
+    }
+]

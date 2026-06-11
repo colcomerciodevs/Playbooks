@@ -1,58 +1,10 @@
 [
     {
         "estado_servicio_final": "active",
-        "hostname": "vm-eu2-appdru03-rst",
-        "ip": "10.0.16.149",
-        "nueva_version_instalada": "No se instal\u00f3",
+        "hostname": "ktcar-n1",
+        "ip": "10.185.0.60",
+        "nueva_version_instalada": "7.0.18",
         "version_zabbix_agent1": "No instalado",
-        "version_zabbix_agent2": "7.0.18"
-    },
-    {
-        "estado_servicio_final": "active",
-        "hostname": "vm-eu2-appdru04-prd",
-        "ip": "10.0.16.109",
-        "nueva_version_instalada": "No se instal\u00f3",
-        "version_zabbix_agent1": "No instalado",
-        "version_zabbix_agent2": "7.0.18"
-    },
-    {
-        "estado_servicio_final": "active",
-        "hostname": "vm-eu2-dbdru02-prd",
-        "ip": "10.0.16.157",
-        "nueva_version_instalada": "7.0.18",
-        "version_zabbix_agent1": "6.0.31",
-        "version_zabbix_agent2": "7.0.18"
-    },
-    {
-        "estado_servicio_final": "active",
-        "hostname": "vm-eu2-dbdru03-prd",
-        "ip": "10.0.16.158",
-        "nueva_version_instalada": "7.0.18",
-        "version_zabbix_agent1": "6.0.31",
-        "version_zabbix_agent2": "7.0.18"
-    },
-    {
-        "estado_servicio_final": "active",
-        "hostname": "vm-eu2-zic3-prd",
-        "ip": "10.0.31.5",
-        "nueva_version_instalada": "7.0.18",
-        "version_zabbix_agent1": "6.0.24",
-        "version_zabbix_agent2": "7.0.18"
-    },
-    {
-        "estado_servicio_final": "active",
-        "hostname": "vm-eu2-srout-prd",
-        "ip": "10.0.16.132",
-        "nueva_version_instalada": "7.0.18",
-        "version_zabbix_agent1": "6.0.40",
-        "version_zabbix_agent2": "7.0.18"
-    },
-    {
-        "estado_servicio_final": "active",
-        "hostname": "vm-eu2-tdp-prd",
-        "ip": "10.0.16.133",
-        "nueva_version_instalada": "7.0.18",
-        "version_zabbix_agent1": "6.0.31",
         "version_zabbix_agent2": "7.0.18"
     }
 ]
