@@ -15,6 +15,7 @@ usuarios:
     create_home: true
     state: present
     generar_llave: true
+    force_key: true        # ← regenera la llave aunque ya exista
     sudo: false
 
   - username: dgonzalez

@@ -22,3 +22,71 @@
   run_once: true
   when:
     - item.generar_llave | default(true) | bool
+
+
+# --- Conversión a PPK para PuTTY (al final del archivo) ---
+
+- name: Verificar que puttygen esté disponible en el controlador
+  ansible.builtin.command: which puttygen
+  register: puttygen_check
+  changed_when: false
+  failed_when: false
+  delegate_to: localhost
+  become: false
+  run_once: true
+
+- name: Abortar si puttygen no está instalado en el controlador
+  ansible.builtin.assert:
+    that:
+      - puttygen_check.rc == 0
+    fail_msg: >
+      puttygen no está disponible en el controlador.
+      Instálalo con 'apt install putty-tools' (Debian/Ubuntu)
+      o 'dnf install putty' (RHEL/Oracle, requiere EPEL).
+    success_msg: "puttygen encontrado, se procede a la conversión."
+  delegate_to: localhost
+  become: false
+  run_once: true
+
+- name: Eliminar PPK previo si se forzó regeneración de llave
+  ansible.builtin.file:
+    path: "{{ llaves.ruta_llaves_local }}/{{ item.username }}.ppk"
+    state: absent
+  loop: "{{ usuarios }}"
+  loop_control:
+    label: "{{ item.username }}"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  when:
+    - item.generar_llave | default(true) | bool
+    - item.force_key | default(llaves.force) | bool
+    
+- name: Convertir llave privada a formato PPK (manteniendo la original)
+  ansible.builtin.command:
+    cmd: >
+      puttygen {{ llaves.ruta_llaves_local }}/{{ item.username }}
+      -o {{ llaves.ruta_llaves_local }}/{{ item.username }}.ppk
+      -C "{{ item.key_comment | default(item.username ~ '@ansible') }}"
+    creates: "{{ llaves.ruta_llaves_local }}/{{ item.username }}.ppk"
+  loop: "{{ usuarios }}"
+  loop_control:
+    label: "{{ item.username }}"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  when:
+    - item.generar_llave | default(true) | bool
+
+- name: Asegurar permisos de la llave PPK
+  ansible.builtin.file:
+    path: "{{ llaves.ruta_llaves_local }}/{{ item.username }}.ppk"
+    mode: "0600"
+  loop: "{{ usuarios }}"
+  loop_control:
+    label: "{{ item.username }}"
+  delegate_to: localhost
+  become: false
+  run_once: true
+  when:
+    - item.generar_llave | default(true) | bool

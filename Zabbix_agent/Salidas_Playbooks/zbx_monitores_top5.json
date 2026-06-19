@@ -1,9 +1,72 @@
 [
     {
         "Estado_Zabbix": "active",
+        "Hostname": "VM-EU2-APPDRU03-RST",
+        "IP": "10.0.16.149",
+        "InventoryHostname": "vm-eu2-appdru03-rst",
+        "Monitores_Creados": "ya_existian",
+        "Reinicio_Zabbix": "no-aplico",
+        "Version_Zabbix": "zabbix_agent2 (Zabbix) 7.0.18"
+    },
+    {
+        "Estado_Zabbix": "active",
+        "Hostname": "VM-EU2-APPDRU04-PRD",
+        "IP": "10.0.16.109",
+        "InventoryHostname": "vm-eu2-appdru04-prd",
+        "Monitores_Creados": "ya_existian",
+        "Reinicio_Zabbix": "no-aplico",
+        "Version_Zabbix": "zabbix_agent2 (Zabbix) 7.0.18"
+    },
+    {
+        "Estado_Zabbix": "active",
+        "Hostname": "VM-EU2-DBDRU02-PRD",
+        "IP": "10.0.16.157",
+        "InventoryHostname": "vm-eu2-dbdru02-prd",
+        "Monitores_Creados": "si",
+        "Reinicio_Zabbix": "aplicado",
+        "Version_Zabbix": "zabbix_agent2 (Zabbix) 7.0.18"
+    },
+    {
+        "Estado_Zabbix": "active",
+        "Hostname": "VM-EU2-DBDRU03-PRD",
+        "IP": "10.0.16.158",
+        "InventoryHostname": "vm-eu2-dbdru03-prd",
+        "Monitores_Creados": "si",
+        "Reinicio_Zabbix": "aplicado",
+        "Version_Zabbix": "zabbix_agent2 (Zabbix) 7.0.18"
+    },
+    {
+        "Estado_Zabbix": "active",
         "Hostname": "VM-EU2-DEVOPSCOMP-PRD",
         "IP": "10.0.16.61",
         "InventoryHostname": "vm-eu2-devopscomp-prd",
+        "Monitores_Creados": "ya_existian",
+        "Reinicio_Zabbix": "no-aplico",
+        "Version_Zabbix": "zabbix_agent2 (Zabbix) 7.0.18"
+    },
+    {
+        "Estado_Zabbix": "active",
+        "Hostname": "VM-EU2-SROUT-PRD",
+        "IP": "10.0.31.5",
+        "InventoryHostname": "vm-eu2-zic3-prd",
+        "Monitores_Creados": "si",
+        "Reinicio_Zabbix": "aplicado",
+        "Version_Zabbix": "zabbix_agent2 (Zabbix) 7.0.18"
+    },
+    {
+        "Estado_Zabbix": "active",
+        "Hostname": "vm-eu2-sic3-prd",
+        "IP": "10.0.16.132",
+        "InventoryHostname": "vm-eu2-srout-prd",
+        "Monitores_Creados": "si",
+        "Reinicio_Zabbix": "aplicado",
+        "Version_Zabbix": "zabbix_agent2 (Zabbix) 7.0.18"
+    },
+    {
+        "Estado_Zabbix": "active",
+        "Hostname": "VM-EU2-TDP-PRD",
+        "IP": "10.0.16.133",
+        "InventoryHostname": "vm-eu2-tdp-prd",
         "Monitores_Creados": "si",
         "Reinicio_Zabbix": "aplicado",
         "Version_Zabbix": "zabbix_agent2 (Zabbix) 7.0.18"
