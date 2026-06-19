@@ -45,6 +45,7 @@ usuarios:
   #   create_home: true
   #   state: present
   #   generar_llave: true
+  #   force_key: true        # ← regenera la llave aunque ya exista
   #   sudo: false
 
   # Ejemplo B: usuario con sudo COMPLETO sin pedir contraseña.
@@ -58,6 +59,7 @@ usuarios:
   #   create_home: true
   #   state: present
   #   generar_llave: true
+  #   force_key: true        # ← regenera la llave aunque ya exista
   #   sudo: true
   #   sudo_nopasswd: true
 
@@ -69,6 +71,7 @@ usuarios:
   #   create_home: true
   #   state: present
   #   generar_llave: true
+  #   force_key: true        # ← regenera la llave aunque ya exista
   #   sudo: true
   #   sudo_nopasswd: true
   #   sudo_commands:
