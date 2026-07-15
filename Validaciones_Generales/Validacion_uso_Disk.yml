@@ -58,6 +58,7 @@
            REPORTE DE CONSUMO DE DISCO
           ======================================================================
            Host            : {{ inventory_hostname }}
+           IP (inventario) : {{ ansible_host }}
            Ruta analizada  : {{ ruta_analizar }}
            Fecha           : {{ ansible_date_time.iso8601 }}
            Top             : {{ top_n }} carpetas/archivos
