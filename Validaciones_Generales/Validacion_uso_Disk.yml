@@ -1,0 +1,75 @@
+---
+# ==========================================================================
+# Playbook : reporte_consumo_disco.yml
+# Objetivo : Generar un .txt con las 15 carpetas/archivos que mas consumen
+#            espacio dentro de una ruta que le pasamos por parametro.
+#
+# Uso      : ansible-playbook -i inventario reporte_consumo_disco.yml \
+#                             -e "ruta_analizar=/app"
+#
+# El .txt se escribe en el NODO DE CONTROL, junto al playbook, dentro de
+# la carpeta Salidas_Playbooks/ y con nombre por host + timestamp.
+# ==========================================================================
+
+- name: Reporte de consumo de disco - Top consumidores
+  hosts: all
+  gather_facts: yes          # necesario para ansible_date_time
+
+  vars:
+    ruta_analizar: "/app"                                # override con -e ruta_analizar=/ruta
+    top_n: 15                                            # cuantos consumidores mostrar
+    dir_salida: "{{ playbook_dir }}/Salidas_Playbooks"   # carpeta de salida (nodo de control)
+
+  tasks:
+
+    - name: Validar que la ruta exista en el host remoto
+      ansible.builtin.stat:
+        path: "{{ ruta_analizar }}"
+      register: ruta_stat
+
+    - name: Abortar si la ruta no existe
+      ansible.builtin.fail:
+        msg: "La ruta '{{ ruta_analizar }}' no existe en {{ inventory_hostname }}"
+      when: not ruta_stat.stat.exists
+
+    - name: Calcular top {{ top_n }} consumidores (carpetas y archivos)
+      ansible.builtin.shell: >
+        du -ah "{{ ruta_analizar }}" 2>/dev/null
+        | sort -rh
+        | sed '1d'
+        | head -n {{ top_n }}
+      register: du_resultado
+      changed_when: false      # es una consulta, no cambia estado
+
+    - name: Crear carpeta de salida en el nodo de control
+      ansible.builtin.file:
+        path: "{{ dir_salida }}"
+        state: directory
+        mode: '0755'
+      delegate_to: localhost
+      run_once: true
+
+    - name: Escribir reporte .txt por host
+      ansible.builtin.copy:
+        dest: "{{ dir_salida }}/consumo_disco_{{ inventory_hostname }}_{{ ansible_date_time.iso8601_basic_short }}.txt"
+        mode: '0644'
+        content: |
+          ======================================================================
+           REPORTE DE CONSUMO DE DISCO
+          ======================================================================
+           Host            : {{ inventory_hostname }}
+           Ruta analizada  : {{ ruta_analizar }}
+           Fecha           : {{ ansible_date_time.iso8601 }}
+           Top             : {{ top_n }} carpetas/archivos
+          ======================================================================
+
+          {{ du_resultado.stdout }}
+
+          ----------------------------------------------------------------------
+           Generado por reporte_consumo_disco.yml
+          ----------------------------------------------------------------------
+      delegate_to: localhost
+
+    - name: Mostrar resumen en consola
+      ansible.builtin.debug:
+        msg: "Reporte de {{ inventory_hostname }} guardado en {{ dir_salida }}/"
