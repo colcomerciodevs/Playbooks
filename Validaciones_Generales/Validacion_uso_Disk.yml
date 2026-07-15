@@ -12,7 +12,7 @@
 # ==========================================================================
 
 - name: Reporte de consumo de disco - Top consumidores
-  hosts: all
+  hosts: BATCH01
   gather_facts: yes          # necesario para ansible_date_time
 
   vars:
