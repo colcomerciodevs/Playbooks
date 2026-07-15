@@ -1,0 +1,49 @@
+---
+- name: Generar llave privada y CSR
+  hosts: localhost
+  connection: local
+  become: true
+  gather_facts: false
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+
+    - name: Crear directorio
+      ansible.builtin.file:
+        path: "{{ cert_path }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Generar llave privada
+      community.crypto.openssl_privatekey:
+        path: "{{ cert_path }}/{{ cn }}.key"
+        type: RSA
+        size: 2048
+        mode: "0600"
+
+    - name: Generar CSR
+      community.crypto.openssl_csr:
+        path: "{{ cert_path }}/{{ cn }}.csr"
+        privatekey_path: "{{ cert_path }}/{{ cn }}.key"
+
+        country_name: "{{ country_name }}"
+        state_or_province_name: "{{ state_name }}"
+        locality_name: "{{ locality_name }}"
+        organization_name: "{{ organization_name }}"
+        organizational_unit_name: "{{ organizational_unit_name }}"
+        common_name: "{{ cn }}"
+
+        subject_alt_name: "{{ san.split(',') }}"
+
+        subject:
+          streetAddress: "{{ street_address }}"
+          postalCode: "{{ postal_code }}"
+          serialNumber: "{{ serial_number }}"
+          businessCategory: "{{ business_category }}"
+          jurisdictionC: "{{ jurisdiction_country }}"
+          jurisdictionST: "{{ jurisdiction_state }}"
+          jurisdictionL: "{{ jurisdiction_locality }}"

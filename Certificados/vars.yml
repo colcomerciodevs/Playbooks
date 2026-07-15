@@ -1,0 +1,17 @@
+---
+cert_path: /root/certificados/cert_2026
+
+country_name: CO
+state_name: DISTRITO CAPITAL
+locality_name: BOGOTA
+organization_name: COLOMBIANA DE COMERCIO S.A.
+organizational_unit_name: CIBERSEGURIDAD
+
+street_address: CALLE 11 31 A 42
+postal_code: "10134"
+serial_number: "890900943 - 1"
+business_category: Private Organization
+
+jurisdiction_country: CO
+jurisdiction_state: Distrito Capital
+jurisdiction_locality: BOGOTA

@@ -1,0 +1,21 @@
+[
+    {
+        "agent_version": "11.0.1-suse15",
+        "error": "",
+        "groups": "corbeta",
+        "host": "alk33-qa",
+        "hostname": "alk33-qa",
+        "installed": true,
+        "ip_address": "10.181.11.146",
+        "link_output": "[info] [agent] HostTag::getUnix: setting TAG value to '8d210b0f3f6749a584af742f064e4907'\n[info] [agent] Successfully linked to 10.181.8.192:8834",
+        "link_status": "connection has not been attempted",
+        "linked": true,
+        "manager_host": "10.181.8.192",
+        "manager_port": 8834,
+        "os_family": "Suse",
+        "os_name": "SLES",
+        "os_version": "15.7",
+        "service_active": true,
+        "timestamp": "2026-07-15T14:38:04Z"
+    }
+]
