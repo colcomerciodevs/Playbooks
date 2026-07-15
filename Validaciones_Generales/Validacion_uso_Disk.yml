@@ -1,24 +1,25 @@
 ---
 # ==========================================================================
 # Playbook : reporte_consumo_disco.yml
-# Objetivo : Generar un .txt con las 15 carpetas/archivos que mas consumen
-#            espacio dentro de una ruta que le pasamos por parametro.
+# Objetivo : Reporte .txt de consumo de disco de una ruta, con 3 vistas:
+#            1) Filesystem (df)  2) Top directorios  3) Top archivos
 #
-# Uso      : ansible-playbook -i inventario reporte_consumo_disco.yml \
+# Uso      : ansible-playbook -i inventario.ini reporte_consumo_disco.yml \
 #                             -e "ruta_analizar=/app"
 #
-# El .txt se escribe en el NODO DE CONTROL, junto al playbook, dentro de
-# la carpeta Salidas_Playbooks/ y con nombre por host + timestamp.
+# Salida   : nodo de control, en Salidas_Playbooks/, por host + timestamp.
 # ==========================================================================
 
-- name: Reporte de consumo de disco - Top consumidores
+- name: Reporte de consumo de disco - vistas separadas
   hosts: BATCH01
-  gather_facts: yes          # necesario para ansible_date_time
+  gather_facts: yes
+  become: true               # escalar a root para leer subdirectorios restringidos
+  become_method: sudo
 
   vars:
-    ruta_analizar: "/app"                                # override con -e ruta_analizar=/ruta
-    top_n: 15                                            # cuantos consumidores mostrar
-    dir_salida: "{{ playbook_dir }}/Salidas_Playbooks"   # carpeta de salida (nodo de control)
+    ruta_analizar: "/app"                                # override con -e
+    top_n: 15                                            # cuantos elementos por vista
+    dir_salida: "{{ playbook_dir }}/Salidas_Playbooks"
 
   tasks:
 
@@ -32,14 +33,38 @@
         msg: "La ruta '{{ ruta_analizar }}' no existe en {{ inventory_hostname }}"
       when: not ruta_stat.stat.exists
 
-    - name: Calcular top {{ top_n }} consumidores (carpetas y archivos)
+    # --- Vista 1: contexto del filesystem que contiene la ruta ---
+    - name: Uso del filesystem (df)
+      ansible.builtin.shell: "df -h {{ ruta_analizar }}"
+      register: df_resultado
+      changed_when: false
+
+    # --- Total de la ruta ---
+    - name: Total ocupado por la ruta
+      ansible.builtin.shell: "du -shx {{ ruta_analizar }} 2>/dev/null || true"
+      register: total_resultado
+      changed_when: false
+
+    # --- Vista 2: top directorios por tamano total (du acumulado) ---
+    #     Suma cada directorio + sus subdirectorios. Vista estandar; el CACHE
+    #     y demas bloques aparecen aunque se fragmenten internamente.
+    - name: Top {{ top_n }} directorios por tamano total
       ansible.builtin.shell: >
-        du -ah "{{ ruta_analizar }}" 2>/dev/null
+        du -hx "{{ ruta_analizar }}" 2>/dev/null
         | sort -rh
         | sed '1d'
         | head -n {{ top_n }}
-      register: du_resultado
-      changed_when: false      # es una consulta, no cambia estado
+      register: dirs_resultado
+      changed_when: false
+
+    # --- Vista 3: top archivos individuales (lo accionable) ---
+    - name: Top {{ top_n }} archivos individuales
+      ansible.builtin.shell: >
+        find "{{ ruta_analizar }}" -type f -exec du -h {} + 2>/dev/null
+        | sort -rh
+        | head -n {{ top_n }}
+      register: archivos_resultado
+      changed_when: false
 
     - name: Crear carpeta de salida en el nodo de control
       ansible.builtin.file:
@@ -47,6 +72,7 @@
         state: directory
         mode: '0755'
       delegate_to: localhost
+      become: false
       run_once: true
 
     - name: Escribir reporte .txt por host
@@ -60,16 +86,27 @@
            Host            : {{ inventory_hostname }}
            IP (inventario) : {{ ansible_host }}
            Ruta analizada  : {{ ruta_analizar }}
-           Fecha           : {{ ansible_date_time.iso8601 }}
-           Top             : {{ top_n }} carpetas/archivos
+           Fecha           : {{ ansible_date_time.date }} {{ ansible_date_time.time }} ({{ ansible_date_time.tz }})
+           Top             : {{ top_n }} por vista
           ======================================================================
 
-          {{ du_resultado.stdout }}
+          [ FILESYSTEM ]
+          {{ df_resultado.stdout }}
+
+          [ TOTAL DE {{ ruta_analizar }} ]
+          {{ total_resultado.stdout }}
+
+          [ TOP {{ top_n }} DIRECTORIOS (por tamano total) ]
+          {{ dirs_resultado.stdout | default('(sin datos)', true) }}
+
+          [ TOP {{ top_n }} ARCHIVOS INDIVIDUALES ]
+          {{ archivos_resultado.stdout | default('(sin datos)', true) }}
 
           ----------------------------------------------------------------------
            Generado por reporte_consumo_disco.yml
           ----------------------------------------------------------------------
       delegate_to: localhost
+      become: false
 
     - name: Mostrar resumen en consola
       ansible.builtin.debug:
