@@ -60,7 +60,7 @@
     # --- Vista 3: top archivos individuales (lo accionable) ---
     - name: Top {{ top_n }} archivos individuales
       ansible.builtin.shell: >
-        find "{{ ruta_analizar }}" -type f -exec du -h {} + 2>/dev/null
+        find "{{ ruta_analizar }}" -xdev -type f -exec du -h {} + 2>/dev/null
         | sort -rh
         | head -n {{ top_n }}
       register: archivos_resultado
