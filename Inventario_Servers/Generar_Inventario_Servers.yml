@@ -1,0 +1,314 @@
+# ============================================================
+# Playbook: Inventario de S.O. + Hardware (JSON -> Excel)
+# Autor: Infraestructura Linux
+# Descripción:
+#   Recolecta información de cada host gestionado:
+#     - Nombre definido en inventario (inventory_hostname)
+#     - Hostname real del sistema operativo (ansible_hostname)
+#     - Dirección IP tomada del inventario (ansible_host)
+#     - Versión completa del sistema operativo (de ansible_facts)
+#     - SERIAL       -> dmidecode
+#     - PROCESADOR   -> lscpu
+#     - MEMORIA      -> free -h
+#     - DISCO (LVM)  -> pvs
+#
+#   Luego consolida todo en un archivo JSON y lo convierte a Excel.
+#
+# Uso:
+#   ansible-playbook -i inventarios/hosts.ini inventario_hw_so.yml
+#   ansible-playbook -i inventarios/hosts.ini inventario_hw_so.yml -e "target_hosts=sede_kt"
+# ============================================================
+
+- name: Inventario de S.O. y hardware (serial, CPU, memoria, disco)
+  hosts: inventario_fallidos
+  gather_facts: true
+  # become a nivel de play: dmidecode y pvs requieren privilegios.
+  # Si no usas sudo sin password, ejecuta con --ask-become-pass o pon become: false
+  become: true
+  vars:
+    # 0# Ruta de salida del JSON y Excel en la raíz del proyecto
+    out_dir: "{{ playbook_dir }}/Salidas_Playbooks"
+    #json_file: "{{ out_dir }}/version_sistemas.json"
+    json_file: "{{ out_dir }}/inventario_servers.json"
+    # Valores "basura" que devuelve dmidecode en equipos virtuales / mal aprovisionados
+    serial_invalidos:
+      - ""
+      - "na"
+      - "n/a"
+      - "none"
+      - "not specified"
+      - "not available"
+      - "system serial number"
+      - "to be filled by o.e.m."
+      - "0"
+      - "unknown"
+
+  pre_tasks:
+    # ============================================================
+    # 1# Crear la carpeta de salida en localhost (una sola vez)
+    # ============================================================
+    - name: 1# Crear carpeta de salidas
+      ansible.builtin.file:
+        path: "{{ out_dir }}"
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+      become: false
+      run_once: true
+
+    # ============================================================
+    # 2# Inicializar la estructura por host donde guardaremos los datos
+    # ============================================================
+    - name: 2# Inicializar estructura de datos por host
+      ansible.builtin.set_fact:
+        host_entry: {}
+
+  tasks:
+    # 3.1# Mapa simple de nombres de distribución (normalizados)
+    - name: 3.1# Normalizar nombre de distribución (mapa extendido)
+      ansible.builtin.set_fact:
+        distro_map:
+          OracleLinux: "Oracle Linux"
+          Oracle Linux Server: "Oracle Linux"
+          RedHat: "Red Hat Enterprise Linux"
+          Red Hat: "Red Hat Enterprise Linux"
+          CentOS Linux: "CentOS"
+          CentOS: "CentOS"
+          Rocky: "Rocky Linux"
+          AlmaLinux: "AlmaLinux"
+          Ubuntu: "Ubuntu"
+          Debian: "Debian"
+          Amazon: "Amazon Linux"
+          AmazonLinux: "Amazon Linux"
+          SUSE: "SUSE Linux Enterprise Server"
+          openSUSE: "openSUSE Leap"
+
+    # 3.2# Determinar versión completa del S.O. (simple, SLES bonito)
+    - name: 3.2# Determinar versión completa del S.O. (sin 'NA' y SLES con SP)
+      ansible.builtin.set_fact:
+        os_full_version: >-
+          {% if ansible_lsb is defined and ansible_lsb.description is defined
+                and (ansible_lsb.description | trim | length) > 0 %}
+            {{ ansible_lsb.description | regex_replace('\s+\([^)]+\)$', '') | trim }}
+          {% else %}
+            {% set distro_raw = (ansible_distribution | default('Desconocido')) | trim %}
+            {% set distro     = (distro_map.get(distro_raw, distro_raw)) | trim %}
+            {% set ver        = (ansible_distribution_version | default('')) | trim %}
+            {% set rel        = (ansible_distribution_release | default('')) | trim %}
+            {% set rel_ok     = (rel | lower not in ['na', 'n/a', '', 'none']) %}
+
+            {{ (
+              (
+                'SUSE Linux Enterprise Server '
+                ~ (ver.split('.')[0] if (distro in ['SUSE Linux Enterprise Server', 'SLES'] and ver|length > 0) else '')
+                ~ ((' SP' ~ rel) if (distro in ['SUSE Linux Enterprise Server', 'SLES'] and rel_ok) else '')
+              )
+              if distro in ['SUSE Linux Enterprise Server', 'SLES']
+              else (
+                distro
+                ~ ((' ' ~ ver) if ver else '')
+                ~ ((' (' ~ rel ~ ')') if rel_ok else '')
+              )
+            ) | regex_replace('\s+', ' ') | trim }}
+          {% endif %}
+
+    # ============================================================
+    # 3.3# SERIAL  ->  dmidecode
+    #   Equivalente a: dmidecode | grep -i -A4 "^system info"
+    #   Se usa 'dmidecode -t system' porque es más fácil de parsear.
+    # ============================================================
+    - name: 3.3# Obtener SERIAL (dmidecode -t system)
+      ansible.builtin.shell: |
+        set -o pipefail
+        LC_ALL=C dmidecode -t system 2>/dev/null \
+          | awk -F':' '/Serial Number/ {sub(/^[ \t]+/,"",$2); print $2; exit}'
+      args:
+        executable: /bin/bash
+      register: r_serial
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    # Fabricante y modelo (mismo bloque de dmidecode, útil para el reporte)
+    - name: 3.3.1# Obtener FABRICANTE y MODELO (dmidecode -t system)
+      ansible.builtin.shell: |
+        set -o pipefail
+        LC_ALL=C dmidecode -t system 2>/dev/null \
+          | awk -F':' '/Manufacturer|Product Name/ {sub(/^[ \t]+/,"",$2); printf "%s|", $2}'
+      args:
+        executable: /bin/bash
+      register: r_modelo
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    # ============================================================
+    # 3.4# PROCESADOR  ->  lscpu
+    # ============================================================
+    - name: 3.4# Obtener PROCESADOR (lscpu)
+      ansible.builtin.shell: |
+        set -o pipefail
+        LC_ALL=C lscpu 2>/dev/null \
+          | awk -F':' '/^Model name/ {sub(/^[ \t]+/,"",$2); print $2; exit}'
+      args:
+        executable: /bin/bash
+      register: r_cpu_modelo
+      become: false
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: 3.4.1# Obtener cantidad de CPUs y sockets (lscpu)
+      ansible.builtin.shell: |
+        set -o pipefail
+        LC_ALL=C lscpu 2>/dev/null \
+          | awk -F':' '/^CPU\(s\)/ {gsub(/[ \t]/,"",$2); print $2; exit}'
+      args:
+        executable: /bin/bash
+      register: r_cpu_count
+      become: false
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    # ============================================================
+    # 3.5# MEMORIA  ->  free -h  (columna 'total' de la línea Mem:)
+    # ============================================================
+    - name: 3.5# Obtener MEMORIA total (free -h)
+      ansible.builtin.shell: |
+        set -o pipefail
+        LC_ALL=C free -h 2>/dev/null \
+          | awk '/^Mem:/ {print $2; exit}'
+      args:
+        executable: /bin/bash
+      register: r_mem
+      become: false
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    # ============================================================
+    # 3.6# TAMAÑO DISCO  ->  pvs  (suma de todos los Physical Volumes)
+    # ============================================================
+    - name: 3.6# Obtener TAMAÑO DISCO total en LVM (pvs)
+      ansible.builtin.shell: |
+        set -o pipefail
+        LC_ALL=C pvs --noheadings --units g -o pv_size 2>/dev/null \
+          | awk '{gsub(/[gG]/,"",$1); s+=$1} END {if (s>0) printf "%.2f GB", s; else print ""}'
+      args:
+        executable: /bin/bash
+      register: r_disco_total
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: 3.6.1# Obtener detalle de PVs (pv_name, vg_name, tamaño)
+      ansible.builtin.shell: |
+        set -o pipefail
+        LC_ALL=C pvs --noheadings --units g -o pv_name,vg_name,pv_size 2>/dev/null \
+          | awk '{printf "%s(%s)=%s; ", $1, $2, $3}'
+      args:
+        executable: /bin/bash
+      register: r_disco_detalle
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    # ============================================================
+    # 3.7# Normalizar los valores obtenidos, con fallback a ansible_facts
+    #      (si el comando no existe o falla, no se pierde el host)
+    # ============================================================
+    - name: 3.7# Normalizar SERIAL / PROCESADOR / MEMORIA / DISCO
+      ansible.builtin.set_fact:
+        serial_number: >-
+          {%- set s = (r_serial.stdout | default('') | trim) -%}
+          {{ s if (s | lower) not in serial_invalidos
+             else (ansible_product_serial | default('N/A') | trim) }}
+        equipo_modelo: >-
+          {{ (r_modelo.stdout | default('') | trim | regex_replace('\|+$', '') | regex_replace('\|', ' ') | trim)
+             or ((ansible_system_vendor | default('')) ~ ' ' ~ (ansible_product_name | default('')) | trim) }}
+        procesador: >-
+          {{ (r_cpu_modelo.stdout | default('') | trim)
+             or (ansible_processor[2] | default(ansible_processor[0] | default('N/A'))) }}
+        cpu_total: >-
+          {{ (r_cpu_count.stdout | default('') | trim)
+             or (ansible_processor_vcpus | default('N/A')) }}
+        memoria: >-
+          {{ (r_mem.stdout | default('') | trim)
+             or (((ansible_memtotal_mb | default(0) | int / 1024) | round(1) | string) ~ 'Gi') }}
+        disco_total: >-
+          {{ (r_disco_total.stdout | default('') | trim) or 'N/A (sin LVM)' }}
+        disco_detalle: >-
+          {{ (r_disco_detalle.stdout | default('') | trim | regex_replace(';\s*$', '')) or 'N/A' }}
+
+    # ============================================================
+    # 4# Tomar IP desde el inventario con fallback al nombre de host
+    # ============================================================
+    - name: 4# Definir IP desde inventario (fallback)
+      ansible.builtin.set_fact:
+        ip_from_inventory: "{{ hostvars[inventory_hostname].ansible_host | default(inventory_hostname) }}"
+
+    # ============================================================
+    # 5# Construir entrada final por host con todos los campos requeridos
+    # ============================================================
+    - name: 5# Construir diccionario por host
+      ansible.builtin.set_fact:
+        host_entry:
+          inventory_name: "{{ inventory_hostname }}"                        # nombre definido en el inventario
+          hostname: "{{ ansible_hostname | default(inventory_hostname) }}"  # nombre real del sistema operativo
+          ip: "{{ ip_from_inventory }}"                                     # IP definida o fallback
+          os_full_version: "{{ os_full_version }}"                          # versión completa del S.O.
+          serial: "{{ serial_number }}"                                     # dmidecode
+          modelo: "{{ equipo_modelo }}"                                     # dmidecode (fabricante + producto)
+          procesador: "{{ procesador }}"                                    # lscpu (Model name)
+          cpu_total: "{{ cpu_total }}"                                      # lscpu (CPU(s))
+          memoria: "{{ memoria }}"                                          # free -h
+          disco_total: "{{ disco_total }}"                                  # pvs (suma)
+          disco_detalle: "{{ disco_detalle }}"                              # pvs (detalle)
+
+  post_tasks:
+    # ============================================================
+    # 6# Consolidar toda la información de los hosts en una lista única
+    # ============================================================
+    - name: 6# Construir lista agregada de todos los hosts
+      ansible.builtin.set_fact:
+        aggregated_entries: >-
+          {{
+            ansible_play_hosts_all
+            | map('extract', hostvars, 'host_entry')
+            | select('defined')
+            | select('ne', None)
+            | select('ne', {})
+            | list
+          }}
+      run_once: true
+
+    # ============================================================
+    # 7# Guardar la lista consolidada en un archivo JSON
+    # ============================================================
+    - name: 7# Guardar JSON consolidado
+      ansible.builtin.copy:
+        dest: "{{ json_file }}"
+        content: "{{ aggregated_entries | to_nice_json }}"
+        mode: "0644"
+      delegate_to: localhost
+      become: false
+      run_once: true
+
+    # ============================================================
+    # 8# Ejecutar script Python que convierte el JSON a Excel
+    #     - Asegúrate que exista: scripts/convert_json_to_excel.py
+    # ============================================================
+    - name: 8# Ejecutar script convert_json_to_excel.py
+      ansible.builtin.command:
+        cmd: "python3 {{ playbook_dir }}/scripts/convert_json_to_excel.py"
+      delegate_to: localhost
+      become: false
+      run_once: true
+      changed_when: false
+      register: r_excel
+
+    - name: 9# Mostrar resultado del script
+      ansible.builtin.debug:
+        msg: "{{ r_excel.stdout_lines | default([]) }}"
+      run_once: true
