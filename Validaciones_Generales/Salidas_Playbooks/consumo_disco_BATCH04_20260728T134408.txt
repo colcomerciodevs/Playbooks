@@ -1,0 +1,54 @@
+======================================================================
+ REPORTE DE CONSUMO DE DISCO
+======================================================================
+ Host            : BATCH04
+ IP (inventario) : 172.25.96.209
+ Ruta analizada  : /app
+ Fecha           : 2026-07-28 13:44:08 (-05)
+ Top             : 15 por vista
+======================================================================
+
+[ FILESYSTEM ]
+Filesystem                   Size  Used Avail Use% Mounted on
+/dev/mapper/vg_apps-lv_apps  120G   75G   46G  63% /app
+
+[ TOTAL DE /app ]
+74G	/app
+
+[ TOP 15 DIRECTORIOS (por tamano total) ]
+67G	/app/psoft
+62G	/app/psoft/pt
+47G	/app/psoft/pt/pscfg
+46G	/app/psoft/pt/pscfg/appserv
+43G	/app/psoft/pt/pscfg/appserv/prcs
+23G	/app/psoft/pt/pscfg/appserv/prcs/CKPR2
+21G	/app/psoft/pt/pscfg/appserv/prcs/CKPR
+13G	/app/psoft/pt/pscfg/appserv/prcs/CKPR/log_output
+9.9G	/app/psoft/pt/pscfg/appserv/prcs/CKPR2/CACHE
+7.4G	/app/psoft/pt/pscfg/appserv/prcs/CKPR2/LOGS
+7.3G	/app/medios
+6.0G	/app/psoft/pt/fscm8.9
+5.6G	/app/psoft/pt/pscfg/appserv/prcs/CKPR/LOGS
+4.8G	/app/psoft/pt/ps_home8.58.22
+4.6G	/app/psoft/dpk/archives
+
+[ TOP 15 ARCHIVOS INDIVIDUALES ]
+2.8G	/app/psoft/pt/fscm8.9/FSCM89.tar.gz
+2.7G	/app/medios/PT-DPK-LNX-8.58.22-2of2.zip
+1.9G	/app/psoft/dpk/archives/pt-pshome8.58.22.tgz
+1.9G	/app/medios/PT-DPK-LNX-8.58.22-1of2.zip
+1.5G	/app/medios/PTC-DPK-WIN8.58.22-1of1.zip
+1.3G	/app/psoft/pt/ps_home8.58.22/projects/PPLTLS84CUR/PPLTLS84CUR.XML
+1.1G	/app/psoft/pt/pscfg/appserv/prcs/CKPR2/APPSRV.LOG
+875M	/app/psoft/dpk/archives/pt-ohs12.2.1.3.0.tgz
+798M	/app/psoft/dpk/archives/pt-weblogic12.2.1.4.0.tgz
+685M	/app/psoft/pt/pscfg/appserv/prcs/CKPR/log_output/AE_PSQUERY_271811077/CK_GL_IN_CUADRE_INVENTARIO-271811077.xml
+635M	/app/psoft/dpk/archives/pt-oracleclient-12.1.0.2.tgz
+630M	/app/medios/VisualCOBOL/setup_visualcobol_devhub_6.0_patchupdate02_264847_redhat_x86_64
+624M	/app/psoft/pt/pscfg/appserv/prcs/CKPR/log_output/CSR143200ALBOY 20260630.CSV
+624M	/app/psoft/pt/pscfg/appserv/prcs/CKPR2/log_output/AE_CKCENRSG_REP_272194774/CSR143200ALBOY 20260630.CSV
+615M	/app/psoft/pt/pscfg/appserv/prcs/CKPR2/LOGS/stdout
+
+----------------------------------------------------------------------
+ Generado por reporte_consumo_disco.yml
+----------------------------------------------------------------------

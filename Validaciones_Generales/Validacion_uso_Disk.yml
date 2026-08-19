@@ -11,7 +11,7 @@
 # ==========================================================================
 
 - name: Reporte de consumo de disco - vistas separadas
-  hosts: BATCH01
+  hosts: BATCH03
   gather_facts: yes
   become: true               # escalar a root para leer subdirectorios restringidos
   become_method: sudo

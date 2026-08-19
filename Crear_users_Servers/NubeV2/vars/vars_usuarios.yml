@@ -6,24 +6,36 @@ usuarios:
   # tienen permisos. Sin sudo ni privilegios administrativos.
   # ---------------------------------------------------------------------------
 
-  - username: oalvarez
+  - username: nmachado
     #group: soporte
-    comment: "Oscar Andres Alvarez Tabares"
+    comment: "Nestor Machado"
     shell_linux: /bin/bash
     shell_solaris: /usr/bin/bash
-    home: /home/oalvarez
+    home: /home/nmachado
     create_home: true
     state: present
     generar_llave: true
     #force_key: true        # ← regenera la llave aunque ya exista
     sudo: false
 
-  - username: dgonzalez
+  - username: arodriguez
     #group: soporte
-    comment: "Daniela González Echavarría"
+    comment: "Alexander Rodriguez"
     shell_linux: /bin/bash
     shell_solaris: /usr/bin/bash
-    home: /home/dgonzalez
+    home: /home/arodriguez
+    create_home: true
+    state: present
+    generar_llave: true
+    #force_key: true        # ← regenera la llave aunque ya exista
+    sudo: false
+    
+  - username: jvicioso
+    #group: soporte
+    comment: "John Vicioso"
+    shell_linux: /bin/bash
+    shell_solaris: /usr/bin/bash
+    home: /home/jvicioso
     create_home: true
     state: present
     generar_llave: true

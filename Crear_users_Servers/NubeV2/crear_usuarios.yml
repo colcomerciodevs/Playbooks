@@ -1,6 +1,6 @@
 ---
 - name: Crear usuarios con llave SSH
-  hosts: REPORTES
+  hosts: AWS
   gather_facts: true
   become: true
 
