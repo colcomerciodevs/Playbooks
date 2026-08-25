@@ -1,6 +1,6 @@
 ---
 - name: Crear usuarios con llave SSH
-  hosts: BATMAN_NEW
+  hosts: TEDAFBOGDIS-QA
   gather_facts: true
   become: true
 

@@ -6,12 +6,12 @@ usuarios:
   # tienen permisos. Sin sudo ni privilegios administrativos.
   # ---------------------------------------------------------------------------
 
-  - username: SRVINNOPS
+  - username: srvinnops
     #group: soporte
     comment: "Plataforma de IA Infraestructura Corbeta"
     shell_linux: /bin/bash
     shell_solaris: /usr/bin/bash
-    home: /home/SRVINNOPS
+    home: /home/srvinnops
     create_home: true
     state: present
     generar_llave: true
