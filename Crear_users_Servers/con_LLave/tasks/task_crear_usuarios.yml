@@ -5,6 +5,27 @@
     state: present
   loop: "{{ usuarios }}"
 
+- name: Validar si existe el grupo de acceso SSH en el host
+  ansible.builtin.command: "getent group {{ acceso_ssh.grupo | default('ssh_access') }}"
+  register: grupo_acceso_ssh
+  changed_when: false
+  failed_when: false
+  check_mode: false          
+  when: acceso_ssh.habilitado | default(true) | bool
+
+- name: Registrar si el usuario debe agregarse al grupo de acceso SSH
+  ansible.builtin.set_fact:
+    agregar_a_grupo_ssh: "{{ (grupo_acceso_ssh.rc | default(1)) == 0 }}"
+
+- name: Informar el resultado de la validación del grupo de acceso SSH
+  ansible.builtin.debug:
+    msg: >-
+      {{ (agregar_a_grupo_ssh | bool)
+         | ternary('El grupo ' ~ (acceso_ssh.grupo | default('ssh_access')) ~
+                   ' existe: los usuarios se agregarán a él.',
+                   'El grupo ' ~ (acceso_ssh.grupo | default('ssh_access')) ~
+                   ' no existe en este host: no se realizan cambios de grupo.') }}
+
 - name: Crear usuarios en Linux
   ansible.builtin.user:
     name: "{{ item.username }}"
@@ -16,6 +37,8 @@
     create_home: "{{ item.create_home | default(true) }}"
     state: "{{ item.state | default('present') }}"
     password_lock: true
+    groups: "{{ [acceso_ssh.grupo | default('ssh_access')] if (agregar_a_grupo_ssh | bool) else omit }}"
+    append: true
   loop: "{{ usuarios }}"
   when: ansible_system == "Linux"
 
@@ -29,6 +52,8 @@
     home: "{{ item.home | default('/home/' ~ item.username) }}"
     create_home: "{{ item.create_home | default(true) }}"
     state: "{{ item.state | default('present') }}"
+    groups: "{{ [acceso_ssh.grupo | default('ssh_access')] if (agregar_a_grupo_ssh | bool) else omit }}"
+    append: true
   loop: "{{ usuarios }}"
   when: ansible_system == "SunOS"
 

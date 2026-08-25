@@ -20,6 +20,8 @@ Este proyecto realiza las siguientes acciones:
 - Genera llaves SSH automáticamente en el nodo Ansible o AWX.
 - Instala la llave pública en el archivo `authorized_keys` del usuario.
 - Bloquea el acceso por contraseña.
+- Agrega el usuario al grupo de acceso SSH (`ssh_access`) **solo si ese grupo ya
+  existe** en el servidor destino.
 - Aplica permisos seguros sobre:
   - Directorio home.
   - Directorio `.ssh`.
@@ -30,6 +32,18 @@ Este proyecto realiza las siguientes acciones:
   - MySQL.
   - Linux.
   - Solaris 11.
+
+- Agrega el usuario al grupo de acceso SSH (`ssh_access`) **solo si ese grupo ya
+  existe** en el servidor destino.
+
+- Agrega el usuario al grupo de acceso SSH (`ssh_access`) **solo si ese grupo ya
+  existe** en el servidor destino.
+
+- Agrega el usuario al grupo de acceso SSH (`ssh_access`) **solo si ese grupo ya
+  existe** en el servidor destino.
+
+- Agrega el usuario al grupo de acceso SSH (`ssh_access`) **solo si ese grupo ya
+  existe** en el servidor destino.
 
 ---
 
@@ -65,21 +79,21 @@ Nube/
 
 Los usuarios se definen en `vars/vars_usuarios.yml`. Campos disponibles:
 
-| Campo            | Obligatorio | Por defecto              | Descripción                                              |
-|------------------|-------------|--------------------------|----------------------------------------------------------|
-| `username`       | Sí          | -                        | Nombre del usuario.                                      |
-| `group`          | No          | `username`               | Grupo primario. Si se omite, se crea uno con su nombre.  |
-| `comment`        | No          | `username`               | Comentario / nombre completo (GECOS).                    |
-| `uid`            | No          | (automático)             | UID específico.                                          |
-| `shell_linux`    | No          | `/bin/bash`              | Shell en servidores Linux.                               |
-| `shell_solaris`  | No          | `/usr/bin/sh`            | Shell en servidores Solaris 11.                          |
-| `home`           | No          | `/home/<username>`       | Directorio home.                                         |
-| `create_home`    | No          | `true`                   | Crear el home.                                           |
-| `state`          | No          | `present`                | `present` o `absent`.                                    |
-| `generar_llave`  | No          | `true`                   | Generar e instalar llave SSH.                            |
-| `sudo`           | No          | `false`                  | Si el usuario tiene privilegios sudo.                    |
-| `sudo_nopasswd`  | No          | `false`                  | Si sudo se concede sin pedir contraseña.                 |
-| `sudo_commands`  | No          | (según política)         | Lista de comandos específicos permitidos vía sudo.       |
+| Campo             | Obligatorio | Por defecto          | Descripción                                            |
+| ----------------- | ----------- | -------------------- | ------------------------------------------------------- |
+| `username`      | Sí         | -                    | Nombre del usuario.                                     |
+| `group`         | No          | `username`         | Grupo primario. Si se omite, se crea uno con su nombre. |
+| `comment`       | No          | `username`         | Comentario / nombre completo (GECOS).                   |
+| `uid`           | No          | (automático)        | UID específico.                                        |
+| `shell_linux`   | No          | `/bin/bash`        | Shell en servidores Linux.                              |
+| `shell_solaris` | No          | `/usr/bin/sh`      | Shell en servidores Solaris 11.                         |
+| `home`          | No          | `/home/<username>` | Directorio home.                                        |
+| `create_home`   | No          | `true`             | Crear el home.                                          |
+| `state`         | No          | `present`          | `present` o `absent`.                               |
+| `generar_llave` | No          | `true`             | Generar e instalar llave SSH.                           |
+| `sudo`          | No          | `false`            | Si el usuario tiene privilegios sudo.                   |
+| `sudo_nopasswd` | No          | `false`            | Si sudo se concede sin pedir contraseña.               |
+| `sudo_commands` | No          | (según política)   | Lista de comandos específicos permitidos vía sudo.    |
 
 ### Grupo igual al usuario
 

@@ -1,4 +1,15 @@
 ---
+# -----------------------------------------------------------------------------
+# GRUPO DE ACCESO SSH
+# Si el grupo indicado EXISTE en el servidor destino, el usuario creado se
+# agrega a ese grupo como grupo SUPLEMENTARIO (no cambia su grupo primario).
+# Si el grupo NO existe en el host, no se crea ni se modifica nada.
+# Útil en servidores con "AllowGroups ssh_access" en /etc/ssh/sshd_config.
+# -----------------------------------------------------------------------------
+acceso_ssh:
+  habilitado: true
+  grupo: ssh_access
+  
 permisos:
   # Si un usuario tiene sudo: true pero NO define item.sudo_commands,
   # esta política decide qué se le concede por defecto:
