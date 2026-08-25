@@ -1,9 +1,9 @@
 [
     {
         "estado_servicio_final": "active",
-        "hostname": "akede-n1",
-        "ip": "172.16.134.4",
-        "nueva_version_instalada": "No se instal\u00f3",
+        "hostname": "akede-n3",
+        "ip": "10.185.0.60",
+        "nueva_version_instalada": "7.0.18",
         "version_zabbix_agent1": "No instalado",
         "version_zabbix_agent2": "7.0.18"
     }

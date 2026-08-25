@@ -1,0 +1,54 @@
+======================================================================
+ REPORTE DE CONSUMO DE DISCO
+======================================================================
+ Host            : MICROCRMBOGDIS2
+ IP (inventario) : 10.181.5.126
+ Ruta analizada  : /microservicios
+ Fecha           : 2026-08-24 19:51:41 (-05)
+ Top             : 15 por vista
+======================================================================
+
+[ FILESYSTEM ]
+S.ficheros                        Tamaño Usados  Disp Uso% Montado en
+/dev/mapper/rootVG-microservicios   929G   874G   55G  95% /microservicios
+
+[ TOTAL DE /microservicios ]
+867G	/microservicios
+
+[ TOP 15 DIRECTORIOS (por tamano total) ]
+423G	/microservicios/Alkosto
+239G	/microservicios/Alkosto/despachosphp/logapp
+239G	/microservicios/Alkosto/despachosphp
+177G	/microservicios/Alkosto/vozcliente
+161G	/microservicios/Akt
+154G	/microservicios/Alkosto/vozcliente/temp
+118G	/microservicios/Alkomprar
+116G	/microservicios/Alkosto/vozcliente/temp/reportes
+71G	/microservicios/Akt/preventa
+57G	/microservicios/Alkomprar/despachosphp/logapp
+57G	/microservicios/Alkomprar/despachosphp
+44G	/microservicios/Akt/pilas
+42G	/microservicios/Alkomprar/pqr
+36G	/microservicios/Textiles
+36G	/microservicios/Distribuciones/pqr
+
+[ TOP 15 ARCHIVOS INDIVIDUALES ]
+126G	/microservicios/Alkosto/despachosphp/logapp/database.log
+59G	/microservicios/Alkosto/despachosphp/logapp/curl.log
+42G	/microservicios/Alkosto/despachosphp/logapp/databaseps.log
+38G	/microservicios/Alkomprar/despachosphp/logapp/database.log
+30G	/microservicios/Akt/preventa/log/error.log
+26G	/microservicios/Textiles/logapp/log_total.txt
+24G	/microservicios/Akt/pilas/logapp/curl.log
+23G	/microservicios/ngnix-route/log/access.log
+17G	/microservicios/Alkomprar/despachosphp/logapp/databaseps.log
+16G	/microservicios/Distribuciones/pqr/log/error.log
+14G	/microservicios/Alkosto/despachosphp/logapp/ConsultaHybris.log
+12G	/microservicios/Akt/pilas/log/error.log
+8,8G	/microservicios/Akt/pilas/logapp/database.log
+8,3G	/microservicios/Alkosto/vozcliente/logapp/log_procesaado.txt
+8,3G	/microservicios/Alkosto/vozcliente/log/access.log
+
+----------------------------------------------------------------------
+ Generado por reporte_consumo_disco.yml
+----------------------------------------------------------------------
