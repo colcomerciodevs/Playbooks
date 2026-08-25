@@ -1,6 +1,6 @@
 ---
 - name: Eliminar usuarios creados por el proyecto
-  hosts: all
+  hosts: PPU_GEOPOS
   gather_facts: true
   become: true
 

@@ -1,6 +1,6 @@
 ---
 - name: Crear usuarios con llave SSH
-  hosts: TEDAFBOGDIS-QA
+  hosts: GEOPOS_MARCAR
   gather_facts: true
   become: true
 
