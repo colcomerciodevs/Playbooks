@@ -1,6 +1,6 @@
 ---
 - name: Crear usuarios con llave SSH
-  hosts: AWS
+  hosts: BATMAN_NEW
   gather_facts: true
   become: true
 

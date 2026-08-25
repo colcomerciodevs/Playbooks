@@ -6,36 +6,12 @@ usuarios:
   # tienen permisos. Sin sudo ni privilegios administrativos.
   # ---------------------------------------------------------------------------
 
-  - username: nmachado
+  - username: SRVINNOPS
     #group: soporte
-    comment: "Nestor Machado"
+    comment: "Plataforma de IA Infraestructura Corbeta"
     shell_linux: /bin/bash
     shell_solaris: /usr/bin/bash
-    home: /home/nmachado
-    create_home: true
-    state: present
-    generar_llave: true
-    #force_key: true        # ← regenera la llave aunque ya exista
-    sudo: false
-
-  - username: arodriguez
-    #group: soporte
-    comment: "Alexander Rodriguez"
-    shell_linux: /bin/bash
-    shell_solaris: /usr/bin/bash
-    home: /home/arodriguez
-    create_home: true
-    state: present
-    generar_llave: true
-    #force_key: true        # ← regenera la llave aunque ya exista
-    sudo: false
-    
-  - username: jvicioso
-    #group: soporte
-    comment: "John Vicioso"
-    shell_linux: /bin/bash
-    shell_solaris: /usr/bin/bash
-    home: /home/jvicioso
+    home: /home/SRVINNOPS
     create_home: true
     state: present
     generar_llave: true
