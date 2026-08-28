@@ -11,13 +11,13 @@
 # ==========================================================================
 
 - name: Reporte de consumo de disco - vistas separadas
-  hosts: MICROCRMBOGDIS2
+  hosts: BATCH01
   gather_facts: yes
   become: true               # escalar a root para leer subdirectorios restringidos
   become_method: sudo
 
   vars:
-    ruta_analizar: "/microservicios"                                # override con -e
+    ruta_analizar: "/app"                                # override con -e
     top_n: 15                                            # cuantos elementos por vista
     dir_salida: "{{ playbook_dir }}/Salidas_Playbooks"
 
