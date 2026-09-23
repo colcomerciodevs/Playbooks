@@ -1,0 +1,54 @@
+======================================================================
+ REPORTE DE CONSUMO DE DISCO
+======================================================================
+ Host            : MOVILTRACK
+ IP (inventario) : 10.181.3.109
+ Ruta analizada  : /movilventas
+ Fecha           : 2026-09-22 10:22:14 (-05)
+ Top             : 15 por vista
+======================================================================
+
+[ FILESYSTEM ]
+Filesystem                          Size  Used Avail Use% Mounted on
+/dev/mapper/centos-movilventas_new  887G  772G   79G  91% /movilventas
+
+[ TOTAL DE /movilventas ]
+772G	/movilventas
+
+[ TOP 15 DIRECTORIOS (por tamano total) ]
+772G	/movilventas/corbetatrans/web
+772G	/movilventas/corbetatrans
+772G	/movilventas
+771G	/movilventas/corbetatrans/web/app/webroot/img/data/3
+771G	/movilventas/corbetatrans/web/app/webroot/img/data
+771G	/movilventas/corbetatrans/web/app/webroot/img
+771G	/movilventas/corbetatrans/web/app/webroot
+724G	/movilventas/corbetatrans/web/app/webroot/img/data/3/photos
+700G	/movilventas/corbetatrans/web/app/webroot/img/data/3/photos/deliveries
+47G	/movilventas/corbetatrans/web/app/webroot/img/data/3/Excels
+16G	/movilventas/corbetatrans/web/app/webroot/img/data/3/photos/collections
+8.4G	/movilventas/corbetatrans/web/app/webroot/img/data/3/photos/preoperational
+940M	/movilventas/corbetatrans/web/app/webroot/img/data/3/databasebackup
+215M	/movilventas/corbetatrans/web/app/tmp
+214M	/movilventas/corbetatrans/web/app/tmp/logs
+
+[ TOP 15 ARCHIVOS INDIVIDUALES ]
+1.9G	/movilventas/corbetatrans/web/app/webroot/img/data/3/Excels/Report20260922095805.csv
+1.9G	/movilventas/corbetatrans/web/app/webroot/img/data/3/Excels/Report20260922094420.csv
+1.9G	/movilventas/corbetatrans/web/app/webroot/img/data/3/Excels/Report20260922092933.csv
+1.4G	/movilventas/corbetatrans/web/app/webroot/img/data/3/Excels/Report20260905082909.csv
+1.4G	/movilventas/corbetatrans/web/app/webroot/img/data/3/Excels/Report20260905082014.csv
+1.1G	/movilventas/corbetatrans/web/app/webroot/img/data/3/Excels/Report20260730181938.csv
+1.1G	/movilventas/corbetatrans/web/app/webroot/img/data/3/Excels/Report20260618115951.csv
+1.1G	/movilventas/corbetatrans/web/app/webroot/img/data/3/Excels/Report20260618114112.csv
+1.0G	/movilventas/corbetatrans/web/app/webroot/img/data/3/Excels/Report20260730181012.csv
+1023M	/movilventas/corbetatrans/web/app/webroot/img/data/3/Excels/Report20260730180140.csv
+1023M	/movilventas/corbetatrans/web/app/webroot/img/data/3/Excels/Report20260730174437.csv
+1021M	/movilventas/corbetatrans/web/app/webroot/img/data/3/Excels/Report20260426062210.csv
+997M	/movilventas/corbetatrans/web/app/webroot/img/data/3/Excels/Report20260328150705.csv
+997M	/movilventas/corbetatrans/web/app/webroot/img/data/3/Excels/Report20260328143646.csv
+997M	/movilventas/corbetatrans/web/app/webroot/img/data/3/Excels/Report20260328142057.csv
+
+----------------------------------------------------------------------
+ Generado por reporte_consumo_disco.yml
+----------------------------------------------------------------------

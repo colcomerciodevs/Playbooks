@@ -1,0 +1,54 @@
+======================================================================
+ REPORTE DE CONSUMO DE DISCO
+======================================================================
+ Host            : MICROCRMBOGDIS2
+ IP (inventario) : 10.181.5.126
+ Ruta analizada  : /microservicios
+ Fecha           : 2026-09-21 12:31:25 (-05)
+ Top             : 15 por vista
+======================================================================
+
+[ FILESYSTEM ]
+S.ficheros                        Tamaño Usados  Disp Uso% Montado en
+/dev/mapper/rootVG-microservicios   929G   877G   53G  95% /microservicios
+
+[ TOTAL DE /microservicios ]
+870G	/microservicios
+
+[ TOP 15 DIRECTORIOS (por tamano total) ]
+406G	/microservicios/Alkosto
+231G	/microservicios/Alkosto/vozcliente
+213G	/microservicios/Alkosto/vozcliente/temp
+189G	/microservicios/Akt
+169G	/microservicios/Alkosto/despachosphp
+168G	/microservicios/Alkosto/despachosphp/logapp
+161G	/microservicios/Alkosto/vozcliente/temp/reportes
+109G	/microservicios/Akt/preventa
+100G	/microservicios/Alkomprar
+62G	/microservicios/Akt/preventa/log
+43G	/microservicios/Distribuciones
+43G	/microservicios/Akt/preventa/logapp
+41G	/microservicios/Alkomprar/despachosphp/logapp
+41G	/microservicios/Alkomprar/despachosphp
+40G	/microservicios/Alkomprar/pqr
+
+[ TOP 15 ARCHIVOS INDIVIDUALES ]
+92G	/microservicios/Alkosto/despachosphp/logapp/database.log
+60G	/microservicios/Akt/preventa/log/error.log
+47G	/microservicios/Alkosto/despachosphp/logapp/curl.log
+31G	/microservicios/Alkomprar/despachosphp/logapp/databaseps.log
+28G	/microservicios/logcoordinadora.log
+17G	/microservicios/Distribuciones/pqr/log/error.log
+16G	/microservicios/Alkosto/despachosphp/logapp/databaseps.log
+16G	/microservicios/Alkosto/despachosphp/logapp/ConsultaHybris.log
+13G	/microservicios/Akt/pilas/log/error.log
+12G	/microservicios/Alkosto/vozcliente/log/access.log
+9,4G	/microservicios/Akt/pilas/logapp/database.log
+8,1G	/microservicios/Textiles/logapp/log_procesaado.txt
+7,9G	/microservicios/Distribuciones/pqr/logapp/log_total.txt
+7,8G	/microservicios/Alkomprar/despachosphp/logapp/database.log
+7,6G	/microservicios/Textiles/logapi/error.log
+
+----------------------------------------------------------------------
+ Generado por reporte_consumo_disco.yml
+----------------------------------------------------------------------
