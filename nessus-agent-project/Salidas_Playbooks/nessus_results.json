@@ -1,21 +1,21 @@
 [
     {
-        "agent_version": "11.0.1-suse15",
+        "agent_version": "11.0.1-el9",
         "error": "",
         "groups": "corbeta",
-        "host": "alk33-qa",
-        "hostname": "alk33-qa",
+        "host": "opshiftbastrh9",
+        "hostname": "opshiftbastrh9",
         "installed": true,
-        "ip_address": "10.181.11.146",
-        "link_output": "[info] [agent] HostTag::getUnix: setting TAG value to '8d210b0f3f6749a584af742f064e4907'\n[info] [agent] Successfully linked to 10.181.8.192:8834",
+        "ip_address": "10.181.40.12",
+        "link_output": "[info] [agent] HostTag::getUnix: setting TAG value to '107a9b4a022644e791b54c8691ae6c6f'\n[info] [agent] Successfully linked to 10.181.8.192:8834",
         "link_status": "connection has not been attempted",
         "linked": true,
         "manager_host": "10.181.8.192",
         "manager_port": 8834,
-        "os_family": "Suse",
-        "os_name": "SLES",
-        "os_version": "15.7",
+        "os_family": "RedHat",
+        "os_name": "RedHat",
+        "os_version": "9.8",
         "service_active": true,
-        "timestamp": "2026-07-15T14:38:04Z"
+        "timestamp": "2026-09-30T20:38:22Z"
     }
 ]
