@@ -1,6 +1,6 @@
 ---
 - name: Crear usuarios con llave SSH
-  hosts: VM-QA-APPPS-BOG-09
+  hosts: Hardening
   gather_facts: true
   become: true
 
