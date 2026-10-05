@@ -1,0 +1,54 @@
+======================================================================
+ REPORTE DE CONSUMO DE DISCO
+======================================================================
+ Host            : BATCH01
+ IP (inventario) : 172.25.96.96
+ Ruta analizada  : /
+ Fecha           : 2026-10-02 11:04:13 (-05)
+ Top             : 15 por vista
+======================================================================
+
+[ FILESYSTEM ]
+Filesystem                  Size  Used Avail Use% Mounted on
+/dev/mapper/ocivolume-root   36G   25G   11G  70% /
+
+[ TOTAL DE / ]
+25G	/
+
+[ TOP 15 DIRECTORIOS (por tamano total) ]
+6.2G	/usr
+5.6G	/opt
+5.4G	/var
+3.2G	/usr/lib
+3.0G	/var/log
+2.0G	/opt/Elastic/Agent
+2.0G	/opt/Elastic
+1.9G	/opt/Elastic/Agent/data/elastic-agent-9db552
+1.9G	/opt/Elastic/Agent/data
+1.8G	/usr/lib/firmware
+1.7G	/opt/Elastic/Agent/data/elastic-agent-9db552/components
+1.3G	/var/cache/dnf
+1.3G	/var/cache
+1.3G	/opt/nessus_agent/var/nessus
+1.3G	/opt/nessus_agent/var
+
+[ TOP 15 ARCHIVOS INDIVIDUALES ]
+7.0G	/.swapfile
+542M	/opt/nessus_agent/var/nessus/agent.db
+533M	/opt/nessus_agent/var/nessus/plugins-code.db
+393M	/var/lib/rpm/Packages
+309M	/var/log/messages-20260927
+302M	/var/log/messages
+282M	/var/log/messages-20260920
+279M	/var/log/messages-20260906
+273M	/var/log/messages-20260913
+268M	/opt/Elastic/Agent/data/elastic-agent-9db552/components/cloudbeat
+258M	/opt/Elastic/Agent/data/elastic-agent-9db552/components/osqueryd
+214M	/var/log/secure-20260927
+207M	/tmp/poifiles/poi-sxssf-sheet9019833535985239422.xml
+206M	/var/cache/dnf/ol8_oci_included-filenames.solvx
+199M	/var/log/secure-20260906
+
+----------------------------------------------------------------------
+ Generado por reporte_consumo_disco.yml
+----------------------------------------------------------------------

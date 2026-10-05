@@ -1,0 +1,54 @@
+======================================================================
+ REPORTE DE CONSUMO DE DISCO
+======================================================================
+ Host            : BATCH03
+ IP (inventario) : 172.25.99.176
+ Ruta analizada  : /
+ Fecha           : 2026-10-02 11:02:37 (-05)
+ Top             : 15 por vista
+======================================================================
+
+[ FILESYSTEM ]
+Filesystem                  Size  Used Avail Use% Mounted on
+/dev/mapper/ocivolume-root   36G   22G   14G  62% /
+
+[ TOTAL DE / ]
+22G	/
+
+[ TOP 15 DIRECTORIOS (por tamano total) ]
+6.2G	/usr
+5.6G	/opt
+3.2G	/usr/lib
+2.6G	/var
+2.0G	/opt/Elastic/Agent
+2.0G	/opt/Elastic
+1.9G	/opt/Elastic/Agent/data/elastic-agent-9db552
+1.9G	/opt/Elastic/Agent/data
+1.8G	/usr/lib/firmware
+1.7G	/opt/Elastic/Agent/data/elastic-agent-9db552/components
+1.4G	/var/cache
+1.3G	/var/cache/dnf
+1.3G	/opt/nessus_agent/var/nessus
+1.3G	/opt/nessus_agent/var
+1.3G	/opt/nessus_agent
+
+[ TOP 15 ARCHIVOS INDIVIDUALES ]
+7.0G	/.swapfile
+542M	/opt/nessus_agent/var/nessus/agent.db
+533M	/opt/nessus_agent/var/nessus/plugins-code.db
+393M	/var/lib/rpm/Packages
+268M	/opt/Elastic/Agent/data/elastic-agent-9db552/components/cloudbeat
+258M	/opt/Elastic/Agent/data/elastic-agent-9db552/components/osqueryd
+206M	/var/cache/dnf/ol8_oci_included-filenames.solvx
+187M	/var/cache/dnf/ol8_oci_included-44a0428b29458fea/repodata/d5d0b7c53a725e5e1bb580f0d7dbc52ee22b4d14b59f22037dc2158ad0481665-filelists.xml.gz
+183M	/opt/Elastic/Agent/data/elastic-agent-9db552/components/metricbeat
+155M	/opt/Elastic/Agent/data/elastic-agent-9db552/components/filebeat
+153M	/opt/nessus_agent/var/nessus/plugins-desc.db
+121M	/usr/lib64/libLLVM.so.20.1
+109M	/usr/lib64/llvm17/lib/libLLVM-17.so
+109M	/opt/Elastic/Agent/data/elastic-agent-9db552/components/packetbeat
+109M	/opt/Elastic/Agent/data/elastic-agent-9db552/components/auditbeat
+
+----------------------------------------------------------------------
+ Generado por reporte_consumo_disco.yml
+----------------------------------------------------------------------

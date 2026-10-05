@@ -1,6 +1,6 @@
 ---
 - name: Crear usuarios con llave SSH
-  hosts: GEOPOS_MARCAR
+  hosts: VM-QA-APPPS-BOG-09
   gather_facts: true
   become: true
 
