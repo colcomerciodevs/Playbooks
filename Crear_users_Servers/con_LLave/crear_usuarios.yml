@@ -1,6 +1,6 @@
 ---
 - name: Crear usuarios con llave SSH
-  hosts: Hardening
+  hosts: SP5-SP7
   gather_facts: true
   become: true
 
