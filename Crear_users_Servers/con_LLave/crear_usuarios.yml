@@ -1,6 +1,6 @@
 ---
 - name: Crear usuarios con llave SSH
-  hosts: SP5-SP7
+  hosts: TESTHARDENING-ORA8BOGDIS01
   gather_facts: true
   become: true
 
