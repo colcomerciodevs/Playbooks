@@ -1,9 +1,27 @@
 [
     {
         "Estado_Zabbix": "active",
-        "Hostname": "opshiftbastrh9",
-        "IP": "10.181.40.12",
-        "InventoryHostname": "opshiftbastrh9",
+        "Hostname": "alapa-n3",
+        "IP": "10.185.0.35",
+        "InventoryHostname": "alapa-n3",
+        "Monitores_Creados": "si",
+        "Reinicio_Zabbix": "aplicado",
+        "Version_Zabbix": "zabbix_agent2 (Zabbix) 7.0.18"
+    },
+    {
+        "Estado_Zabbix": "active",
+        "Hostname": "albac-n3",
+        "IP": "10.185.0.50",
+        "InventoryHostname": "albac-n3",
+        "Monitores_Creados": "si",
+        "Reinicio_Zabbix": "aplicado",
+        "Version_Zabbix": "zabbix_agent2 (Zabbix) 7.0.18"
+    },
+    {
+        "Estado_Zabbix": "active",
+        "Hostname": "alva2-n3",
+        "IP": "10.185.0.60",
+        "InventoryHostname": "alva2-n3",
         "Monitores_Creados": "si",
         "Reinicio_Zabbix": "aplicado",
         "Version_Zabbix": "zabbix_agent2 (Zabbix) 7.0.18"

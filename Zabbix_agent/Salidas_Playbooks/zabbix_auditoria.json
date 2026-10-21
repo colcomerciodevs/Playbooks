@@ -1,7 +1,7 @@
 [
     {
         "estado_servicio_final": "active",
-        "hostname": "alarm-n3",
+        "hostname": "alapa-n3",
         "ip": "10.185.0.35",
         "nueva_version_instalada": "7.0.18",
         "version_zabbix_agent1": "No instalado",
@@ -9,7 +9,7 @@
     },
     {
         "estado_servicio_final": "active",
-        "hostname": "alarm-n4",
+        "hostname": "albac-n3",
         "ip": "10.185.0.50",
         "nueva_version_instalada": "7.0.18",
         "version_zabbix_agent1": "No instalado",
@@ -17,16 +17,8 @@
     },
     {
         "estado_servicio_final": "active",
-        "hostname": "alpie-n3",
+        "hostname": "alva2-n3",
         "ip": "10.185.0.60",
-        "nueva_version_instalada": "7.0.18",
-        "version_zabbix_agent1": "No instalado",
-        "version_zabbix_agent2": "7.0.18"
-    },
-    {
-        "estado_servicio_final": "active",
-        "hostname": "co127-n0",
-        "ip": "10.181.9.30",
         "nueva_version_instalada": "7.0.18",
         "version_zabbix_agent1": "No instalado",
         "version_zabbix_agent2": "7.0.18"
