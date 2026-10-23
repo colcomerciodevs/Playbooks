@@ -74,3 +74,23 @@
   when:
     - ansible_system == "SunOS"
     - item.state | default('present') == 'present'
+
+- name: Quitar caducidad de password - usuario solo con llave (Linux)
+  ansible.builtin.command: "chage -m 0 -M -1 -I -1 -E -1 {{ item.username }}"
+  loop: "{{ usuarios }}"
+  loop_control:
+    label: "{{ item.username }}"
+  changed_when: false
+  when:
+    - ansible_system == "Linux"
+    - item.state | default('present') == 'present'
+
+- name: Quitar caducidad de password - usuario solo con llave (Solaris 11)
+  ansible.builtin.command: "passwd -x -1 {{ item.username }}"
+  loop: "{{ usuarios }}"
+  loop_control:
+    label: "{{ item.username }}"
+  changed_when: false
+  when:
+    - ansible_system == "SunOS"
+    - item.state | default('present') == 'present'

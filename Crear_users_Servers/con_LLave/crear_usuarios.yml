@@ -1,6 +1,6 @@
 ---
 - name: Crear usuarios con llave SSH
-  hosts: AZURE
+  hosts: opshiftbastrh9
   gather_facts: true
   become: true
 

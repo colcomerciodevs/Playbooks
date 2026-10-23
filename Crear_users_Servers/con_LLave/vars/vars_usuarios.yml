@@ -6,12 +6,25 @@ usuarios:
   # tienen permisos. Sin sudo ni privilegios administrativos.
   # ---------------------------------------------------------------------------
 
-- username: seti
+- username: jcantor
 #  group: administradores 
-  comment: "Usuario administrador de base de datos"
+  comment: "Usuario administrador de Linux - Amaris"
   shell_linux: /bin/bash
   shell_solaris: /usr/bin/bash
-  home: /home/seti
+  home: /home/jcantor
+  create_home: true
+  state: present
+  generar_llave: true
+  force_key: false        # ← regenera la llave aunque ya exista
+  sudo: true
+  sudo_nopasswd: true
+
+- username: cchaves
+#  group: administradores 
+  comment: "Usuario administrador de Linux - Amaris"
+  shell_linux: /bin/bash
+  shell_solaris: /usr/bin/bash
+  home: /home/cchaves
   create_home: true
   state: present
   generar_llave: true
