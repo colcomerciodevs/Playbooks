@@ -1,6 +1,6 @@
 ---
 - name: Crear usuarios con llave SSH
-  hosts: opshiftbastrh9
+  hosts: hardening_linux
   gather_facts: true
   become: true
 
