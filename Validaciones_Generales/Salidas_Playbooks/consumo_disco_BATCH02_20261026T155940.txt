@@ -1,0 +1,54 @@
+======================================================================
+ REPORTE DE CONSUMO DE DISCO
+======================================================================
+ Host            : BATCH02
+ IP (inventario) : 172.25.99.10
+ Ruta analizada  : /
+ Fecha           : 2026-10-26 15:59:40 (-05)
+ Top             : 15 por vista
+======================================================================
+
+[ FILESYSTEM ]
+Filesystem                  Size  Used Avail Use% Mounted on
+/dev/mapper/ocivolume-root   36G   25G   12G  69% /
+
+[ TOTAL DE / ]
+24G	/
+
+[ TOP 15 DIRECTORIOS (por tamano total) ]
+6.2G	/usr
+5.5G	/opt
+4.4G	/var
+3.2G	/usr/lib
+2.5G	/var/cache
+2.0G	/opt/Elastic/Agent
+2.0G	/opt/Elastic
+1.9G	/opt/Elastic/Agent/data/elastic-agent-9db552
+1.9G	/opt/Elastic/Agent/data
+1.8G	/usr/lib/firmware
+1.7G	/opt/Elastic/Agent/data/elastic-agent-9db552/components
+1.4G	/var/cache/dnf
+1.3G	/opt/nessus_agent/var/nessus
+1.3G	/opt/nessus_agent/var
+1.3G	/opt/nessus_agent
+
+[ TOP 15 ARCHIVOS INDIVIDUALES ]
+7.0G	/.swapfile
+599M	/tmp/poifiles/poi-sxssf-sheet9042291253074113974.xml
+542M	/opt/nessus_agent/var/nessus/agent.db
+533M	/opt/nessus_agent/var/nessus/plugins-code.db
+393M	/var/lib/rpm/Packages
+306M	/var/lib/rpm/Packages.osmh-backup
+268M	/opt/Elastic/Agent/data/elastic-agent-9db552/components/cloudbeat
+258M	/opt/Elastic/Agent/data/elastic-agent-9db552/components/osqueryd
+208M	/var/cache/dnf/ol8_oci_included-filenames.solvx
+189M	/var/cache/dnf/ol8_oci_included-44a0428b29458fea/repodata/74973a038ca49d66fa29af05441bcbe9e02b6c5719106c529290b93fa94588ff-filelists.xml.gz
+183M	/opt/Elastic/Agent/data/elastic-agent-9db552/components/metricbeat
+155M	/opt/Elastic/Agent/data/elastic-agent-9db552/components/filebeat
+153M	/opt/nessus_agent/var/nessus/plugins-desc.db
+121M	/usr/lib64/libLLVM.so.20.1
+109M	/usr/lib64/llvm17/lib/libLLVM-17.so
+
+----------------------------------------------------------------------
+ Generado por reporte_consumo_disco.yml
+----------------------------------------------------------------------

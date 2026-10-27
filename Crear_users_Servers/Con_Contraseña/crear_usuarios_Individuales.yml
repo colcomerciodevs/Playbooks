@@ -1,6 +1,6 @@
 ---
 - name: Crear usuarios en servidores Linux
-  hosts: inventario
+  hosts: GEOPOS_FSC_NORTE
   become: true
 
   vars_files:

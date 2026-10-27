@@ -17,7 +17,7 @@
   become_method: sudo
 
   vars:
-    ruta_analizar: "/app"                                # override con -e
+    ruta_analizar: "/"                                # override con -e
     top_n: 15                                            # cuantos elementos por vista
     dir_salida: "{{ playbook_dir }}/Salidas_Playbooks"
 
