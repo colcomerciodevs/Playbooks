@@ -1,6 +1,6 @@
 ---
 - name: Crear usuarios con llave SSH
-  hosts: manhatan
+  hosts: AZURE
   gather_facts: true
   become: true
 

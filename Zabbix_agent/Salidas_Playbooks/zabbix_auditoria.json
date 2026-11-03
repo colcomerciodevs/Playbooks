@@ -1,23 +1,7 @@
 [
     {
         "estado_servicio_final": "active",
-        "hostname": "alapa-n3",
-        "ip": "10.185.0.35",
-        "nueva_version_instalada": "7.0.18",
-        "version_zabbix_agent1": "No instalado",
-        "version_zabbix_agent2": "7.0.18"
-    },
-    {
-        "estado_servicio_final": "active",
-        "hostname": "albac-n3",
-        "ip": "10.185.0.50",
-        "nueva_version_instalada": "7.0.18",
-        "version_zabbix_agent1": "No instalado",
-        "version_zabbix_agent2": "7.0.18"
-    },
-    {
-        "estado_servicio_final": "active",
-        "hostname": "alva2-n3",
+        "hostname": "akb68-n3",
         "ip": "10.185.0.60",
         "nueva_version_instalada": "7.0.18",
         "version_zabbix_agent1": "No instalado",
