@@ -1,9 +1,18 @@
 [
     {
         "Estado_Zabbix": "active",
-        "Hostname": "akb68-n3",
-        "IP": "10.185.0.60",
-        "InventoryHostname": "akb68-n3",
+        "Hostname": "altul-n3",
+        "IP": "10.185.0.35",
+        "InventoryHostname": "altul-n3",
+        "Monitores_Creados": "si",
+        "Reinicio_Zabbix": "aplicado",
+        "Version_Zabbix": "zabbix_agent2 (Zabbix) 7.0.18"
+    },
+    {
+        "Estado_Zabbix": "active",
+        "Hostname": "altul-n4",
+        "IP": "10.185.0.50",
+        "InventoryHostname": "altul-n4",
         "Monitores_Creados": "si",
         "Reinicio_Zabbix": "aplicado",
         "Version_Zabbix": "zabbix_agent2 (Zabbix) 7.0.18"
