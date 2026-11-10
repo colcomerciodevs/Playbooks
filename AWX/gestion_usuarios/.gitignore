@@ -1,0 +1,14 @@
+# keys/ SÍ se versiona: es el almacén oficial de llaves por usuario.
+# Lo que no se versiona son llaves sueltas fuera de esa carpeta y los reportes.
+llaves_generadas/
+/id_rsa*
+/id_ed25519*
+reportes/*
+!reportes/.gitkeep
+*.retry
+.vault_pass*
+collections/ansible_collections/
+
+# Archivos intermedios del manual PDF
+docs/fuente/manual.html
+docs/fuente/fuentes/

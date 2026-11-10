@@ -1,0 +1,72 @@
+{
+  "name": "USUARIOS | 4 - Bloquear o eliminar",
+  "description": "Bloqueo (reversible) o eliminación de cuentas, con respaldo del home.",
+  "spec": [
+    {
+      "question_name": "Servidores o grupo del inventario",
+      "question_description": "Grupo (ej. GEOPOS, PPU, OCI_PEOPLE_PRD), servidor, o patrón Ansible: grupo1:grupo2, grupo:!servidor, srv1,srv2.",
+      "required": true,
+      "type": "text",
+      "variable": "objetivo",
+      "min": 1,
+      "max": 1024,
+      "default": "",
+      "choices": [],
+      "new_question": true
+    },
+    {
+      "question_name": "Usuario(s)",
+      "question_description": "Uno o varios separados por coma.",
+      "required": true,
+      "type": "text",
+      "variable": "eliminar_usuarios",
+      "min": 1,
+      "max": 1024,
+      "default": "",
+      "choices": [],
+      "new_question": true
+    },
+    {
+      "question_name": "Acción",
+      "question_description": "bloquear: bloquea clave y expira la cuenta (conserva el home). eliminar: borra cuenta y home.",
+      "required": true,
+      "type": "multiplechoice",
+      "variable": "eliminar_accion",
+      "min": 0,
+      "max": 1024,
+      "default": "bloquear",
+      "choices": [
+        "bloquear",
+        "eliminar"
+      ],
+      "new_question": true
+    },
+    {
+      "question_name": "Respaldar home antes de eliminar",
+      "question_description": "Se guarda en /var/backups/usuarios_eliminados/ del servidor.",
+      "required": true,
+      "type": "multiplechoice",
+      "variable": "eliminar_respaldar_home",
+      "min": 0,
+      "max": 1024,
+      "default": "SI",
+      "choices": [
+        "SI",
+        "NO"
+      ],
+      "new_question": true
+    },
+    {
+      "question_name": "Confirmación (solo para eliminar)",
+      "question_description": "Escriba CONFIRMAR para eliminar.",
+      "required": false,
+      "type": "text",
+      "variable": "eliminar_confirmacion",
+      "min": 0,
+      "max": 1024,
+      "default": "",
+      "choices": [],
+      "new_question": true
+    }
+  ]
+}

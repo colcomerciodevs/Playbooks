@@ -1,0 +1,35 @@
+---
+# =============================================================================
+# OPCIÓN 2 - CAMBIAR CONTRASEÑA (con política "nunca caduca" opcional)
+#
+# AWX: plantilla "USUARIOS | 2 - Cambiar contraseña" con la encuesta
+#      awx/encuestas/02_cambiar_contrasena.json
+#
+# CLI (la clave se pide de forma interactiva para que no quede en el historial):
+#   ansible-playbook -i inventario/hosts.ini 02_cambiar_contrasena.yml \
+#     -e objetivo=PPU_GEOPOS -e contrasena_usuarios=root -e contrasena_nunca_caduca=SI \
+#     -e @/ruta/segura/clave.yml          # archivo cifrado con ansible-vault que define
+#                                         # contrasena_nueva y contrasena_confirmacion
+# =============================================================================
+
+- name: "Opción 2 | Validar encuesta"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - vars/comunes.yml
+  tasks:
+    - name: Validar entradas
+      ansible.builtin.include_role:
+        name: usuarios_contrasena
+        tasks_from: preparar.yml
+
+- name: "Opción 2 | Cambiar contraseña en los servidores"
+  hosts: "{{ objetivo | default('NINGUN_SERVIDOR_SELECCIONADO') }}"
+  become: true
+  gather_facts: true
+  gather_subset: [min]
+  vars_files:
+    - vars/comunes.yml
+  roles:
+    - usuarios_contrasena

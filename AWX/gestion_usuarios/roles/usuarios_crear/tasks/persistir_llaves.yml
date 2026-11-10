@@ -1,0 +1,115 @@
+---
+# =============================================================================
+# Guarda las llaves recién generadas (y las archivadas por renovación) para que
+# la próxima ejecución las REUTILICE en vez de crear otras.
+#   - Git: clona el repositorio, copia keys/, hace commit y push.
+#   - Custodio: copia las llaves nuevas a un servidor del inventario.
+#   - Línea de comandos sin Git: quedan en keys/ de su copia local; haga commit.
+# Se ejecuta en localhost desde preparar.yml, antes de tocar servidores.
+# =============================================================================
+
+- name: Llaves | Publicar en el repositorio Git
+  when: llaves_git_url | length > 0
+  block:
+    - name: Llaves | Carpeta temporal para el clon
+      ansible.builtin.tempfile:
+        state: directory
+        suffix: _llaves
+      register: _crear_git_tmp
+
+    # La URL lleva usuario y token: nunca se muestra (no_log) y los errores se limpian.
+    - name: Llaves | Clonar, copiar keys/, commit y push
+      ansible.builtin.shell: |
+        set -u
+        git clone -q --depth 20 --branch "$RAMA" "$URL" "$DIR/repo" || exit 10
+        mkdir -p "$DIR/repo/keys"
+        cp -a "$LLAVES/." "$DIR/repo/keys/" || exit 11
+        cd "$DIR/repo"
+        git add keys || exit 12
+        if git diff --cached --quiet; then echo SIN_CAMBIOS; exit 0; fi
+        git -c user.name="$AUTOR_NOMBRE" -c user.email="$AUTOR_CORREO" commit -q -m "$MENSAJE" || exit 13
+        for intento in 1 2 3; do
+          if git push -q origin "HEAD:$RAMA"; then echo PUBLICADO; exit 0; fi
+          git -c user.name="$AUTOR_NOMBRE" -c user.email="$AUTOR_CORREO" pull -q --rebase origin "$RAMA" || exit 14
+        done
+        exit 15
+      args:
+        executable: /bin/bash
+      environment:
+        GIT_TERMINAL_PROMPT: "0"
+        RAMA: "{{ llaves_git_rama }}"
+        # https://usuario:token@servidor/ruta.git (usuario y token codificados para URL)
+        URL: >-
+          {{ (llaves_git_url.split('://', 1)[0] ~ '://'
+              ~ (llaves_git_usuario | urlencode | replace('/', '%2F')) ~ ':'
+              ~ (llaves_git_token | urlencode | replace('/', '%2F')) ~ '@'
+              ~ llaves_git_url.split('://', 1)[1])
+             if (llaves_git_token | length > 0 and '://' in llaves_git_url) else llaves_git_url }}
+        DIR: "{{ _crear_git_tmp.path }}"
+        LLAVES: "{{ crear_llaves_dir }}"
+        AUTOR_NOMBRE: "{{ llaves_git_autor_nombre }}"
+        AUTOR_CORREO: "{{ llaves_git_autor_correo }}"
+        MENSAJE: >-
+          Llaves SSH: nuevas={{ (_crear_llaves_generar | reject('in', _crear_llaves_renovadas) | join(',')) or '-' }};
+          renovadas={{ _crear_llaves_renovadas | join(',') or '-' }}
+          (job AWX {{ awx_job_id | default(tower_job_id | default('CLI')) }}, objetivo {{ objetivo }})
+      register: _crear_git
+      changed_when: "'PUBLICADO' in _crear_git.stdout"
+      failed_when: false
+      no_log: true
+
+    - name: Llaves | Verificar publicación en Git
+      ansible.builtin.fail:
+        msg: >-
+          No se pudieron publicar las llaves en {{ llaves_git_url }} (rama {{ llaves_git_rama }}), código {{ _crear_git.rc }}:
+          {{ {10: 'no se pudo clonar (URL, usuario o token)', 11: 'no se pudieron copiar los archivos',
+              13: 'falló el commit', 14: 'conflicto al integrar cambios remotos',
+              15: 'push rechazado (¿el token tiene permiso de escritura? ¿rama protegida?)'}[_crear_git.rc] | default('error de git') }}.
+          Detalle: {{ (_crear_git.stderr | default(''))
+                      | replace(llaves_git_token if llaves_git_token | length > 0 else '§§', '***') | truncate(400) }}
+          No se modificó ningún servidor.
+      when: _crear_git.rc | default(0) != 0
+
+    - name: Llaves | Resultado de la publicación
+      ansible.builtin.debug:
+        msg: >-
+          {{ 'Llaves publicadas en ' ~ llaves_git_url ~ ' (rama ' ~ llaves_git_rama ~ ', carpeta keys/). La próxima ejecución las reutilizará.'
+             if 'PUBLICADO' in _crear_git.stdout else 'El repositorio ya tenía estas llaves: sin cambios.' }}
+  always:
+    - name: Llaves | Borrar clon temporal
+      ansible.builtin.file:
+        path: "{{ _crear_git_tmp.path }}"
+        state: absent
+      when: _crear_git_tmp.path is defined
+
+- name: Llaves | Depositar llaves nuevas en el servidor custodio
+  when: crear_llaves_custodio_host | length > 0
+  delegate_to: "{{ crear_llaves_custodio_host }}"
+  become: true
+  block:
+    - name: Llaves | Carpeta protegida en el custodio
+      ansible.builtin.file:
+        path: "{{ crear_llaves_custodio_ruta }}"
+        state: directory
+        owner: root
+        mode: "0700"
+
+    - name: Llaves | Copiar privada, pública y PPK
+      ansible.builtin.copy:
+        src: "{{ crear_llaves_dir }}/{{ item.0 }}{{ item.1 }}"
+        dest: "{{ crear_llaves_custodio_ruta }}/{{ item.0 }}{{ item.1 }}"
+        owner: root
+        mode: "0600"
+      loop: "{{ _crear_llaves_generar | product(['', '.pub', '.ppk']) | list }}"
+      loop_control:
+        label: "{{ item.0 }}{{ item.1 }}"
+      when: (crear_llaves_dir ~ '/' ~ item.0 ~ item.1) is file
+
+- name: Llaves | Recordatorio (ejecución por línea de comandos sin Git)
+  ansible.builtin.debug:
+    msg: >-
+      Llaves nuevas guardadas en {{ crear_llaves_dir }}: {{ _crear_llaves_generar | join(', ') }}.
+      Haga commit y push de la carpeta keys/ para que las siguientes ejecuciones las reutilicen.
+  when:
+    - llaves_git_url | length == 0
+    - not (_crear_es_awx | bool)

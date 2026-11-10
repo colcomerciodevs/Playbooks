@@ -1,0 +1,80 @@
+---
+# =============================================================================
+# OPCIÓN 1 - CREAR USUARIOS
+# Todas estas variables pueden llegar desde la encuesta de AWX (extra vars).
+# Las respuestas SI/NO se interpretan con 'valores_si' (vars/comunes.yml).
+# =============================================================================
+
+# ---- Qué crear --------------------------------------------------------------
+crear_metodo_acceso: contrasena   # contrasena | llave
+crear_origen: encuesta            # encuesta | catalogo
+crear_catalogo: ""                # archivo de vars/catalogos/ sin ".yml"
+# Una línea por usuario:  usuario;Nombre completo;grupo(opcional)
+crear_usuarios_texto: ""
+crear_actualizar_existentes: "NO" # SI = aplica grupos/llave/sudo también a cuentas que ya existen
+
+# ---- Atributos por defecto (el catálogo puede sobrescribirlos por usuario) --
+crear_grupo_primario: ""          # vacío = grupo con el mismo nombre del usuario
+crear_grupos_secundarios: ""      # separados por coma; solo se agregan si existen en el servidor
+crear_shell: /bin/bash
+crear_shell_solaris: /usr/bin/bash
+crear_home_base: /home
+crear_modo_home: "0750"
+
+# ---- Método contraseña ------------------------------------------------------
+crear_contrasena_inicial: ""
+crear_forzar_cambio: "SI"         # obliga a cambiarla en el primer inicio de sesión
+
+# ---- Método llave -----------------------------------------------------------
+# keys     : almacén keys/ del proyecto (una llave por usuario: keys/<usuario>, .pub, .ppk).
+#            Si el usuario YA tiene llave se reutiliza, en cualquier servidor.
+#            Si no tiene, se genera una nueva y se guarda en keys/.
+# encuesta : se usa la llave pública pegada en la encuesta (no se guarda en keys/).
+crear_llave_origen: keys
+# Una línea por usuario:  usuario;ssh-rsa AAAA... comentario   (solo origen encuesta)
+crear_llaves_texto: ""
+crear_llaves_dir: "{{ playbook_dir }}/keys"
+crear_llaves_exclusivas: "NO"     # SI = borra cualquier otra llave del authorized_keys
+
+# OPCIÓN CRÍTICA. SI = genera una llave NUEVA aunque ya exista en keys/:
+#   - la llave anterior se archiva en keys/_anteriores/<usuario>_<fecha>.*
+#   - en los servidores del objetivo se quita la llave anterior y se instala la nueva
+#     (también en cuentas que ya existían)
+#   - en servidores NO incluidos en el objetivo seguirá funcionando solo la llave anterior
+crear_renovar_llave: "NO"
+
+# Llaves nuevas: mismo formato que las existentes en keys/ (RSA 4096 bits, sin frase de paso)
+crear_llave_tipo: rsa             # rsa | ed25519
+crear_llave_bits: 4096            # solo aplica a rsa
+crear_llaves_generar_ppk: "SI"    # .ppk para PuTTY; requiere puttygen en el controlador (si falta, se avisa)
+
+# Persistencia de llaves nuevas cuando se ejecuta en AWX (el contenedor se borra al terminar):
+# 1) Publicarlas en el repositorio Git (recomendado). Lo inyecta la credencial
+#    "Git - publicar llaves" (ver manual); también se puede pasar como extra vars.
+llaves_git_url: ""                # https://git.empresa.local/infra/gestion_usuarios.git
+llaves_git_rama: main
+llaves_git_usuario: ""
+llaves_git_token: ""
+llaves_git_autor_nombre: AWX gestion_usuarios
+llaves_git_autor_correo: awx@empresa.local
+# 2) Además o en su lugar, depositarlas en un servidor custodio del inventario.
+crear_llaves_custodio_host: ""
+crear_llaves_custodio_ruta: /root/llaves_generadas
+
+# ---- sudo -------------------------------------------------------------------
+crear_sudo_nivel: ninguno         # ninguno | completo | limitado
+crear_sudo_nopasswd: "NO"         # con método llave se fuerza a SI (la cuenta no tiene clave)
+# Un comando por línea, con ruta absoluta (para nivel limitado).
+crear_sudo_comandos: ""
+crear_sudo_runas: ALL
+
+# ---- Grupo de acceso SSH ----------------------------------------------------
+# Si el grupo existe en el servidor (p. ej. por "AllowGroups ssh_access" en
+# sshd_config) el usuario se agrega como grupo secundario. Si no existe, no se toca.
+crear_grupo_acceso_ssh: ssh_access
+crear_agregar_grupo_acceso_ssh: "SI"
+
+# Ruta de visudo por sistema operativo
+crear_visudo:
+  Linux: /usr/sbin/visudo
+  SunOS: /usr/bin/visudo

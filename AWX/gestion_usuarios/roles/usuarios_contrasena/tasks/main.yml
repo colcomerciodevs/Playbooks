@@ -1,0 +1,157 @@
+---
+# =============================================================================
+# OPCIÓN 2 - Cambiar contraseña en cada servidor.
+# =============================================================================
+
+- name: Contraseña | Validar sistema operativo soportado
+  ansible.builtin.assert:
+    quiet: true
+    that: ansible_system in ['Linux', 'SunOS']
+    fail_msg: "Sistema operativo no soportado: {{ ansible_system }}"
+
+- name: Contraseña | Consultar cuentas del servidor
+  ansible.builtin.getent:
+    database: passwd
+
+# getent passwd -> {usuario: [x, uid, gid, gecos, home, shell]}
+- name: Contraseña | Clasificar usuarios
+  ansible.builtin.set_fact:
+    _cp_lista: "{{ hostvars['localhost']['contrasena_lista'] }}"
+    _cp_inexistentes: "{{ hostvars['localhost']['contrasena_lista'] | reject('in', ansible_facts.getent_passwd.keys() | list) | list }}"
+    _cp_servicio: []
+
+- name: Contraseña | Detectar cuentas de servicio (UID entre 1 y uid_minimo_humano - 1)
+  ansible.builtin.set_fact:
+    _cp_servicio: "{{ _cp_servicio + [item] }}"
+  loop: "{{ _cp_lista | select('in', ansible_facts.getent_passwd.keys() | list) | list }}"
+  when:
+    - (ansible_facts.getent_passwd[item][1] | int) > 0
+    - (ansible_facts.getent_passwd[item][1] | int) < (uid_minimo_humano | int)
+    - not ((contrasena_permitir_cuentas_servicio | string | lower | trim) in valores_si)
+
+- name: Contraseña | Definir usuarios a modificar
+  ansible.builtin.set_fact:
+    _cp_aplicar: "{{ _cp_lista | reject('in', _cp_inexistentes) | reject('in', _cp_servicio) | list }}"
+
+- name: Contraseña | Usuarios que no existen en este servidor
+  ansible.builtin.debug:
+    msg: "No existen en {{ inventory_hostname }}: {{ _cp_inexistentes | join(', ') }}"
+  when: _cp_inexistentes | length > 0
+
+- name: Contraseña | Fallar si se exige que existan todos
+  ansible.builtin.fail:
+    msg: "Usuarios inexistentes en {{ inventory_hostname }}: {{ _cp_inexistentes | join(', ') }}"
+  when:
+    - _cp_inexistentes | length > 0
+    - not ((contrasena_omitir_inexistentes | string | lower | trim) in valores_si)
+
+- name: Contraseña | Cuentas de servicio omitidas
+  ansible.builtin.debug:
+    msg: >-
+      Omitidas por ser cuentas de servicio (UID < {{ uid_minimo_humano }}): {{ _cp_servicio | join(', ') }}.
+      Para incluirlas responda SI a "Permitir cuentas de servicio".
+  when: _cp_servicio | length > 0
+
+- name: Contraseña | Advertir si se cambia la clave de la cuenta de conexión de Ansible
+  ansible.builtin.debug:
+    msg: >-
+      ATENCIÓN: '{{ ansible_user | default(ansible_user_id) }}' es la cuenta con la que AWX se conecta a
+      {{ inventory_hostname }}. Si la credencial de AWX usa contraseña, actualícela con la nueva clave.
+  when: (ansible_user | default(ansible_user_id | default(''))) in _cp_aplicar
+
+# ---------------------------------------------------------------------------
+- name: Contraseña | Establecer nueva contraseña
+  ansible.builtin.include_role:
+    name: usuarios_comun
+    tasks_from: establecer_contrasena.yml
+  vars:
+    comun_usuarios: "{{ _cp_aplicar }}"
+    comun_clave: "{{ contrasena_nueva }}"
+  when: _cp_aplicar | length > 0
+
+- name: Contraseña | Aplicar política de caducidad
+  ansible.builtin.include_role:
+    name: usuarios_comun
+    tasks_from: politica_caducidad.yml
+  vars:
+    comun_usuarios: "{{ _cp_aplicar }}"
+    comun_politica: >-
+      {{ 'nunca' if hostvars['localhost']['_cp_nunca'] | bool
+         else ('forzar_cambio' if hostvars['localhost']['_cp_forzar'] | bool else 'mantener') }}
+    comun_quitar_expiracion_cuenta: "{{ (contrasena_quitar_expiracion_cuenta | string | lower | trim) in valores_si }}"
+  when: _cp_aplicar | length > 0
+
+- name: Contraseña | Desbloquear cuentas
+  ansible.builtin.include_role:
+    name: usuarios_comun
+    tasks_from: desbloquear.yml
+  vars:
+    comun_usuarios: "{{ _cp_aplicar }}"
+  when:
+    - _cp_aplicar | length > 0
+    - (contrasena_desbloquear | string | lower | trim) in valores_si
+
+# ---------------------------------------------------------------------------
+# Verificación (sin mostrar secretos)
+# ---------------------------------------------------------------------------
+- name: Contraseña | Consultar estado final de caducidad (Linux)
+  ansible.builtin.command:
+    argv: [chage, -l, "{{ item }}"]
+  environment:
+    LC_ALL: C
+    LANG: C
+  loop: "{{ _cp_aplicar }}"
+  register: _cp_chage
+  changed_when: false
+  check_mode: false
+  when: ansible_system == 'Linux'
+
+- name: Contraseña | Consultar estado final (Solaris 11)
+  ansible.builtin.command:
+    argv: [passwd, -s, "{{ item }}"]
+  loop: "{{ _cp_aplicar }}"
+  register: _cp_solstat
+  changed_when: false
+  check_mode: false
+  when: ansible_system == 'SunOS'
+
+- name: Contraseña | Verificar que /etc/shadow registre el cambio (Linux)
+  ansible.builtin.getent:
+    database: shadow
+  when:
+    - ansible_system == 'Linux'
+    - _cp_aplicar | length > 0
+    - not ansible_check_mode
+
+# Campo 1 de shadow = día (desde 1970) del último cambio; 0 = cambio forzado.
+- name: Contraseña | Comprobar fecha de último cambio
+  ansible.builtin.assert:
+    quiet: true
+    that: >-
+      (ansible_facts.getent_shadow[item][1] | int) >= (_hoy | int) - 1
+      or (ansible_facts.getent_shadow[item][1] == '0' and (hostvars['localhost']['_cp_forzar'] | bool))
+    fail_msg: "La fecha de último cambio de {{ item }} no se actualizó en {{ inventory_hostname }}."
+  loop: "{{ _cp_aplicar }}"
+  vars:
+    _hoy: "{{ (ansible_date_time.epoch | int) // 86400 }}"
+  when:
+    - ansible_system == 'Linux'
+    - not ansible_check_mode
+
+- name: Contraseña | Resultado por usuario
+  ansible.builtin.debug:
+    msg: >-
+      {{ [item.item ~ ' @ ' ~ inventory_hostname ~ ': contraseña actualizada']
+         + (item.stdout_lines | select('match', '^(Last password change|Password expires|Password inactive|Account expires|Maximum number)') | list) }}
+  loop: "{{ (_cp_chage.results | default([])) + (_cp_solstat.results | default([])) }}"
+  loop_control:
+    label: "{{ item.item | default('') }}"
+  when: item.stdout_lines is defined
+
+- name: Contraseña | Resumen del servidor
+  ansible.builtin.debug:
+    msg:
+      - "Servidor: {{ inventory_hostname }}"
+      - "Actualizados: {{ _cp_aplicar | join(', ') or '-' }}"
+      - "Inexistentes: {{ _cp_inexistentes | join(', ') or '-' }}"
+      - "Omitidos (servicio): {{ _cp_servicio | join(', ') or '-' }}"

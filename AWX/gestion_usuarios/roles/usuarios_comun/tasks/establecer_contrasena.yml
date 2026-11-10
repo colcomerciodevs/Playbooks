@@ -1,0 +1,48 @@
+---
+# Establece la misma contraseña a la lista comun_usuarios.
+#
+# Linux : chpasswd recibe "usuario:clave" por la entrada estándar. La clave no
+#         aparece en la lista de procesos ni en la salida del job, y el hash lo
+#         genera el propio servidor con su método configurado (ENCRYPT_METHOD de
+#         /etc/login.defs: SHA512 / yescrypt), sin depender de passlib en AWX.
+# SunOS : no existe chpasswd; se usa el módulo user con hash SHA-512.
+
+- name: Contraseña | Aplicar con chpasswd (Linux)
+  ansible.builtin.command:
+    argv: [chpasswd]
+    stdin: |-
+      {% for u in comun_usuarios %}
+      {{ u }}:{{ comun_clave }}
+      {% endfor %}
+    # La plantilla ya termina en salto de línea; uno adicional crea una línea
+    # vacía y chpasswd falla con "missing new password".
+    stdin_add_newline: false
+  register: _comun_chpasswd
+  changed_when: _comun_chpasswd.rc == 0
+  failed_when: false
+  no_log: true
+  when:
+    - ansible_system == 'Linux'
+    - comun_usuarios | length > 0
+
+# La tarea anterior oculta su salida (no_log) para proteger la clave.
+# Aquí se informa el error real sin exponerla (stderr de chpasswd no la contiene).
+- name: Contraseña | Validar resultado de chpasswd (Linux)
+  ansible.builtin.fail:
+    msg: >-
+      chpasswd falló (rc={{ _comun_chpasswd.rc }}). Detalle: {{ _comun_chpasswd.stderr | default('sin detalle') }}.
+      Causas habituales: la clave no cumple la política de complejidad o historial
+      (pam_pwquality / pam_pwhistory) o /etc/shadow está protegido (chattr +i).
+  when:
+    - ansible_system == 'Linux'
+    - comun_usuarios | length > 0
+    - _comun_chpasswd.rc | default(0) != 0
+
+- name: Contraseña | Aplicar con módulo user (Solaris 11)
+  ansible.builtin.user:
+    name: "{{ item }}"
+    password: "{{ comun_clave | password_hash('sha512') }}"
+    update_password: always
+  loop: "{{ comun_usuarios }}"
+  no_log: true
+  when: ansible_system == 'SunOS'

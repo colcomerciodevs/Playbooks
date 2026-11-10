@@ -1,0 +1,13 @@
+---
+# =============================================================================
+# OPCIÓN 4 - BLOQUEAR O ELIMINAR USUARIOS (consolida los eliminar_usuarios.yml anteriores)
+# =============================================================================
+eliminar_usuarios: ""            # separados por coma, espacio o salto de línea
+eliminar_accion: bloquear        # bloquear | eliminar
+# bloquear: bloquea clave, expira la cuenta (impide también el ingreso por llave)
+#           y retira su archivo de /etc/sudoers.d. Conserva home y archivos.
+# eliminar: respalda el home (opcional), retira sudo y borra la cuenta y su home.
+eliminar_respaldar_home: "SI"
+eliminar_dir_respaldo: /var/backups/usuarios_eliminados
+# Para "eliminar" la encuesta exige escribir CONFIRMAR (evita borrados por error).
+eliminar_confirmacion: ""

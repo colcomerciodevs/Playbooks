@@ -1,0 +1,46 @@
+---
+# =============================================================================
+# Variables comunes a todas las operaciones (se cargan con vars_files).
+# =============================================================================
+
+# Respuestas de encuesta que se interpretan como "sí".
+valores_si: ['si', 'sí', 's', 'yes', 'y', 'true', '1', 'on']
+
+# UID desde el cual una cuenta se considera de persona (no de servicio).
+uid_minimo_humano: 1000
+
+# Cuentas que NUNCA se crean, modifican ni eliminan con las opciones 1 y 4.
+# Incluye las cuentas con las que Ansible/AWX se conecta: si se tocan,
+# se pierde el acceso a los servidores.
+usuarios_protegidos:
+  - root
+  - bin
+  - daemon
+  - adm
+  - lp
+  - sync
+  - shutdown
+  - halt
+  - mail
+  - operator
+  - games
+  - ftp
+  - nobody
+  - nfsnobody
+  - sshd
+  - polkitd
+  - systemd-network
+  - ansible_test
+  - adminso
+  - tux
+  - azureuser
+  - awx
+
+# Formato aceptado para nombres de usuario y grupo.
+regex_nombre_usuario: '^[a-z_][a-z0-9_.-]{0,31}$'
+
+# Formato aceptado para llaves públicas SSH.
+regex_llave_publica: '^(ssh-(rsa|ed25519|dss)|ecdsa-sha2-nistp(256|384|521)|sk-ssh-ed25519@openssh\.com|sk-ecdsa-sha2-nistp256@openssh\.com) [A-Za-z0-9+/]+={0,3}( .*)?$'
+
+# Longitud mínima de contraseñas recibidas por encuesta.
+contrasena_longitud_minima: 8

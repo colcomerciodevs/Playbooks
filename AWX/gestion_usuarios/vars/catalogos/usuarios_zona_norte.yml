@@ -1,0 +1,15 @@
+---
+# Catálogo: personal de soporte zona norte (migrado del proyecto 'Con_Contraseña').
+# Uso: encuesta de la opción 1 -> Origen = catalogo, Catálogo = usuarios_zona_norte
+# Los valores de 'catalogo_defaults' aplican a todos los usuarios del archivo;
+# cualquier campo definido en un usuario los reemplaza.
+catalogo_defaults:
+  grupo: soporte
+
+usuarios:
+  - { usuario: dbuelvas,    nombre: "Deyvi Buelvas" }
+  - { usuario: obustamante, nombre: "Oscar Bustamante" }
+  - { usuario: nromero,     nombre: "Nibaldo Romero" }
+  - { usuario: rlopez,      nombre: "Rodolfo Lopez" }
+  - { usuario: jgarcia,     nombre: "Jose Miguel Garcia Rosado" }
+  - { usuario: rrodriguez,  nombre: "Rafael David Rodriguez Barrios" }

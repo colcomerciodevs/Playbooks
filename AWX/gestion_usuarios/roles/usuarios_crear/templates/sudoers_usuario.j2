@@ -1,0 +1,13 @@
+# Gestionado por Ansible (gestion_usuarios). NO editar manualmente.
+# Usuario: {{ item.usuario }} | Nivel: {{ item.sudo }}{{ ' | Sin contraseña' if (item.sudo_nopasswd | bool) else '' }}
+{% if item.sudo == 'completo' %}
+{%   set comandos = 'ALL' %}
+{% else %}
+{#   En sudoers los caracteres \ , : = deben escaparse dentro de los argumentos #}
+{%   set lista = [] %}
+{%   for c in item.sudo_comandos %}
+{%     set _ = lista.append(c | replace('\\', '\\\\') | replace(',', '\\,') | replace(':', '\\:') | replace('=', '\\=')) %}
+{%   endfor %}
+{%   set comandos = lista | join(', ') %}
+{% endif %}
+{{ item.usuario }} ALL=({{ crear_sudo_runas }}) {{ 'NOPASSWD: ' if (item.sudo_nopasswd | bool) else '' }}{{ comandos }}

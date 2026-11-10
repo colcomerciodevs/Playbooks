@@ -1,0 +1,175 @@
+---
+# =============================================================================
+# Configuración de AWX como código (alternativa a hacerlo a mano en la UI).
+# Crea/actualiza: proyecto, inventarios con fuente en el proyecto, tipo de
+# credencial SMTP y las 4 plantillas de trabajo con sus encuestas.
+#
+# Requisitos (en el equipo desde donde lo ejecuta):
+#   ansible-galaxy collection install awx.awx
+#   export CONTROLLER_HOST=https://awx.empresa.local
+#   export CONTROLLER_OAUTH_TOKEN=<token personal con rol Admin de la organización>
+#   # o CONTROLLER_USERNAME / CONTROLLER_PASSWORD
+#   export CONTROLLER_VERIFY_SSL=false   # solo si AWX usa certificado interno
+#
+# Ejecución:
+#   ansible-playbook awx/configurar_awx.yml \
+#     -e awx_repo_url=https://git.empresa.local/infra/gestion_usuarios.git \
+#     -e awx_credencial_maquina="Linux - ansible_test" \
+#     -e awx_credencial_git_llaves="Git - publicar llaves gestion_usuarios"
+#
+# Es idempotente: se puede volver a ejecutar tras cambiar encuestas o nombres.
+# =============================================================================
+
+- name: Configurar AWX para gestion_usuarios
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    awx_organizacion: Default
+    awx_proyecto: Gestion de usuarios Linux
+    awx_repo_url: ""                     # obligatorio
+    awx_repo_rama: main
+    awx_credencial_scm: ""               # credencial "Source Control" existente (vacío si el repo es público)
+    awx_credencial_maquina: ""           # credencial "Machine" existente (obligatoria)
+    awx_credencial_smtp: ""              # credencial SMTP (se crea el tipo; la credencial la crea usted)
+    awx_credencial_git_llaves: ""        # credencial "Git - publicar llaves" (se crea el tipo; la credencial la crea usted)
+    awx_ee: ""                           # Execution Environment (vacío = el predeterminado)
+    awx_inventarios:
+      - nombre: Inventario 2026
+        archivo: inventario/hosts.ini
+    awx_inventario_por_defecto: Inventario 2026
+    awx_plantillas:
+      - nombre: "USUARIOS | 1 - Crear usuarios"
+        playbook: 01_crear_usuarios.yml
+        encuesta: 01_crear_usuarios.json
+        git_llaves: true
+      - nombre: "USUARIOS | 2 - Cambiar contraseña"
+        playbook: 02_cambiar_contrasena.yml
+        encuesta: 02_cambiar_contrasena.json
+      - nombre: "USUARIOS | 3 - Auditoría"
+        playbook: 03_auditoria_usuarios.yml
+        encuesta: 03_auditoria_usuarios.json
+        smtp: true
+      - nombre: "USUARIOS | 4 - Bloquear o eliminar"
+        playbook: 04_bloquear_eliminar_usuarios.yml
+        encuesta: 04_bloquear_eliminar_usuarios.json
+
+  tasks:
+    - name: Validar parámetros
+      ansible.builtin.assert:
+        that:
+          - awx_repo_url | length > 0
+          - awx_credencial_maquina | length > 0
+        fail_msg: "Indique awx_repo_url y awx_credencial_maquina (-e ...)."
+
+    - name: Proyecto (repositorio Git)
+      awx.awx.project:
+        name: "{{ awx_proyecto }}"
+        organization: "{{ awx_organizacion }}"
+        scm_type: git
+        scm_url: "{{ awx_repo_url }}"
+        scm_branch: "{{ awx_repo_rama }}"
+        credential: "{{ awx_credencial_scm if awx_credencial_scm | length > 0 else omit }}"
+        scm_update_on_launch: true
+        scm_clean: true
+        default_environment: "{{ awx_ee if awx_ee | length > 0 else omit }}"
+        wait: true
+        state: present
+
+    - name: Inventarios
+      awx.awx.inventory:
+        name: "{{ item.nombre }}"
+        organization: "{{ awx_organizacion }}"
+        state: present
+      loop: "{{ awx_inventarios }}"
+
+    - name: Fuente de inventario desde el proyecto (incluye group_vars)
+      awx.awx.inventory_source:
+        name: "{{ item.nombre }} - desde proyecto"
+        inventory: "{{ item.nombre }}"
+        organization: "{{ awx_organizacion }}"
+        source: scm
+        source_project: "{{ awx_proyecto }}"
+        source_path: "{{ item.archivo }}"
+        overwrite: true
+        overwrite_vars: true
+        update_on_launch: true
+        state: present
+      loop: "{{ awx_inventarios }}"
+
+    - name: Sincronizar inventarios
+      awx.awx.inventory_source_update:
+        name: "{{ item.nombre }} - desde proyecto"
+        inventory: "{{ item.nombre }}"
+        organization: "{{ awx_organizacion }}"
+        wait: true
+      loop: "{{ awx_inventarios }}"
+
+    - name: Tipo de credencial SMTP (para el correo de la auditoría)
+      awx.awx.credential_type:
+        name: SMTP - Reportes gestion_usuarios
+        kind: cloud
+        inputs:
+          fields:
+            - {id: smtp_servidor, type: string, label: Servidor SMTP}
+            - {id: smtp_puerto, type: string, label: Puerto, default: "25"}
+            - {id: smtp_usuario, type: string, label: Usuario (opcional)}
+            - {id: smtp_clave, type: string, label: Contraseña (opcional), secret: true}
+            - {id: smtp_seguridad, type: string, label: "Seguridad: try | starttls | always | never", default: try}
+            - {id: smtp_remitente, type: string, label: Remitente, default: ansible-awx@empresa.local}
+          required: [smtp_servidor]
+        injectors:
+          extra_vars:
+            smtp_servidor: !unsafe "{{ smtp_servidor }}"
+            smtp_puerto: !unsafe "{{ smtp_puerto | default('25') }}"
+            smtp_usuario: !unsafe "{{ smtp_usuario | default('') }}"
+            smtp_clave: !unsafe "{{ smtp_clave | default('') }}"
+            smtp_seguridad: !unsafe "{{ smtp_seguridad | default('try') }}"
+            auditoria_correo_remitente: !unsafe "{{ smtp_remitente | default('ansible-awx@empresa.local') }}"
+        state: present
+
+    - name: Tipo de credencial para publicar llaves nuevas en Git
+      awx.awx.credential_type:
+        name: Git - publicar llaves
+        kind: cloud
+        inputs:
+          fields:
+            - {id: llaves_git_url, type: string, label: "URL HTTPS del repositorio (https://.../gestion_usuarios.git)"}
+            - {id: llaves_git_rama, type: string, label: Rama, default: main}
+            - {id: llaves_git_usuario, type: string, label: Usuario}
+            - {id: llaves_git_token, type: string, label: Token con permiso de escritura, secret: true}
+          required: [llaves_git_url, llaves_git_usuario, llaves_git_token]
+        injectors:
+          extra_vars:
+            llaves_git_url: !unsafe "{{ llaves_git_url }}"
+            llaves_git_rama: !unsafe "{{ llaves_git_rama | default('main') }}"
+            llaves_git_usuario: !unsafe "{{ llaves_git_usuario }}"
+            llaves_git_token: !unsafe "{{ llaves_git_token }}"
+        state: present
+
+    - name: Plantillas de trabajo con encuesta
+      awx.awx.job_template:
+        name: "{{ item.nombre }}"
+        organization: "{{ awx_organizacion }}"
+        job_type: run
+        project: "{{ awx_proyecto }}"
+        playbook: "{{ item.playbook }}"
+        inventory: "{{ awx_inventario_por_defecto }}"
+        ask_inventory_on_launch: true
+        ask_limit_on_launch: true
+        credentials: >-
+          {{ [awx_credencial_maquina]
+             + ([awx_credencial_smtp] if (item.smtp | default(false)) and awx_credencial_smtp | length > 0 else [])
+             + ([awx_credencial_git_llaves] if (item.git_llaves | default(false)) and awx_credencial_git_llaves | length > 0 else []) }}
+        become_enabled: true
+        execution_environment: "{{ awx_ee if awx_ee | length > 0 else omit }}"
+        survey_enabled: true
+        survey_spec: "{{ lookup('ansible.builtin.file', playbook_dir ~ '/encuestas/' ~ item.encuesta) | from_json }}"
+        allow_simultaneous: false
+        verbosity: 0
+        forks: 20
+        state: present
+      loop: "{{ awx_plantillas }}"
+      loop_control:
+        label: "{{ item.nombre }}"

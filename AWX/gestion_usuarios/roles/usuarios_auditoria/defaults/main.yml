@@ -1,0 +1,32 @@
+---
+# =============================================================================
+# OPCIÓN 3 - AUDITORÍA DE USUARIOS
+# =============================================================================
+
+# Cuentas auditadas: UID >= auditoria_uid_minimo (por debajo son cuentas de servicio).
+auditoria_uid_minimo: 1000
+auditoria_uid_maximo: 0            # 0 = sin límite superior
+auditoria_excluir_usuarios: [nobody, nfsnobody]
+auditoria_dias_inactividad: 90     # marca cuentas habilitadas sin ingresar hace más de N días
+
+# Salida en el job: resumido (tabla por servidor) | completo (tabla + hallazgos por usuario)
+auditoria_detalle_salida: resumido
+
+# Reportes consolidados (HTML + CSV) en el controlador
+auditoria_dir_salida: "{{ playbook_dir }}/reportes"
+
+# En AWX el contenedor se destruye al terminar: use al menos una de estas dos
+# opciones para conservar los archivos.
+# 1) Copiar los reportes a un servidor del inventario
+auditoria_copiar_a_host: ""
+auditoria_copiar_ruta: /var/reportes/auditoria_usuarios
+
+# 2) Enviar por correo (las variables smtp_* se recomiendan vía credencial personalizada de AWX)
+auditoria_enviar_correo: "NO"
+auditoria_correo_destinatarios: ""   # separados por coma
+auditoria_correo_remitente: "ansible-awx@{{ smtp_dominio | default('localhost') }}"
+smtp_servidor: ""
+smtp_puerto: 25
+smtp_usuario: ""
+smtp_clave: ""
+smtp_seguridad: try               # always | never | starttls | try

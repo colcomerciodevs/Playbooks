@@ -1,0 +1,26 @@
+---
+- name: Preparar | Normalizar lista
+  ansible.builtin.set_fact:
+    eliminar_lista: >-
+      {{ (eliminar_usuarios | default('') | string | regex_replace('[,;\s]+', ' ')).split(' ')
+         | map('trim') | map('lower') | reject('equalto', '') | unique | list }}
+    _el_accion: "{{ eliminar_accion | string | lower | trim }}"
+
+- name: Preparar | Validar entradas
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - objetivo is defined and (objetivo | string | trim | length > 0)
+      - _el_accion in ['bloquear', 'eliminar']
+      - eliminar_lista | length > 0
+      - eliminar_lista | reject('match', regex_nombre_usuario) | list | length == 0
+      - eliminar_lista | select('in', usuarios_protegidos) | list | length == 0
+    fail_msg: >-
+      Revise objetivo, acción (bloquear|eliminar) y usuarios. No se permiten cuentas protegidas:
+      {{ eliminar_lista | default([]) | select('in', usuarios_protegidos) | join(', ') }}.
+
+- name: Preparar | Confirmación obligatoria para eliminar
+  ansible.builtin.assert:
+    quiet: true
+    that: _el_accion != 'eliminar' or (eliminar_confirmacion | string | trim) == 'CONFIRMAR'
+    fail_msg: "Para eliminar cuentas escriba CONFIRMAR en el campo de confirmación de la encuesta."

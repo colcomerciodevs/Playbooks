@@ -1,0 +1,129 @@
+{
+  "name": "USUARIOS | 2 - Cambiar contraseña",
+  "description": "Cambio de contraseña con política \"nunca caduca\" opcional (ej. root).",
+  "spec": [
+    {
+      "question_name": "Servidores o grupo del inventario",
+      "question_description": "Grupo (ej. GEOPOS, PPU, OCI_PEOPLE_PRD), servidor, o patrón Ansible: grupo1:grupo2, grupo:!servidor, srv1,srv2.",
+      "required": true,
+      "type": "text",
+      "variable": "objetivo",
+      "min": 1,
+      "max": 1024,
+      "default": "",
+      "choices": [],
+      "new_question": true
+    },
+    {
+      "question_name": "Usuario(s)",
+      "question_description": "Uno o varios separados por coma. Ej: root  o  root,soporte1",
+      "required": true,
+      "type": "text",
+      "variable": "contrasena_usuarios",
+      "min": 1,
+      "max": 1024,
+      "default": "root",
+      "choices": [],
+      "new_question": true
+    },
+    {
+      "question_name": "Nueva contraseña",
+      "question_description": "AWX la guarda cifrada y no aparece en la salida del job.",
+      "required": true,
+      "type": "password",
+      "variable": "contrasena_nueva",
+      "min": 8,
+      "max": 128,
+      "default": "",
+      "choices": [],
+      "new_question": true
+    },
+    {
+      "question_name": "Confirmar contraseña",
+      "question_description": "Debe coincidir con la anterior.",
+      "required": true,
+      "type": "password",
+      "variable": "contrasena_confirmacion",
+      "min": 8,
+      "max": 128,
+      "default": "",
+      "choices": [],
+      "new_question": true
+    },
+    {
+      "question_name": "Contraseña sin caducidad (nunca expira)",
+      "question_description": "SI: chage -m 0 -M 99999 -I -1. Evita que el hardening haga caducar la clave (crítico para root). NO: conserva la política actual.",
+      "required": true,
+      "type": "multiplechoice",
+      "variable": "contrasena_nunca_caduca",
+      "min": 0,
+      "max": 1024,
+      "default": "SI",
+      "choices": [
+        "SI",
+        "NO"
+      ],
+      "new_question": true
+    },
+    {
+      "question_name": "Quitar también la fecha de expiración de la cuenta",
+      "question_description": "SI: chage -E -1 (la cuenta queda permanente).",
+      "required": true,
+      "type": "multiplechoice",
+      "variable": "contrasena_quitar_expiracion_cuenta",
+      "min": 0,
+      "max": 1024,
+      "default": "NO",
+      "choices": [
+        "SI",
+        "NO"
+      ],
+      "new_question": true
+    },
+    {
+      "question_name": "Forzar cambio en el próximo inicio de sesión",
+      "question_description": "Excluyente con \"sin caducidad\". No permitido para root ni cuentas protegidas.",
+      "required": true,
+      "type": "multiplechoice",
+      "variable": "contrasena_forzar_cambio",
+      "min": 0,
+      "max": 1024,
+      "default": "NO",
+      "choices": [
+        "SI",
+        "NO"
+      ],
+      "new_question": true
+    },
+    {
+      "question_name": "Desbloquear la cuenta",
+      "question_description": "Reinicia intentos fallidos (faillock/pam_tally2) y quita una expiración de cuenta ya vencida.",
+      "required": true,
+      "type": "multiplechoice",
+      "variable": "contrasena_desbloquear",
+      "min": 0,
+      "max": 1024,
+      "default": "SI",
+      "choices": [
+        "SI",
+        "NO"
+      ],
+      "new_question": true
+    },
+    {
+      "question_name": "Permitir cuentas de servicio (UID 1-999)",
+      "question_description": "Por seguridad NO. root (UID 0) siempre está permitido.",
+      "required": true,
+      "type": "multiplechoice",
+      "variable": "contrasena_permitir_cuentas_servicio",
+      "min": 0,
+      "max": 1024,
+      "default": "NO",
+      "choices": [
+        "SI",
+        "NO"
+      ],
+      "new_question": true
+    }
+  ]
+}

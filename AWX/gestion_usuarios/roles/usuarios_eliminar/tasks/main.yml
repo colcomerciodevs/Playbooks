@@ -1,0 +1,90 @@
+---
+- name: Eliminar | Consultar cuentas
+  ansible.builtin.getent:
+    database: passwd
+
+# Solo cuentas existentes y con UID >= uid_minimo_humano (nunca cuentas de servicio).
+- name: Eliminar | Definir cuentas a procesar
+  ansible.builtin.set_fact:
+    _el_accion: "{{ hostvars['localhost']['_el_accion'] }}"
+    _el_existentes: "{{ hostvars['localhost']['eliminar_lista'] | select('in', ansible_facts.getent_passwd.keys() | list) | list }}"
+    _el_omitidas: []
+
+- name: Eliminar | Detectar cuentas de servicio
+  ansible.builtin.set_fact:
+    _el_omitidas: "{{ _el_omitidas + [item] }}"
+  loop: "{{ _el_existentes }}"
+  when: (ansible_facts.getent_passwd[item][1] | int) < (uid_minimo_humano | int)
+
+- name: Eliminar | Lista final
+  ansible.builtin.set_fact:
+    _el_aplicar: "{{ _el_existentes | reject('in', _el_omitidas) | list }}"
+
+- name: Eliminar | Cuentas omitidas o inexistentes
+  ansible.builtin.debug:
+    msg:
+      - "No existen: {{ hostvars['localhost']['eliminar_lista'] | reject('in', ansible_facts.getent_passwd.keys() | list) | join(', ') or '-' }}"
+      - "Omitidas por UID < {{ uid_minimo_humano }}: {{ _el_omitidas | join(', ') or '-' }}"
+
+- name: Eliminar | Retirar reglas sudo del usuario
+  ansible.builtin.file:
+    path: "/etc/sudoers.d/{{ item | regex_replace('[.~]', '_') }}"
+    state: absent
+  loop: "{{ _el_aplicar }}"
+
+# --- BLOQUEAR ----------------------------------------------------------------
+- name: Eliminar | Bloquear contraseña y expirar cuenta (Linux)
+  ansible.builtin.command:
+    argv: [usermod, -L, -e, '1970-01-02', "{{ item }}"]
+  loop: "{{ _el_aplicar }}"
+  changed_when: true
+  when:
+    - _el_accion == 'bloquear'
+    - ansible_system == 'Linux'
+
+- name: Eliminar | Bloquear cuenta (Solaris 11)
+  ansible.builtin.command:
+    argv: [passwd, -l, "{{ item }}"]
+  loop: "{{ _el_aplicar }}"
+  changed_when: true
+  when:
+    - _el_accion == 'bloquear'
+    - ansible_system == 'SunOS'
+
+# --- ELIMINAR ----------------------------------------------------------------
+- name: Eliminar | Respaldar home antes de borrar
+  when:
+    - _el_accion == 'eliminar'
+    - (eliminar_respaldar_home | string | lower | trim) in valores_si
+    - _el_aplicar | length > 0
+  block:
+    - name: Eliminar | Carpeta de respaldo
+      ansible.builtin.file:
+        path: "{{ eliminar_dir_respaldo }}"
+        state: directory
+        mode: "0700"
+
+    - name: Eliminar | Comprimir home
+      ansible.builtin.command:
+        argv:
+          - tar
+          - -czf
+          - "{{ eliminar_dir_respaldo }}/{{ item }}_{{ ansible_date_time.date }}.tar.gz"
+          - -C
+          - "{{ ansible_facts.getent_passwd[item][4] | dirname }}"
+          - "{{ ansible_facts.getent_passwd[item][4] | basename }}"
+        creates: "{{ eliminar_dir_respaldo }}/{{ item }}_{{ ansible_date_time.date }}.tar.gz"
+      loop: "{{ _el_aplicar }}"
+      when: ansible_facts.getent_passwd[item][4] is match('^/(home|export/home)/')
+
+- name: Eliminar | Borrar cuenta y home
+  ansible.builtin.user:
+    name: "{{ item }}"
+    state: absent
+    remove: true
+  loop: "{{ _el_aplicar }}"
+  when: _el_accion == 'eliminar'
+
+- name: Eliminar | Resumen
+  ansible.builtin.debug:
+    msg: "{{ inventory_hostname }}: {{ 'bloqueadas' if _el_accion == 'bloquear' else 'eliminadas' }} -> {{ _el_aplicar | join(', ') or '-' }}"

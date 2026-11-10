@@ -1,0 +1,79 @@
+---
+# Aplica la política de caducidad de contraseña a comun_usuarios.
+#   nunca         -> la contraseña no caduca (máx. días = 99999, sin inactividad,
+#                    mínimo 0 para poder volver a cambiarla el mismo día).
+#                    Con comun_quitar_expiracion_cuenta también elimina la fecha
+#                    de expiración de la CUENTA (chage -E -1).
+#   forzar_cambio -> obliga a cambiarla en el próximo inicio de sesión.
+#   mantener      -> no toca la política existente.
+#
+# Por qué hace falta "nunca": chage por usuario prevalece sobre /etc/login.defs,
+# pero login.defs solo aplica a cuentas NUEVAS; una cuenta existente (p. ej.
+# root) conserva los valores que el hardening le haya dejado en /etc/shadow.
+
+- name: Caducidad | Leer /etc/shadow de los usuarios
+  ansible.builtin.getent:
+    database: shadow
+  when:
+    - ansible_system == 'Linux'
+    - comun_politica == 'nunca'
+    - comun_usuarios | length > 0
+
+# Campos de getent shadow: [hash, ult_cambio, min, max, aviso, inactividad, expiracion, reservado]
+- name: Caducidad | Establecer "nunca caduca" (Linux)
+  ansible.builtin.command:
+    argv: >-
+      {{ ['chage', '-m', '0', '-M', comun_max_dias_nunca | string, '-I', '-1']
+         + (['-E', '-1'] if (comun_quitar_expiracion_cuenta | bool) else [])
+         + [item] }}
+  loop: "{{ comun_usuarios }}"
+  vars:
+    _sh: "{{ ansible_facts.getent_shadow[item] | default([]) }}"
+    _ya_cumple: >-
+      {{ (_sh | length >= 7)
+         and (_sh[2] in ['0', ''])
+         and (_sh[3] in [comun_max_dias_nunca | string, ''])
+         and (_sh[5] == '')
+         and ((not (comun_quitar_expiracion_cuenta | bool)) or _sh[6] == '') }}
+  when:
+    - ansible_system == 'Linux'
+    - comun_politica == 'nunca'
+    - not (_ya_cumple | bool)
+  changed_when: true
+
+- name: Caducidad | Establecer "nunca caduca" (Solaris 11)
+  ansible.builtin.command:
+    argv: [passwd, -x, '-1', "{{ item }}"]
+  loop: "{{ comun_usuarios }}"
+  when:
+    - ansible_system == 'SunOS'
+    - comun_politica == 'nunca'
+  changed_when: true
+
+- name: Caducidad | Quitar expiración de cuenta (Solaris 11)
+  ansible.builtin.command:
+    argv: [usermod, -e, '', "{{ item }}"]
+  loop: "{{ comun_usuarios }}"
+  when:
+    - ansible_system == 'SunOS'
+    - comun_politica == 'nunca'
+    - comun_quitar_expiracion_cuenta | bool
+  changed_when: true
+
+- name: Caducidad | Forzar cambio en el próximo inicio de sesión (Linux)
+  ansible.builtin.command:
+    argv: [chage, -d, '0', "{{ item }}"]
+  loop: "{{ comun_usuarios }}"
+  when:
+    - ansible_system == 'Linux'
+    - comun_politica == 'forzar_cambio'
+  changed_when: true
+
+- name: Caducidad | Forzar cambio en el próximo inicio de sesión (Solaris 11)
+  ansible.builtin.command:
+    argv: [passwd, -f, "{{ item }}"]
+  loop: "{{ comun_usuarios }}"
+  when:
+    - ansible_system == 'SunOS'
+    - comun_politica == 'forzar_cambio'
+  changed_when: true

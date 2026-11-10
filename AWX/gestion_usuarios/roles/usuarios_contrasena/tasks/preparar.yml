@@ -1,0 +1,52 @@
+---
+# Validaciones en localhost antes de tocar servidores.
+
+- name: Preparar | Normalizar respuestas
+  ansible.builtin.set_fact:
+    contrasena_lista: >-
+      {{ (contrasena_usuarios | default('') | string | regex_replace('[,;\s]+', ' ')).split(' ')
+         | map('trim') | map('lower') | reject('equalto', '') | unique | list }}
+    _cp_nunca: "{{ (contrasena_nunca_caduca | string | lower | trim) in valores_si }}"
+    _cp_forzar: "{{ (contrasena_forzar_cambio | string | lower | trim) in valores_si }}"
+
+- name: Preparar | Validar objetivo y usuarios
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - objetivo is defined and (objetivo | string | trim | length > 0)
+      - contrasena_lista | length > 0
+      - contrasena_lista | reject('match', regex_nombre_usuario) | list | length == 0
+    fail_msg: >-
+      Indique los servidores (objetivo) y al menos un usuario válido.
+      Recibido: '{{ contrasena_usuarios }}'.
+
+- name: Preparar | Validar contraseña
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - contrasena_nueva | string | length >= (contrasena_longitud_minima | int)
+      - contrasena_nueva | string == contrasena_confirmacion | string
+      - "'\n' not in (contrasena_nueva | string)"
+    fail_msg: >-
+      La contraseña y su confirmación deben coincidir, tener al menos
+      {{ contrasena_longitud_minima }} caracteres y no contener saltos de línea.
+  no_log: true
+
+- name: Preparar | Validar combinación de políticas
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - not ((_cp_nunca | bool) and (_cp_forzar | bool))
+      - not (_cp_forzar | bool) or (contrasena_lista | select('in', usuarios_protegidos) | list | length == 0)
+    fail_msg: >-
+      'Nunca caduca' y 'Forzar cambio en el próximo inicio' son excluyentes. Además, no se puede
+      forzar el cambio a root ni a cuentas protegidas ({{ contrasena_lista | select('in', usuarios_protegidos) | join(', ') }}):
+      la automatización que las usa dejaría de funcionar.
+
+- name: Preparar | Resumen
+  ansible.builtin.debug:
+    msg:
+      - "Usuarios: {{ contrasena_lista | join(', ') }}"
+      - "Servidores: {{ objetivo }}"
+      - "Política: {{ 'NUNCA CADUCA' if (_cp_nunca | bool) else ('FORZAR CAMBIO en próximo inicio' if (_cp_forzar | bool) else 'se conserva la existente') }}"
+      - "Desbloquear: {{ contrasena_desbloquear }}"

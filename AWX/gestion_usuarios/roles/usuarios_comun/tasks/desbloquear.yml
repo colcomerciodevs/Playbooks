@@ -1,0 +1,51 @@
+---
+# Desbloquea las cuentas de comun_usuarios:
+#  - Reinicia el contador de intentos fallidos (faillock en RHEL 8+/SLES 15,
+#    pam_tally2 en RHEL 7/SLES 12).
+#  - Si la CUENTA tiene una fecha de expiración ya vencida, la elimina.
+# El bloqueo de contraseña ("!" en /etc/shadow) desaparece al asignar una nueva
+# contraseña, por eso este paso se ejecuta después de establecerla.
+
+- name: Desbloqueo | Reiniciar intentos fallidos (Linux)
+  ansible.builtin.shell: |
+    salida=""
+    if command -v faillock >/dev/null 2>&1; then
+      faillock --user {{ item | quote }} --reset && salida="faillock"
+    fi
+    if command -v pam_tally2 >/dev/null 2>&1; then
+      pam_tally2 --user {{ item | quote }} --reset >/dev/null && salida="$salida pam_tally2"
+    fi
+    echo "${salida:-sin_mecanismo}"
+  register: _comun_faillock
+  loop: "{{ comun_usuarios }}"
+  changed_when: _comun_faillock.stdout != 'sin_mecanismo'
+  when: ansible_system == 'Linux'
+
+- name: Desbloqueo | Leer expiración de cuenta (Linux)
+  ansible.builtin.getent:
+    database: shadow
+  when:
+    - ansible_system == 'Linux'
+    - comun_usuarios | length > 0
+
+- name: Desbloqueo | Quitar expiración de cuenta vencida (Linux)
+  ansible.builtin.command:
+    argv: [chage, -E, '-1', "{{ item }}"]
+  loop: "{{ comun_usuarios }}"
+  vars:
+    _expira: "{{ (ansible_facts.getent_shadow[item] | default([]))[6] | default('') }}"
+    _hoy: "{{ (ansible_date_time.epoch | int) // 86400 }}"
+  when:
+    - ansible_system == 'Linux'
+    - _expira | length > 0
+    - (_expira | int) <= (_hoy | int)
+  changed_when: true
+
+- name: Desbloqueo | Desbloquear cuenta (Solaris 11)
+  ansible.builtin.command:
+    argv: [passwd, -u, "{{ item }}"]
+  loop: "{{ comun_usuarios }}"
+  register: _comun_unlock_sol
+  changed_when: _comun_unlock_sol.rc == 0
+  failed_when: false
+  when: ansible_system == 'SunOS'

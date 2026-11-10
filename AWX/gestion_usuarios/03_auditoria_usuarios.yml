@@ -1,0 +1,46 @@
+---
+# =============================================================================
+# OPCIÓN 3 - AUDITORÍA DE USUARIOS (solo lectura)
+#
+# Por servidor: cuentas con UID >= 1000, estado/caducidad de contraseña, llaves
+# SSH, último acceso, grupos privilegiados y privilegios sudo efectivos
+# (NINGUNO / LIMITADO / COMPLETO, comandos permitidos, NOPASSWD, origen).
+# Consolidado: reporte HTML + CSV, resumen en el job y artefactos en AWX.
+#
+# AWX: plantilla "USUARIOS | 3 - Auditoría" con awx/encuestas/03_auditoria_usuarios.json
+# CLI: ansible-playbook -i inventario/hosts.ini 03_auditoria_usuarios.yml -e objetivo=PPU
+# =============================================================================
+
+- name: "Opción 3 | Auditar servidores"
+  hosts: "{{ objetivo | default('NINGUN_SERVIDOR_SELECCIONADO') }}"
+  become: true
+  gather_facts: false
+  vars_files:
+    - vars/comunes.yml
+  pre_tasks:
+    # Se registra la lista completa ANTES de conectarse, para que el reporte
+    # incluya también los servidores que no respondan.
+    - name: Registrar servidores objetivo
+      ansible.builtin.set_fact:
+        auditoria_hosts_objetivo: "{{ ansible_play_hosts_all }}"
+      delegate_to: localhost
+      delegate_facts: true
+      run_once: true
+
+    - name: Recolectar datos básicos del sistema
+      ansible.builtin.setup:
+        gather_subset: [min]
+  roles:
+    - usuarios_auditoria
+
+- name: "Opción 3 | Reporte consolidado"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - vars/comunes.yml
+  tasks:
+    - name: Generar reportes
+      ansible.builtin.include_role:
+        name: usuarios_auditoria
+        tasks_from: reporte.yml

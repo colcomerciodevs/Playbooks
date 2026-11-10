@@ -1,0 +1,14 @@
+---
+# Rol de utilidades compartidas. Se usa con include_role + tasks_from.
+#
+#   establecer_contrasena.yml  -> comun_usuarios (lista), comun_clave (texto plano)
+#   politica_caducidad.yml     -> comun_usuarios, comun_politica (nunca | forzar_cambio | mantener)
+#                                 comun_quitar_expiracion_cuenta (bool)
+#   desbloquear.yml            -> comun_usuarios
+comun_usuarios: []
+comun_clave: ""
+comun_politica: mantener
+comun_quitar_expiracion_cuenta: false
+
+# Valor de "máximo de días" que se considera "nunca caduca" en Linux.
+comun_max_dias_nunca: 99999

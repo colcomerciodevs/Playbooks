@@ -1,0 +1,42 @@
+---
+# Catálogo: personal de soporte zona centro (migrado del proyecto 'Con_Contraseña').
+# Uso: encuesta de la opción 1 -> Origen = catalogo, Catálogo = usuarios_zona_centro
+# Los valores de 'catalogo_defaults' aplican a todos los usuarios del archivo;
+# cualquier campo definido en un usuario los reemplaza.
+catalogo_defaults:
+  grupo: soporte
+
+usuarios:
+  - { usuario: abarbosa,     nombre: "Alexander Barbosa" }
+  - { usuario: acuevas,      nombre: "Andres Cuevas" }
+  - { usuario: arodriguez,   nombre: "Alexander Rodriguez" }
+  - { usuario: aromero,      nombre: "Alexis Romero" }
+  - { usuario: bmarin,       nombre: "Brandon Marin" }
+  - { usuario: calonso,      nombre: "Christian German Alonso Segura" }
+  - { usuario: clozano,      nombre: "Carlos Adolfo Lozano Rodriguez" }
+  - { usuario: cperez,       nombre: "Camilo Perez" }
+  - { usuario: cpineda,      nombre: "Carlos Augusto Pineda Roldan" }
+  - { usuario: cserrano,     nombre: "Cesar David Serrano" }
+  - { usuario: csotomonte,   nombre: "Cesar Alberto Sotomonte" }
+  - { usuario: dcaballero,   nombre: "Dagoberto Layton Caballero" }
+  - { usuario: dforerof,     nombre: "Daniel Forero" }
+  - { usuario: ebernal,      nombre: "Eder Bernal" }
+  - { usuario: eramirez,     nombre: "Edgar Ramirez" }
+  - { usuario: facosta,      nombre: "Fabian Elias Acosta Fajardo" }
+  - { usuario: frodriguez,   nombre: "Fabian Rodriguez" }
+  - { usuario: iardila,      nombre: "Ivonne Ardila Prada" }
+  - { usuario: jcampo,       nombre: "Juan Sebastian Campo Herrera" }
+  - { usuario: jjimenez,     nombre: "Jair Jimenez Guevara" }
+  - { usuario: mbernal,      nombre: "Myrian Camacho Bernal" }
+  - { usuario: mrivas,       nombre: "Michael Rene Rivas Reyes" }
+  - { usuario: nmachado,     nombre: "Nestor Machado" }
+  - { usuario: oviloria,     nombre: "Orlando Viloria" }
+  - { usuario: ptocarruncho, nombre: "Paula Tocarruncho" }
+  - { usuario: rlopez,       nombre: "Rodolfo Lopez" }
+  - { usuario: rmoreno,      nombre: "Ricardo Humberto Moreno Melo" }
+  - { usuario: wfranco,      nombre: "Wilmar Franco" }
+  - { usuario: yureche,      nombre: "Yahir Ureche" }
+  - { usuario: jsuarez,      nombre: "Jairo Suarez" }
+  - { usuario: gochoa,       nombre: "German Alberto Ochoa" }
+  - { usuario: izapata,      nombre: "Ivan Camilo Zapata" }
+  - { usuario: hcastiblanco, nombre: "heyson castiblanco mora" }

@@ -1,0 +1,29 @@
+{% set ok = [] %}{% set ko = [] %}
+{% for h in aud_hosts %}{% if (hostvars[h]['auditoria_resultado'] | default({})).usuarios is defined %}{% set _ = ok.append(h) %}{% else %}{% set _ = ko.append(h) %}{% endif %}{% endfor %}
+{% set t = {'u': 0, 'c': 0, 'l': 0, 'n': 0, 'cr': 0, 'al': 0} %}
+{% for h in ok %}{% set s = hostvars[h]['auditoria_resultado']['resumen'] %}
+{% set _ = t.update({'u': t.u + s.usuarios, 'c': t.c + s.sudo_completo, 'l': t.l + s.sudo_limitado, 'n': t.n + s.sudo_sin_clave, 'cr': t.cr + s.hallazgos_critico, 'al': t.al + s.hallazgos_alto}) %}
+{% endfor %}
+==================== AUDITORÍA DE USUARIOS - CONSOLIDADO ====================
+Fecha: {{ aud_fecha }} | Objetivo: {{ objetivo | default('-') }} | UID >= {{ auditoria_uid_minimo }}
+Servidores auditados: {{ ok | length }} | No alcanzados/fallidos: {{ ko | length }}
+Cuentas: {{ t.u }} | sudo COMPLETO: {{ t.c }} | sudo LIMITADO: {{ t.l }} | con NOPASSWD: {{ t.n }}
+Hallazgos CRÍTICOS: {{ t.cr }} | ALTOS: {{ t.al }}
+{% if ko %}
+No alcanzados: {{ ko | join(', ') }}
+{% endif %}
+-----------------------------------------------------------------------------
+Cuentas con sudo (servidor / usuario / nivel / comandos):
+{% for h in ok %}{% for u in hostvars[h]['auditoria_resultado']['usuarios'] if u.sudo.nivel in ['COMPLETO', 'LIMITADO'] %}
+{{ h }} / {{ u.usuario }} / {{ u.sudo.nivel }}{{ ' NOPASSWD' if u.sudo.nopasswd else '' }} / {{ u.sudo.comandos | join(', ') | truncate(150) }}
+{% endfor %}{% endfor %}
+-----------------------------------------------------------------------------
+Hallazgos críticos y altos:
+{% for h in ok %}{% for x in hostvars[h]['auditoria_resultado']['hallazgos_servidor'] if x.severidad in ['CRITICO', 'ALTO'] %}
+[{{ x.severidad }}] {{ h }}: {{ x.detalle }}
+{% endfor %}{% for u in hostvars[h]['auditoria_resultado']['usuarios'] %}{% for x in u.hallazgos if x.severidad in ['CRITICO', 'ALTO'] %}
+[{{ x.severidad }}] {{ h }} / {{ u.usuario }}: {{ x.detalle }}
+{% endfor %}{% endfor %}{% endfor %}
+-----------------------------------------------------------------------------
+Reporte HTML: {{ aud_html | default('') }}
+Reporte CSV : {{ aud_csv | default('') }}

@@ -1,0 +1,8 @@
+---
+# Catálogo: altas individuales (migrado de 'Con_Contraseña/vars/users_linux.yml').
+# La contraseña YA NO se guarda aquí: se digita en la encuesta (campo tipo contraseña).
+usuarios:
+  - usuario: jmolina
+    nombre: "Jose Amaya Molina"
+    grupo: soporte
+    shell: /bin/bash

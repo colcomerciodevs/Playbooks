@@ -1,0 +1,8 @@
+---
+# AWX instala automáticamente estas colecciones al sincronizar el proyecto
+# (ruta reconocida: collections/requirements.yml).
+# Desde la línea de comandos:  ansible-galaxy collection install -r collections/requirements.yml
+collections:
+  - name: ansible.posix        # authorized_key
+  - name: community.crypto     # openssh_keypair (solo si se generan llaves)
+  - name: community.general    # mail (envío opcional del reporte de auditoría)

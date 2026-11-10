@@ -1,0 +1,32 @@
+---
+# Catálogo: cuentas de plataforma con acceso por llave (migrado de 'con_LLave/vars/vars_usuarios.yml').
+usuarios:
+  - usuario: srvinnops
+    nombre: "Plataforma de IA Infraestructura Corbeta"
+    shell_solaris: /usr/bin/bash
+    sudo: ninguno
+
+# -----------------------------------------------------------------------------
+# REFERENCIA DE CAMPOS (todos opcionales salvo 'usuario'):
+#   usuario        nombre de la cuenta
+#   nombre         nombre completo / descripción (GECOS)
+#   grupo          grupo primario (si se omite: grupo con el nombre del usuario)
+#   grupos         lista de grupos secundarios (solo se agregan si existen)
+#   uid            UID fijo (>= 1000)
+#   shell          shell en Linux            (por defecto /bin/bash)
+#   shell_solaris  shell en Solaris 11       (por defecto /usr/bin/bash)
+#   home           directorio home           (por defecto /home/<usuario>)
+#   llave_publica  llave pública SSH en línea (tiene prioridad sobre el repositorio)
+#   sudo           ninguno | completo | limitado
+#   sudo_nopasswd  true | false
+#   sudo_comandos  lista de comandos con ruta absoluta (para sudo: limitado)
+#
+# Ejemplo de sudo limitado:
+#  - usuario: jmonitor
+#    nombre: "Usuario de monitoreo"
+#    sudo: limitado
+#    sudo_nopasswd: true
+#    sudo_comandos:
+#      - /usr/bin/systemctl status *
+#      - /usr/bin/journalctl -u nginx
+# -----------------------------------------------------------------------------

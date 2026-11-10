@@ -1,0 +1,5 @@
+---
+# Este rol no tiene flujo principal: se consume con
+#   include_role: { name: usuarios_comun, tasks_from: <archivo>.yml }
+- name: Rol de utilidades (sin acciones por defecto)
+  ansible.builtin.meta: noop

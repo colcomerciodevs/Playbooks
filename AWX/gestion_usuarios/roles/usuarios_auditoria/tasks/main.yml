@@ -1,0 +1,34 @@
+---
+# =============================================================================
+# OPCIÓN 3 - Recolección por servidor (solo lectura: no modifica nada).
+# =============================================================================
+
+- name: Auditoría | Validar sistema operativo soportado
+  ansible.builtin.assert:
+    quiet: true
+    that: ansible_system in ['Linux', 'SunOS']
+    fail_msg: "Sistema operativo no soportado: {{ ansible_system }}"
+
+- name: Auditoría | Analizar cuentas, contraseñas, llaves y sudo
+  auditoria_usuarios:
+    uid_minimo: "{{ auditoria_uid_minimo | int }}"
+    uid_maximo: "{{ auditoria_uid_maximo | int }}"
+    excluir_usuarios: "{{ auditoria_excluir_usuarios }}"
+    dias_inactividad: "{{ auditoria_dias_inactividad | int }}"
+  register: auditoria_resultado
+  check_mode: false
+
+- name: Auditoría | Resultado del servidor
+  ansible.builtin.debug:
+    msg: "{{ auditoria_resultado.reporte_texto }}"
+
+- name: Auditoría | Hallazgos por usuario
+  ansible.builtin.debug:
+    msg: >-
+      {{ auditoria_resultado.usuarios | selectattr('hallazgos') | map(attribute='usuario')
+         | zip(auditoria_resultado.usuarios | selectattr('hallazgos') | map(attribute='hallazgos')
+               | map('map', attribute='detalle') | map('join', ' | '))
+         | map('join', ': ') | list }}
+  when:
+    - auditoria_detalle_salida == 'completo'
+    - auditoria_resultado.usuarios | selectattr('hallazgos') | list | length > 0

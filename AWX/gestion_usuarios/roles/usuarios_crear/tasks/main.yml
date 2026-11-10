@@ -1,0 +1,253 @@
+---
+# =============================================================================
+# OPCIÓN 1 - Crear usuarios en cada servidor.
+# Requiere que preparar.yml se haya ejecutado en localhost (playbook 01).
+# =============================================================================
+
+- name: Crear | Validar sistema operativo soportado
+  ansible.builtin.assert:
+    quiet: true
+    that: ansible_system in ['Linux', 'SunOS']
+    fail_msg: "Sistema operativo no soportado: {{ ansible_system }}"
+
+- name: Crear | Tomar la lista validada en localhost
+  ansible.builtin.set_fact:
+    _cu_usuarios: "{{ hostvars['localhost']['crear_usuarios_normalizados'] }}"
+    _cu_metodo: "{{ hostvars['localhost']['_crear_metodo'] }}"
+    _cu_actualizar: "{{ (crear_actualizar_existentes | string | lower | trim) in valores_si }}"
+
+- name: Crear | Consultar cuentas y grupos existentes
+  ansible.builtin.getent:
+    database: "{{ item }}"
+  loop: [passwd, group]
+
+- name: Crear | Clasificar usuarios nuevos y existentes
+  ansible.builtin.set_fact:
+    _cu_existian: "{{ _cu_usuarios | map(attribute='usuario') | select('in', ansible_facts.getent_passwd.keys() | list) | list }}"
+    _cu_grupos_existentes: "{{ ansible_facts.getent_group.keys() | list }}"
+
+- name: Crear | Definir usuarios a procesar en este servidor
+  ansible.builtin.set_fact:
+    _cu_nuevos: "{{ _cu_usuarios | rejectattr('usuario', 'in', _cu_existian) | list }}"
+    _cu_procesar: >-
+      {{ _cu_usuarios if (_cu_actualizar | bool)
+         else (_cu_usuarios | rejectattr('usuario', 'in', _cu_existian) | list) }}
+    _cu_agregar_ssh: >-
+      {{ ((crear_agregar_grupo_acceso_ssh | string | lower | trim) in valores_si)
+         and (crear_grupo_acceso_ssh in ansible_facts.getent_group.keys() | list) }}
+
+- name: Crear | Informar cuentas que ya existían
+  ansible.builtin.debug:
+    msg: >-
+      Ya existían en {{ inventory_hostname }}: {{ _cu_existian | join(', ') }}.
+      {{ 'Se actualizan grupos, llave y sudo (no se cambia su contraseña).' if (_cu_actualizar | bool)
+         else 'Se omiten (active "Actualizar existentes" para aplicarles grupos, llave y sudo).' }}
+  when: _cu_existian | length > 0
+
+# ---------------------------------------------------------------------------
+# Grupos y cuentas
+# ---------------------------------------------------------------------------
+- name: Crear | Asegurar grupos primarios
+  ansible.builtin.group:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ _cu_procesar | map(attribute='grupo') | unique | list }}"
+
+- name: Crear | Crear o actualizar cuentas
+  ansible.builtin.user:
+    name: "{{ item.usuario }}"
+    comment: "{{ item.nombre }}"
+    # En cuentas que ya existían NO se cambian grupo primario, UID, shell ni home.
+    group: "{{ omit if (_existia | bool) else item.grupo }}"
+    groups: "{{ _grupos if (_grupos | length > 0) else omit }}"
+    append: true
+    uid: "{{ item.uid if (item.uid | length > 0 and not (_existia | bool)) else omit }}"
+    shell: "{{ omit if (_existia | bool) else (item.shell if ansible_system == 'Linux' else item.shell_solaris) }}"
+    home: "{{ omit if (_existia | bool) else item.home }}"
+    create_home: "{{ not (_existia | bool) }}"
+    state: present
+  loop: "{{ _cu_procesar }}"
+  loop_control:
+    label: "{{ item.usuario }}"
+  vars:
+    _existia: "{{ item.usuario in _cu_existian }}"
+    _grupos: >-
+      {{ (item.grupos | select('in', _cu_grupos_existentes) | list)
+         + ([crear_grupo_acceso_ssh] if (_cu_agregar_ssh | bool) else []) }}
+
+- name: Crear | Avisar grupos secundarios inexistentes (no se crean para evitar errores de digitación)
+  ansible.builtin.debug:
+    msg: "{{ item.usuario }}: grupos inexistentes en {{ inventory_hostname }} omitidos -> {{ item.grupos | reject('in', _cu_grupos_existentes) | join(', ') }}"
+  loop: "{{ _cu_procesar }}"
+  loop_control:
+    label: "{{ item.usuario }}"
+  when: item.grupos | reject('in', _cu_grupos_existentes) | list | length > 0
+
+- name: Crear | Permisos del directorio home
+  ansible.builtin.file:
+    path: "{{ item.home }}"
+    state: directory
+    owner: "{{ item.usuario }}"
+    group: "{{ item.grupo }}"
+    mode: "{{ crear_modo_home }}"
+  loop: "{{ _cu_nuevos }}"
+  loop_control:
+    label: "{{ item.usuario }}"
+
+# ---------------------------------------------------------------------------
+# Método CONTRASEÑA (solo a cuentas nuevas: nunca se pisa la clave de una existente)
+# ---------------------------------------------------------------------------
+- name: Crear | Asignar contraseña inicial
+  ansible.builtin.include_role:
+    name: usuarios_comun
+    tasks_from: establecer_contrasena.yml
+  vars:
+    comun_usuarios: "{{ _cu_nuevos | map(attribute='usuario') | list }}"
+    comun_clave: "{{ crear_contrasena_inicial }}"
+  when:
+    - _cu_metodo == 'contrasena'
+    - _cu_nuevos | length > 0
+
+- name: Crear | Forzar cambio de contraseña en el primer inicio de sesión
+  ansible.builtin.include_role:
+    name: usuarios_comun
+    tasks_from: politica_caducidad.yml
+  vars:
+    comun_usuarios: "{{ _cu_nuevos | map(attribute='usuario') | list }}"
+    comun_politica: forzar_cambio
+  when:
+    - _cu_metodo == 'contrasena'
+    - _cu_nuevos | length > 0
+    - (crear_forzar_cambio | string | lower | trim) in valores_si
+
+# ---------------------------------------------------------------------------
+# Método LLAVE
+# ---------------------------------------------------------------------------
+- name: Crear | Bloquear acceso por contraseña (Linux)
+  ansible.builtin.user:
+    name: "{{ item.usuario }}"
+    password_lock: true
+  loop: "{{ _cu_nuevos }}"
+  loop_control:
+    label: "{{ item.usuario }}"
+  when:
+    - _cu_metodo == 'llave'
+    - ansible_system == 'Linux'
+
+# En Solaris 11 "passwd -l" (*LK*) también impide el ingreso por llave.
+# "passwd -N" deja la cuenta sin contraseña utilizable pero habilitada para SSH con llave.
+- name: Crear | Dejar cuenta sin contraseña utilizable (Solaris 11)
+  ansible.builtin.command:
+    argv: [passwd, -N, "{{ item.usuario }}"]
+  loop: "{{ _cu_nuevos }}"
+  loop_control:
+    label: "{{ item.usuario }}"
+  changed_when: true
+  when:
+    - _cu_metodo == 'llave'
+    - ansible_system == 'SunOS'
+
+# Una contraseña vencida bloquea también el ingreso por llave (PAM account),
+# por eso las cuentas de solo llave quedan sin caducidad.
+- name: Crear | Contraseña sin caducidad para cuentas de solo llave
+  ansible.builtin.include_role:
+    name: usuarios_comun
+    tasks_from: politica_caducidad.yml
+  vars:
+    comun_usuarios: "{{ _cu_nuevos | map(attribute='usuario') | list }}"
+    comun_politica: nunca
+    comun_quitar_expiracion_cuenta: true
+  when:
+    - _cu_metodo == 'llave'
+    - _cu_nuevos | length > 0
+
+# Renovación (opción crítica): la llave nueva se instala también en cuentas que
+# ya existían en el servidor, aunque "Actualizar existentes" sea NO.
+- name: Crear | Cuentas que reciben llave en este servidor
+  ansible.builtin.set_fact:
+    _cu_llave_destino: >-
+      {{ _cu_procesar
+         + (_cu_usuarios | selectattr('usuario', 'in', _cu_existian) | selectattr('llave_anterior', 'ne', '')
+            | rejectattr('usuario', 'in', _cu_procesar | map(attribute='usuario') | list) | list) }}
+
+- name: Crear | Retirar la llave anterior (renovación)
+  ansible.posix.authorized_key:
+    user: "{{ item.usuario }}"
+    key: "{{ item.llave_anterior }}"
+    state: absent
+  loop: "{{ _cu_llave_destino | selectattr('llave_anterior', 'ne', '') | selectattr('usuario', 'in', _cu_existian) | list }}"
+  loop_control:
+    label: "{{ item.usuario }}"
+
+- name: Crear | Instalar llave pública autorizada
+  ansible.posix.authorized_key:
+    user: "{{ item.usuario }}"
+    key: "{{ item.llave_publica }}"
+    state: present
+    manage_dir: true
+    exclusive: "{{ (crear_llaves_exclusivas | string | lower | trim) in valores_si }}"
+  loop: "{{ _cu_llave_destino }}"
+  loop_control:
+    label: "{{ item.usuario }}"
+  when: item.llave_publica | length > 0
+
+# ---------------------------------------------------------------------------
+# sudo: un archivo por usuario en /etc/sudoers.d, validado con visudo
+# ---------------------------------------------------------------------------
+- name: Crear | Verificar que /etc/sudoers incluya /etc/sudoers.d
+  ansible.builtin.command:
+    argv: [grep, -Eq, '^[#@]includedir[[:space:]]+/etc/sudoers\.d', /etc/sudoers]
+  register: _cu_includedir
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: _cu_procesar | selectattr('sudo', 'ne', 'ninguno') | list | length > 0
+
+- name: Crear | Aviso si sudoers no lee /etc/sudoers.d
+  ansible.builtin.debug:
+    msg: >-
+      ATENCIÓN: /etc/sudoers de {{ inventory_hostname }} no tiene '#includedir /etc/sudoers.d'.
+      Las reglas se escriben pero sudo NO las aplicará hasta agregar esa línea.
+  when: _cu_includedir.rc | default(0) != 0
+
+- name: Crear | Escribir regla sudo del usuario
+  ansible.builtin.template:
+    src: sudoers_usuario.j2
+    dest: "/etc/sudoers.d/{{ item.sudo_archivo }}"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: "{{ crear_visudo[ansible_system] }} -cf %s"
+  loop: "{{ _cu_procesar | selectattr('sudo', 'ne', 'ninguno') | list }}"
+  loop_control:
+    label: "{{ item.usuario }} -> {{ item.sudo }}"
+
+- name: Crear | Revisar reglas sudo previas gestionadas por este proyecto
+  ansible.builtin.command:
+    argv: [grep, -q, 'Gestionado por Ansible (gestion_usuarios)', "/etc/sudoers.d/{{ item.sudo_archivo }}"]
+  register: _cu_sudo_previo
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  loop: "{{ _cu_procesar | selectattr('sudo', 'eq', 'ninguno') | list }}"
+  loop_control:
+    label: "{{ item.usuario }}"
+
+- name: Crear | Retirar regla sudo gestionada cuando el nivel es 'ninguno'
+  ansible.builtin.file:
+    path: "/etc/sudoers.d/{{ item.item.sudo_archivo }}"
+    state: absent
+  loop: "{{ _cu_sudo_previo.results | default([]) | selectattr('rc', 'defined') | selectattr('rc', 'eq', 0) | list }}"
+  loop_control:
+    label: "{{ item.item.usuario }}"
+
+# ---------------------------------------------------------------------------
+- name: Crear | Resumen del servidor
+  ansible.builtin.debug:
+    msg:
+      - "Servidor: {{ inventory_hostname }} ({{ ansible_distribution | default(ansible_system) }} {{ ansible_distribution_version | default('') }})"
+      - "Creados: {{ _cu_nuevos | map(attribute='usuario') | join(', ') or '-' }}"
+      - "Ya existían: {{ _cu_existian | join(', ') or '-' }} ({{ 'actualizados' if (_cu_actualizar | bool) else 'sin cambios' }})"
+      - "Grupo {{ crear_grupo_acceso_ssh }}: {{ 'agregado' if (_cu_agregar_ssh | bool) else 'no existe en el servidor / no aplica' }}"
+      - "Con sudo: {{ _cu_procesar | selectattr('sudo', 'ne', 'ninguno') | map(attribute='usuario') | join(', ') or '-' }}"
+      - "Llave renovada: {{ _cu_llave_destino | default([]) | selectattr('llave_anterior', 'ne', '') | map(attribute='usuario') | join(', ') or '-' }}"
