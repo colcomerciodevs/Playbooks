@@ -1,7 +1,7 @@
 # gestion_usuarios
 
-Gestión de usuarios Linux con Ansible y AWX: crear usuarios, cambiar contraseñas (con política "nunca caduca"), auditar permisos sudo y bloquear o eliminar cuentas.
+Gestión de usuarios Linux con Ansible y AWX: crear usuarios, cambiar contraseñas, auditar cuentas y permisos sudo, y bloquear, reactivar o eliminar cuentas.
 
-**Toda la documentación está en [docs/Manual_Gestion_Usuarios_AWX.pdf](docs/Manual_Gestion_Usuarios_AWX.pdf).**
+**La documentación está en [docs/Arquitectura_Gestion_Usuarios.pdf](docs/Arquitectura_Gestion_Usuarios.pdf).**
 
-Para regenerar el manual después de cambiar encuestas o inventarios: `python3 docs/fuente/generar_manual.py`
+Para regenerarla después de cambiar las encuestas: `python3 -B docs/fuente/generar_arquitectura.py`

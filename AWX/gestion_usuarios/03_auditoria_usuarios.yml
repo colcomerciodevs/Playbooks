@@ -15,6 +15,7 @@
 - name: "Opción 3 | Validar objetivo y carpeta de reportes"
   hosts: localhost
   connection: local
+  become: false   # en el contenedor no hay sudo; la plantilla activa become para todo
   gather_facts: false
   vars_files:
     - vars/comunes.yml
@@ -49,6 +50,7 @@
 - name: "Opción 3 | Reporte consolidado"
   hosts: localhost
   connection: local
+  become: false   # en el contenedor no hay sudo; la plantilla activa become para todo
   gather_facts: false
   vars_files:
     - vars/comunes.yml

@@ -3,8 +3,8 @@
 """Fuente única de las encuestas de AWX.
 Genera awx/encuestas/*.json (formato survey_spec de la API de AWX): una por
 plantilla (01..04) y una por workflow con aprobación (wf_*).
-El manual PDF toma las preguntas de aquí: después de cambiar una encuesta,
-regenérelo con  python3 docs/fuente/generar_manual.py
+El PDF de arquitectura toma las preguntas de aquí: después de cambiar una encuesta,
+regenérelo con  python3 -B docs/fuente/generar_arquitectura.py
 
 Uso:  python3 awx/generar_encuestas.py
 """
