@@ -26,13 +26,9 @@ crear_contrasena_inicial: ""
 crear_forzar_cambio: "SI"         # obliga a cambiarla en el primer inicio de sesión
 
 # ---- Método llave -----------------------------------------------------------
-# keys     : almacén de llaves (una por usuario: <usuario>, <usuario>.pub, <usuario>.ppk).
-#            Si el usuario YA tiene llave se reutiliza, en cualquier servidor.
-#            Si no tiene, se genera una nueva y se guarda en el almacén.
-# encuesta : se usa la llave pública pegada en la encuesta (no se guarda en el almacén).
-crear_llave_origen: keys
-# Una línea por usuario:  usuario;ssh-rsa AAAA... comentario   (solo origen encuesta)
-crear_llaves_texto: ""
+# Las llaves viven en el almacén (una por usuario: <usuario>, <usuario>.pub, <usuario>.ppk).
+# Si el usuario YA tiene llave se reutiliza, en cualquier servidor.
+# Si no tiene, se genera una nueva y se guarda en el almacén.
 # Almacén persistente: requiere el grupo de instancias Container_Group_Corbeta en la plantilla.
 crear_llaves_dir: "{{ gestion_dir_persistente }}/keys"
 crear_llaves_exclusivas: "NO"     # SI = borra cualquier otra llave del authorized_keys
@@ -54,11 +50,14 @@ crear_sudo_nopasswd: "NO"         # con método llave se fuerza a SI (la cuenta 
 crear_sudo_comandos: ""
 crear_sudo_runas: ALL
 
-# ---- Grupo de acceso SSH ----------------------------------------------------
-# Si el grupo existe en el servidor (p. ej. por "AllowGroups ssh_access" en
-# sshd_config) el usuario se agrega como grupo secundario. Si no existe, no se toca.
+# ---- Acceso SSH ----------------------------------------------------------------
+# SI = permite el ingreso por SSH en servidores que lo restringen:
+#   - si existe el grupo crear_grupo_acceso_ssh (definido por el hardening), se agrega al usuario;
+#   - si sshd_config tiene una línea "AllowUsers", se agrega el usuario al final de la última.
+# Lo que no exista en el servidor se ignora.
+crear_permitir_ssh: "SI"
 crear_grupo_acceso_ssh: ssh_access
-crear_agregar_grupo_acceso_ssh: "SI"
+crear_sshd_config: /etc/ssh/sshd_config
 
 # Ruta de visudo por sistema operativo
 crear_visudo:

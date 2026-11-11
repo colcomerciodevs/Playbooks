@@ -1,0 +1,48 @@
+---
+# =============================================================================
+# OPCIÓN 0 - RELACIÓN DE CONFIANZA (cuentas de automatización)
+# Prerrequisito de las demás opciones: crea o completa iacolcoauto y ansible_test
+# (llaves, sudo sin contraseña, sin caducidad, acceso SSH).
+#
+# Se conecta con el usuario y la contraseña que se escriben en la encuesta, para
+# poder entrar a servidores donde ansible_test todavía no existe.
+#
+# AWX: plantilla "USUARIOS | 0 - Relación de confianza" con awx/encuestas/00_relacion_confianza.json
+# =============================================================================
+
+- name: "Opción 0 | Validar encuesta"
+  hosts: localhost
+  connection: local
+  become: false   # en el contenedor no hay sudo; la plantilla activa become para todo
+  gather_facts: false
+  vars_files:
+    - vars/comunes.yml
+  tasks:
+    - name: Validar objetivo
+      ansible.builtin.include_role:
+        name: usuarios_comun
+        tasks_from: validar_objetivo.yml
+
+    - name: Validar usuario y contraseña de conexión
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - relacion_usuario | default('') | string | trim is match(regex_nombre_usuario)
+          - relacion_clave | default('') | string | length > 0
+        fail_msg: "Indique el usuario y la contraseña con los que se entra hoy a los servidores. No se modificó ningún servidor."
+      no_log: true
+
+- name: "Opción 0 | Crear relación de confianza"
+  hosts: "{{ objetivo | default('NINGUN_SERVIDOR_SELECCIONADO') }}"
+  become: true
+  gather_facts: true
+  gather_subset: [min]
+  vars_files:
+    - vars/comunes.yml
+  # Las variables del play mandan sobre el ansible_user del inventario y sobre la credencial.
+  vars:
+    ansible_user: "{{ relacion_usuario | string | trim }}"
+    ansible_password: "{{ relacion_clave }}"
+    ansible_become_password: "{{ relacion_clave_sudo if (relacion_clave_sudo | default('') | length > 0) else relacion_clave }}"
+  roles:
+    - usuarios_automatizacion

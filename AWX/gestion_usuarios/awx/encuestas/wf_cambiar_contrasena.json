@@ -1,5 +1,5 @@
 {
-  "name": "USUARIOS | WF - Cambio de contraseña",
+  "name": "USUARIOS | WF - Cambiar contraseña",
   "description": "Aprobación -> cambio de contraseña -> auditoría de verificación.",
   "spec": [
     {
@@ -27,64 +27,15 @@
       "new_question": true
     },
     {
-      "question_name": "Acción",
-      "question_description": "[cambiar] Asigna la contraseña nueva. [solo_forzar_cambio] No toca la contraseña; obliga a cambiarla en el próximo ingreso.",
+      "question_name": "Usuario(s)",
+      "question_description": "Uno o varios separados por coma. Ejemplo: jperez,soporte1",
       "required": true,
-      "type": "multiplechoice",
-      "variable": "contrasena_accion",
-      "min": 0,
-      "max": 1024,
-      "default": "cambiar",
-      "choices": [
-        "cambiar",
-        "solo_forzar_cambio"
-      ],
-      "new_question": true
-    },
-    {
-      "question_name": "Usuarios a incluir",
-      "question_description": "[lista] Los usuarios escritos abajo. [catalogo] Los del catálogo elegido. [todos_uid_1000] Todas las cuentas con UID ≥ 1000 de cada servidor. En bloque solo se permite solo_forzar_cambio. Revise antes la auditoría.",
-      "required": true,
-      "type": "multiplechoice",
-      "variable": "contrasena_origen",
-      "min": 0,
-      "max": 1024,
-      "default": "lista",
-      "choices": [
-        "lista",
-        "catalogo",
-        "todos_uid_1000"
-      ],
-      "new_question": true
-    },
-    {
-      "question_name": "Usuario(s) (si usuarios a incluir = lista)",
-      "question_description": "Solo si usuarios a incluir = lista. Separados por coma. Ejemplo: jperez,soporte1",
-      "required": false,
       "type": "text",
       "variable": "contrasena_usuarios",
-      "min": 0,
+      "min": 1,
       "max": 1024,
       "default": "",
       "choices": [],
-      "new_question": true
-    },
-    {
-      "question_name": "Catálogo (si usuarios a incluir = catalogo)",
-      "question_description": "Solo si usuarios a incluir = catalogo.",
-      "required": false,
-      "type": "multiplechoice",
-      "variable": "contrasena_catalogo",
-      "min": 0,
-      "max": 1024,
-      "default": "",
-      "choices": [
-        "usuarios_generales",
-        "admins_linux",
-        "cuentas_de_servicio",
-        "soporte_zona_norte",
-        "soporte_zona_centro"
-      ],
       "new_question": true
     },
     {
@@ -100,24 +51,24 @@
       "new_question": true
     },
     {
-      "question_name": "Nueva contraseña (acción cambiar)",
-      "question_description": "Solo con acción cambiar. Mínimo 8 caracteres. No aparece en la salida del job.",
-      "required": false,
+      "question_name": "Nueva contraseña",
+      "question_description": "Mínimo 8 caracteres. No aparece en la salida del job.",
+      "required": true,
       "type": "password",
       "variable": "contrasena_nueva",
-      "min": 0,
+      "min": 8,
       "max": 128,
       "default": "",
       "choices": [],
       "new_question": true
     },
     {
-      "question_name": "Confirmar contraseña (acción cambiar)",
+      "question_name": "Confirmar contraseña",
       "question_description": "Repita la contraseña nueva.",
-      "required": false,
+      "required": true,
       "type": "password",
       "variable": "contrasena_confirmacion",
-      "min": 0,
+      "min": 8,
       "max": 128,
       "default": "",
       "choices": [],

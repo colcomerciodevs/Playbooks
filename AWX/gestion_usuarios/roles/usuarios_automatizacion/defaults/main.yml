@@ -1,0 +1,15 @@
+---
+# =============================================================================
+# OPCIÓN 0 - RELACIÓN DE CONFIANZA (cuentas de automatización)
+# Cuentas que deben existir en todo servidor para que Ansible/AWX pueda trabajar.
+# Las llaves públicas están en roles/usuarios_automatizacion/files/.
+# =============================================================================
+automatizacion_cuentas:
+  - usuario: iacolcoauto
+    llaves: [iacolcoauto.pub]
+  - usuario: ansible_test
+    llaves: [ansible_test_ecdsa.pub, ansible_test_rsa.pub]
+
+automatizacion_shell: /bin/bash
+automatizacion_grupo_acceso_ssh: ssh_access
+automatizacion_sshd_config: /etc/ssh/sshd_config

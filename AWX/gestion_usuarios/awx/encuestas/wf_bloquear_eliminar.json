@@ -1,6 +1,6 @@
 {
   "name": "USUARIOS | WF - Bloquear o eliminar",
-  "description": "Aprobación -> bloqueo o eliminación -> auditoría de verificación.",
+  "description": "Aprobación -> bloqueo, reactivación o eliminación -> auditoría de verificación.",
   "spec": [
     {
       "question_name": "Ticket o justificación",

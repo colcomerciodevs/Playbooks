@@ -17,11 +17,9 @@
   ansible.builtin.set_fact:
     _crear_metodo: "{{ crear_metodo_acceso | string | lower | trim }}"
     _crear_origen: "{{ crear_origen | string | lower | trim }}"
-    _crear_llave_origen: "{{ crear_llave_origen | string | lower | trim }}"
     _crear_renovar: "{{ (crear_renovar_llave | string | lower | trim) in valores_si }}"
     _crear_sudo_global: "{{ crear_sudo_nivel | string | lower | trim }}"
     _crear_base: []
-    _crear_llaves_mapa: {}
     crear_usuarios_normalizados: []
     # Comandos sudo: uno por línea. Si alguien los separó por comas, ", /" también se acepta.
     _crear_sudo_comandos_globales: >-
@@ -38,12 +36,10 @@
       - _crear_metodo in ['contrasena', 'llave']
       - _crear_origen in ['encuesta', 'catalogo']
       - _crear_sudo_global in ['ninguno', 'completo', 'limitado']
-      - _crear_metodo != 'llave' or _crear_llave_origen in ['keys', 'encuesta']
-      - not (_crear_renovar | bool) or (_crear_metodo == 'llave' and _crear_llave_origen == 'keys')
+      - not (_crear_renovar | bool) or _crear_metodo == 'llave'
     fail_msg: >-
       Opciones inválidas. Revise: método = contrasena|llave; origen = encuesta|catalogo;
-      sudo = ninguno|completo|limitado; origen de llave = keys|encuesta.
-      "Renovar llave" solo aplica con método llave y origen keys.
+      sudo = ninguno|completo|limitado. "Renovar llave" solo aplica con método llave.
 
 # ---------------------------------------------------------------------------
 # Construcción de la lista base
@@ -103,20 +99,6 @@
       No se recibió ningún usuario. En la encuesta escriba una línea por usuario con el formato
       usuario;Nombre completo;grupo(opcional), o elija un catálogo con usuarios.
 
-- name: Preparar | Leer llaves públicas desde la encuesta (usuario;llave)
-  ansible.builtin.set_fact:
-    _crear_llaves_mapa: "{{ _crear_llaves_mapa | combine({(_c[0] | lower): _c[1] | default('')}) }}"
-  loop: >-
-    {{ (crear_llaves_texto | default('') | string).splitlines()
-       | map('trim') | reject('equalto', '') | reject('match', '#') | list }}
-  loop_control:
-    label: "{{ item.split(';')[0] }}"
-  vars:
-    _c: "{{ item.split(';', 1) | map('trim') | list }}"
-  when:
-    - _crear_metodo == 'llave'
-    - _crear_llave_origen == 'encuesta'
-
 # ---------------------------------------------------------------------------
 # Normalización: un diccionario homogéneo por usuario
 # Precedencia: campo del usuario en catálogo > catalogo_defaults > encuesta > defaults del rol
@@ -132,8 +114,6 @@
     _llave: >-
       {%- if item.llave_publica | default('') | length > 0 -%}
       {{ item.llave_publica }}
-      {%- elif _crear_metodo == 'llave' and _crear_llave_origen == 'encuesta' -%}
-      {{ _crear_llaves_mapa[item.usuario] | default('') }}
       {%- endif -%}
     _nopasswd_pedido: "{{ (item.sudo_nopasswd | default(crear_sudo_nopasswd)) | string | lower | trim in valores_si }}"
     _u:
@@ -173,7 +153,6 @@
       - item.sudo != 'limitado' or (item.sudo_comandos | length > 0)
       - item.sudo_comandos | reject('match', '^(/|sudoedit )') | list | length == 0
       - item.llave_publica == '' or (item.llave_publica is match(regex_llave_publica))
-      - _crear_metodo != 'llave' or _crear_llave_origen == 'keys' or item.llave_publica != ''
     fail_msg: >-
       Usuario '{{ item.usuario }}' inválido. Verifique: nombre en minúsculas (máx. 32), que no sea
       una cuenta protegida ({{ usuarios_protegidos | join(', ') }}), nombre completo sin ':', grupo válido y
@@ -207,9 +186,7 @@
   ansible.builtin.stat:
     path: "{{ crear_llaves_dir }}"
   register: _crear_almacen
-  when:
-    - _crear_metodo == 'llave'
-    - _crear_llave_origen == 'keys'
+  when: _crear_metodo == 'llave'
 
 - name: Preparar | Exigir almacén de llaves disponible
   ansible.builtin.assert:
@@ -221,9 +198,7 @@
       No se puede escribir en {{ crear_llaves_dir }}: las llaves nuevas se perderían. Verifique que la carpeta
       exista, que el job tenga permiso de escritura y que la plantilla tenga el grupo de instancias
       Container_Group_Corbeta. No se modificó ningún servidor.
-  when:
-    - _crear_metodo == 'llave'
-    - _crear_llave_origen == 'keys'
+  when: _crear_metodo == 'llave'
 
 - name: Preparar | Resumen de lo que se va a crear
   ansible.builtin.debug:

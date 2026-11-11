@@ -1,0 +1,47 @@
+---
+# Si sshd_config limita el acceso por usuario ("AllowUsers"), agrega cada cuenta de
+# comun_usuarios al final de la ÚLTIMA línea AllowUsers. Si no hay esa línea, o la cuenta
+# ya está, no toca nada. Las líneas dentro de bloques Match (indentadas) no se tocan.
+# El acceso por grupo (AllowGroups ssh_access) se resuelve agregando la cuenta al grupo,
+# fuera de este archivo. Si el servidor tiene ambas líneas, sshd exige cumplir las dos.
+# Deja en comun_allowusers_agregados la lista de cuentas agregadas.
+
+- name: SSH | Leer sshd_config
+  ansible.builtin.slurp:
+    src: "{{ comun_sshd_config }}"
+  register: _comun_sshd
+  failed_when: false
+  when: ansible_system == 'Linux'
+
+- name: SSH | Cuentas que ya están en AllowUsers
+  ansible.builtin.set_fact:
+    _comun_allow_actual: >-
+      {{ ((_comun_sshd.content | default('') | b64decode).splitlines()
+          | select('match', '^AllowUsers\s') | map('regex_replace', '^AllowUsers\s+', '') | join(' ')).split() }}
+    _comun_allow_tiene_linea: >-
+      {{ (_comun_sshd.content | default('') | b64decode).splitlines() | select('match', '^AllowUsers\s') | list | length > 0 }}
+
+- name: SSH | Agregar al final de la última línea AllowUsers
+  ansible.builtin.lineinfile:
+    path: "{{ comun_sshd_config }}"
+    regexp: '^(AllowUsers\s.*?)\s*$'
+    line: '\1 {{ item }}'
+    backrefs: true
+    backup: true
+    validate: /usr/sbin/sshd -t -f %s
+  loop: "{{ comun_usuarios | reject('in', _comun_allow_actual) | list }}"
+  register: _comun_allowusers
+  when:
+    - ansible_system == 'Linux'
+    - _comun_allow_tiene_linea | bool
+
+- name: SSH | Cuentas agregadas
+  ansible.builtin.set_fact:
+    comun_allowusers_agregados: >-
+      {{ _comun_allowusers.results | default([]) | selectattr('changed', 'defined') | selectattr('changed')
+         | map(attribute='item') | list }}
+
+- name: SSH | Recargar sshd (no corta las sesiones abiertas)
+  ansible.builtin.shell: systemctl reload sshd 2>/dev/null || systemctl reload ssh  # noqa command-instead-of-module
+  changed_when: true
+  when: comun_allowusers_agregados | length > 0

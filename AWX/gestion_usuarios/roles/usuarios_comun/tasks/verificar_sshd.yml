@@ -1,0 +1,21 @@
+---
+# Solo lectura. Si sshd_config tiene "AllowUsers" (y por lo tanto se va a modificar),
+# la configuración actual debe ser válida antes de tocar nada.
+
+- name: SSH | Validar configuración actual de sshd (si tiene AllowUsers)
+  ansible.builtin.shell: |
+    grep -Eq '^AllowUsers[[:space:]]' {{ comun_sshd_config | quote }} || exit 0
+    /usr/sbin/sshd -t
+  register: _comun_sshd_t
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: ansible_system == 'Linux'
+
+- name: SSH | sshd_config válido
+  ansible.builtin.assert:
+    quiet: true
+    that: _comun_sshd_t.rc | default(0) == 0
+    fail_msg: >-
+      En {{ inventory_hostname }} "sshd -t" reporta errores en la configuración actual de SSH:
+      {{ _comun_sshd_t.stderr | default('') | truncate(300) }}. Corríjalos antes de continuar. No se modificó ningún servidor.

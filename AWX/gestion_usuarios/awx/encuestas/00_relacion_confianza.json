@@ -1,0 +1,54 @@
+{
+  "name": "USUARIOS | 0 - Relación de confianza",
+  "description": "Crea o completa las cuentas de automatización (iacolcoauto, ansible_test). Prerrequisito de las demás opciones.",
+  "spec": [
+    {
+      "question_name": "Servidores o grupo del inventario",
+      "question_description": "Grupo, servidor o patrón del inventario. No se permite localhost. Ejemplos: GEOPOS · PPU · srv1,srv2 · GEOPOS:!srv1",
+      "required": true,
+      "type": "text",
+      "variable": "objetivo",
+      "min": 1,
+      "max": 1024,
+      "default": "",
+      "choices": [],
+      "new_question": true
+    },
+    {
+      "question_name": "Usuario de conexión",
+      "question_description": "Usuario con el que se entra hoy a los servidores (por ejemplo tux o adminso). Debe poder usar sudo.",
+      "required": true,
+      "type": "text",
+      "variable": "relacion_usuario",
+      "min": 1,
+      "max": 32,
+      "default": "",
+      "choices": [],
+      "new_question": true
+    },
+    {
+      "question_name": "Contraseña de conexión",
+      "question_description": "Contraseña SSH de ese usuario. No aparece en la salida del job.",
+      "required": true,
+      "type": "password",
+      "variable": "relacion_clave",
+      "min": 1,
+      "max": 128,
+      "default": "",
+      "choices": [],
+      "new_question": true
+    },
+    {
+      "question_name": "Contraseña de sudo (si es distinta)",
+      "question_description": "Déjela vacía si sudo usa la misma contraseña de conexión.",
+      "required": false,
+      "type": "password",
+      "variable": "relacion_clave_sudo",
+      "min": 0,
+      "max": 128,
+      "default": "",
+      "choices": [],
+      "new_question": true
+    }
+  ]
+}

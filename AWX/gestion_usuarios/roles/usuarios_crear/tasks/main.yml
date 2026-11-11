@@ -26,8 +26,9 @@
     _cu_procesar: >-
       {{ _cu_usuarios if (_cu_actualizar | bool)
          else (_cu_usuarios | rejectattr('usuario', 'in', _cu_existian) | list) }}
+    _cu_permitir_ssh: "{{ (crear_permitir_ssh | string | lower | trim) in valores_si }}"
     _cu_agregar_ssh: >-
-      {{ ((crear_agregar_grupo_acceso_ssh | string | lower | trim) in valores_si)
+      {{ ((crear_permitir_ssh | string | lower | trim) in valores_si)
          and (crear_grupo_acceso_ssh in ansible_facts.getent_group.keys() | list) }}
 
 - name: Crear | Informar cuentas que ya existían
@@ -236,6 +237,21 @@
     label: "{{ item.item.usuario }}"
 
 # ---------------------------------------------------------------------------
+# Acceso SSH: el grupo ssh_access ya se agregó arriba (si existe). Aquí, si
+# sshd_config tiene "AllowUsers", se agregan las cuentas al final de la última línea.
+# ---------------------------------------------------------------------------
+- name: Crear | Agregar a AllowUsers de sshd_config
+  ansible.builtin.include_role:
+    name: usuarios_comun
+    tasks_from: allowusers.yml
+  vars:
+    comun_usuarios: "{{ _cu_procesar | map(attribute='usuario') | list }}"
+    comun_sshd_config: "{{ crear_sshd_config }}"
+  when:
+    - _cu_permitir_ssh | bool
+    - _cu_procesar | length > 0
+
+# ---------------------------------------------------------------------------
 - name: Crear | Resumen del servidor
   ansible.builtin.debug:
     msg:
@@ -243,5 +259,6 @@
       - "Creados: {{ _cu_nuevos | map(attribute='usuario') | join(', ') or '-' }}"
       - "Ya existían: {{ _cu_existian | join(', ') or '-' }} ({{ 'actualizados' if (_cu_actualizar | bool) else 'sin cambios' }})"
       - "Grupo {{ crear_grupo_acceso_ssh }}: {{ 'agregado' if (_cu_agregar_ssh | bool) else 'no existe en el servidor / no aplica' }}"
+      - "AllowUsers: {{ (comun_allowusers_agregados | default([]) | join(', ')) or 'sin cambios (no existe la línea o ya estaban)' }}"
       - "Con sudo: {{ _cu_procesar | selectattr('sudo', 'ne', 'ninguno') | map(attribute='usuario') | join(', ') or '-' }}"
       - "Llave renovada: {{ _cu_llave_destino | default([]) | selectattr('llave_anterior', 'ne', '') | map(attribute='usuario') | join(', ') or '-' }}"

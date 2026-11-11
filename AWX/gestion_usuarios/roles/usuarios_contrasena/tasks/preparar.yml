@@ -72,6 +72,14 @@
   ansible.builtin.set_fact:
     _cp_criticas: "{{ contrasena_lista | select('in', usuarios_protegidos) | list if _cp_origen == 'lista' else [] }}"
 
+- name: Preparar | No forzar el cambio a cuentas críticas
+  ansible.builtin.assert:
+    quiet: true
+    that: _cp_accion != 'solo_forzar_cambio' or _cp_criticas | length == 0
+    fail_msg: >-
+      No se puede forzar el cambio de contraseña a cuentas críticas ({{ _cp_criticas | join(', ') }}): la automatización
+      que las usa dejaría de funcionar. Quítelas de la lista. No se modificó ningún servidor.
+
 - name: Preparar | Proteger cuentas críticas
   ansible.builtin.assert:
     quiet: true

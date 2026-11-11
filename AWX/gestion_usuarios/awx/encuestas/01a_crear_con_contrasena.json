@@ -1,0 +1,175 @@
+{
+  "name": "USUARIOS | 1a - Crear con contraseña",
+  "description": "Alta de usuarios con contraseña inicial, grupos y sudo.",
+  "spec": [
+    {
+      "question_name": "Servidores o grupo del inventario",
+      "question_description": "Grupo, servidor o patrón del inventario. No se permite localhost. Ejemplos: GEOPOS · PPU · srv1,srv2 · GEOPOS:!srv1",
+      "required": true,
+      "type": "text",
+      "variable": "objetivo",
+      "min": 1,
+      "max": 1024,
+      "default": "",
+      "choices": [],
+      "new_question": true
+    },
+    {
+      "question_name": "Origen de la lista de usuarios",
+      "question_description": "[encuesta] Escriba los usuarios en el campo de abajo. [catalogo] Se toman de un archivo de vars/catalogos/.",
+      "required": true,
+      "type": "multiplechoice",
+      "variable": "crear_origen",
+      "min": 0,
+      "max": 1024,
+      "default": "encuesta",
+      "choices": [
+        "encuesta",
+        "catalogo"
+      ],
+      "new_question": true
+    },
+    {
+      "question_name": "Usuarios (si origen = encuesta)",
+      "question_description": "Una línea por usuario: usuario;Nombre completo;grupo (grupo opcional). Ejemplo: jperez;Juan Pérez;soporte",
+      "required": false,
+      "type": "textarea",
+      "variable": "crear_usuarios_texto",
+      "min": 0,
+      "max": 20000,
+      "default": "",
+      "choices": [],
+      "new_question": true
+    },
+    {
+      "question_name": "Catálogo (si origen = catalogo) · el catálogo define sudo y grupos",
+      "question_description": "⚠ El catálogo manda sobre esta encuesta: admins_linux da sudo COMPLETO sin contraseña.",
+      "required": false,
+      "type": "multiplechoice",
+      "variable": "crear_catalogo",
+      "min": 0,
+      "max": 1024,
+      "default": "",
+      "choices": [
+        "usuarios_generales",
+        "admins_linux",
+        "cuentas_de_servicio",
+        "soporte_zona_norte",
+        "soporte_zona_centro"
+      ],
+      "new_question": true
+    },
+    {
+      "question_name": "Grupos secundarios",
+      "question_description": "Separados por coma. Solo se agregan si ya existen en el servidor. No se permiten grupos privilegiados (wheel, sudo, root, docker…).",
+      "required": false,
+      "type": "text",
+      "variable": "crear_grupos_secundarios",
+      "min": 0,
+      "max": 1024,
+      "default": "",
+      "choices": [],
+      "new_question": true
+    },
+    {
+      "question_name": "Permitir acceso SSH",
+      "question_description": "[SI] Lo agrega al grupo ssh_access (si existe en el servidor) y al final de la línea AllowUsers de sshd_config (si existe esa línea). Lo que no exista se ignora. [NO] No toca el acceso SSH; si el servidor lo restringe, la cuenta no podrá entrar por SSH.",
+      "required": true,
+      "type": "multiplechoice",
+      "variable": "crear_permitir_ssh",
+      "min": 0,
+      "max": 1024,
+      "default": "SI",
+      "choices": [
+        "SI",
+        "NO"
+      ],
+      "new_question": true
+    },
+    {
+      "question_name": "Contraseña inicial",
+      "question_description": "Mínimo 8 caracteres. Se asigna únicamente a cuentas nuevas. No aparece en la salida del job.",
+      "required": true,
+      "type": "password",
+      "variable": "crear_contrasena_inicial",
+      "min": 8,
+      "max": 128,
+      "default": "",
+      "choices": [],
+      "new_question": true
+    },
+    {
+      "question_name": "Forzar cambio de contraseña en el primer ingreso",
+      "question_description": "[SI] El usuario debe cambiar la contraseña en su primer ingreso (recomendado).",
+      "required": true,
+      "type": "multiplechoice",
+      "variable": "crear_forzar_cambio",
+      "min": 0,
+      "max": 1024,
+      "default": "SI",
+      "choices": [
+        "SI",
+        "NO"
+      ],
+      "new_question": true
+    },
+    {
+      "question_name": "Nivel de sudo",
+      "question_description": "[ninguno] Sin sudo. [completo] Puede ejecutar todo como root. [limitado] Solo los comandos indicados abajo.",
+      "required": true,
+      "type": "multiplechoice",
+      "variable": "crear_sudo_nivel",
+      "min": 0,
+      "max": 1024,
+      "default": "ninguno",
+      "choices": [
+        "ninguno",
+        "completo",
+        "limitado"
+      ],
+      "new_question": true
+    },
+    {
+      "question_name": "Comandos sudo permitidos (si nivel = limitado)",
+      "question_description": "Un comando por línea, con ruta completa. Ejemplo: /usr/bin/systemctl restart httpd",
+      "required": false,
+      "type": "textarea",
+      "variable": "crear_sudo_comandos",
+      "min": 0,
+      "max": 20000,
+      "default": "",
+      "choices": [],
+      "new_question": true
+    },
+    {
+      "question_name": "sudo sin contraseña (NOPASSWD)",
+      "question_description": "[SI] Sudo no pide contraseña.",
+      "required": true,
+      "type": "multiplechoice",
+      "variable": "crear_sudo_nopasswd",
+      "min": 0,
+      "max": 1024,
+      "default": "NO",
+      "choices": [
+        "SI",
+        "NO"
+      ],
+      "new_question": true
+    },
+    {
+      "question_name": "Actualizar usuarios que ya existen",
+      "question_description": "[NO] Las cuentas que ya existen se omiten. [SI] Se les agregan grupos, llave y sudo (no cambia su contraseña).",
+      "required": true,
+      "type": "multiplechoice",
+      "variable": "crear_actualizar_existentes",
+      "min": 0,
+      "max": 1024,
+      "default": "NO",
+      "choices": [
+        "SI",
+        "NO"
+      ],
+      "new_question": true
+    }
+  ]
+}

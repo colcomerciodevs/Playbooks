@@ -10,9 +10,7 @@
 # =============================================================================
 
 - name: Llaves | Reutilizar, generar o renovar
-  when:
-    - _crear_metodo == 'llave'
-    - _crear_llave_origen == 'keys'
+  when: _crear_metodo == 'llave'
   block:
     - name: Llaves | Buscar llave existente de cada usuario
       ansible.builtin.stat:

@@ -5,6 +5,8 @@
 #   politica_caducidad.yml     -> comun_usuarios, comun_politica (nunca | forzar_cambio | mantener)
 #                                 comun_quitar_expiracion_cuenta (bool)
 #   desbloquear.yml            -> comun_usuarios
+#   allowusers.yml             -> comun_usuarios (agrega a AllowUsers de sshd_config si existe la línea)
+#   verificar_sshd.yml         -> (sshd -t si sshd_config tiene AllowUsers)
 comun_usuarios: []
 comun_clave: ""
 comun_politica: mantener
@@ -12,3 +14,6 @@ comun_quitar_expiracion_cuenta: false
 
 # Valor de "máximo de días" que se considera "nunca caduca" en Linux.
 comun_max_dias_nunca: 99999
+
+# Acceso SSH (allowusers.yml / verificar_sshd.yml)
+comun_sshd_config: /etc/ssh/sshd_config

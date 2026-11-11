@@ -1,0 +1,210 @@
+<!doctype html><html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Auditoría de usuarios 2026-11-11 15:03:59</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1d2330;--mut:#5d6677;--bd:#dfe3ea;--hd:#eef1f5;--acc:#2456c7;
+--crit:#b3261e;--crit-bg:#fde8e6;--alto:#b15c00;--alto-bg:#fff0de;--medio:#8a6d00;--medio-bg:#fff8d6;--bajo:#2f6b3a;--bajo-bg:#e6f4e8;--info:#46556b;--info-bg:#eaeef4}
+@media (prefers-color-scheme:dark){:root{--bg:#14171c;--card:#1c2027;--tx:#e6e9ef;--mut:#9aa3b2;--bd:#2d333d;--hd:#232832;--acc:#8fb0ff;
+--crit:#ff8a80;--crit-bg:#3a1714;--alto:#ffb35c;--alto-bg:#382511;--medio:#f0d264;--medio-bg:#332c0e;--bajo:#8fd19b;--bajo-bg:#16301b;--info:#b4c0d3;--info-bg:#232a35}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:1400px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:24px;margin:0 0 4px}h2{font-size:18px;margin:32px 0 10px}p.meta{color:var(--mut);margin:0 0 20px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.kpi{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:12px 14px}
+.kpi b{display:block;font-size:24px;font-variant-numeric:tabular-nums}.kpi span{color:var(--mut);font-size:12.5px}
+.kpi.crit b{color:var(--crit)}.kpi.alto b{color:var(--alto)}
+.tool{display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap}
+input[type=search]{flex:1;min-width:200px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--card);color:var(--tx);font:inherit}
+.wrap{overflow-x:auto;background:var(--card);border:1px solid var(--bd);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:7px 10px;border-bottom:1px solid var(--bd);text-align:left;vertical-align:top}
+th{background:var(--hd);position:sticky;top:0;font-weight:600;white-space:nowrap}
+tr:last-child td{border-bottom:0}td.n{font-variant-numeric:tabular-nums;text-align:right}
+code{font:12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-all}
+code.cod{word-break:normal;white-space:nowrap}
+.sev{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.CRITICO{color:var(--crit);background:var(--crit-bg)}.ALTO{color:var(--alto);background:var(--alto-bg)}
+.MEDIO{color:var(--medio);background:var(--medio-bg)}.BAJO{color:var(--bajo);background:var(--bajo-bg)}.INFO{color:var(--info);background:var(--info-bg)}
+.COMPLETO{color:var(--crit);font-weight:600}.LIMITADO{color:var(--alto);font-weight:600}.NINGUNO{color:var(--mut)}
+.riesgo{color:var(--crit)}
+details{background:var(--card);border:1px solid var(--bd);border-radius:10px;margin:8px 0}
+summary{cursor:pointer;padding:10px 14px;font-weight:600}summary small{font-weight:400;color:var(--mut);margin-left:8px}
+details .wrap{border:0;border-top:1px solid var(--bd);border-radius:0 0 10px 10px}
+.box{padding:8px 14px;color:var(--mut);font-size:13px}
+.nota{color:var(--mut);font-size:12.5px;margin-top:6px}
+@media print{input,.tool{display:none}details{break-inside:avoid}details:not([open]) .wrap{display:block}}
+</style>
+</head>
+<body>
+<main>
+<h1>Auditoría de usuarios y privilegios sudo</h1>
+<p class="meta">Generado: 2026-11-11 15:03:59 · Objetivo: <b>suse15-sp5-sp7</b> · Cuentas con UID ≥ 1000 · Fuente: /etc/passwd, /etc/shadow, sudo -ll -U, sshd -T</p>
+
+<div class="kpis">
+  <div class="kpi"><b>1</b><span>servidores auditados</span></div>
+  <div class="kpi"><b>0</b><span>no alcanzados / fallidos</span></div>
+  <div class="kpi"><b>10</b><span>cuentas (UID ≥ 1000)</span></div>
+  <div class="kpi"><b>10</b><span>pueden iniciar sesión</span></div>
+  <div class="kpi"><b>10</b><span>con sudo completo</span></div>
+  <div class="kpi"><b>0</b><span>con sudo limitado</span></div>
+  <div class="kpi"><b>6</b><span>sudo sin contraseña</span></div>
+  <div class="kpi crit"><b>0</b><span>hallazgos críticos</span></div>
+  <div class="kpi alto"><b>6</b><span>hallazgos altos</span></div>
+</div>
+
+<h2>Hallazgos (25)</h2>
+<div class="tool"><input type="search" placeholder="Filtrar hallazgos por servidor, usuario o texto…" data-tabla="t-hall"></div>
+<div class="wrap"><table id="t-hall">
+<thead><tr><th>Severidad</th><th>Servidor</th><th>Usuario</th><th>Código</th><th>Detalle</th></tr></thead>
+<tbody><tr><td><span class="sev ALTO">ALTO</span></td><td>suse15-sp5-sp7</td><td>csotomonte</td><td><code class="cod">SUDO_COMPLETO_SIN_CLAVE</code></td><td>sudo ALL sin contraseña (NOPASSWD).</td></tr><tr><td><span class="sev ALTO">ALTO</span></td><td>suse15-sp5-sp7</td><td>aromero</td><td><code class="cod">SUDO_COMPLETO_SIN_CLAVE</code></td><td>sudo ALL sin contraseña (NOPASSWD).</td></tr><tr><td><span class="sev ALTO">ALTO</span></td><td>suse15-sp5-sp7</td><td>nmachado</td><td><code class="cod">SUDO_COMPLETO_SIN_CLAVE</code></td><td>sudo ALL sin contraseña (NOPASSWD).</td></tr><tr><td><span class="sev ALTO">ALTO</span></td><td>suse15-sp5-sp7</td><td>arodriguez</td><td><code class="cod">SUDO_COMPLETO_SIN_CLAVE</code></td><td>sudo ALL sin contraseña (NOPASSWD).</td></tr><tr><td><span class="sev ALTO">ALTO</span></td><td>suse15-sp5-sp7</td><td>iacolcoauto</td><td><code class="cod">SUDO_COMPLETO_SIN_CLAVE</code></td><td>sudo ALL sin contraseña (NOPASSWD).</td></tr><tr><td><span class="sev ALTO">ALTO</span></td><td>suse15-sp5-sp7</td><td>ansible_test</td><td><code class="cod">SUDO_COMPLETO_SIN_CLAVE</code></td><td>sudo ALL sin contraseña (NOPASSWD).</td></tr><tr><td><span class="sev MEDIO">MEDIO</span></td><td>suse15-sp5-sp7</td><td>(servidor)</td><td><code class="cod">SSH_ROOT_PERMITIDO</code></td><td>sshd permite login directo de root con contraseña (PermitRootLogin yes).</td></tr><tr><td><span class="sev MEDIO">MEDIO</span></td><td>suse15-sp5-sp7</td><td>pos</td><td><code class="cod">SUDO_COMPLETO_CLAVE_ROOT</code></td><td>sudo ALL pero exige la contraseña de root (root (targetpw)).</td></tr><tr><td><span class="sev MEDIO">MEDIO</span></td><td>suse15-sp5-sp7</td><td>postgres</td><td><code class="cod">SUDO_COMPLETO_CLAVE_ROOT</code></td><td>sudo ALL pero exige la contraseña de root (root (targetpw)).</td></tr><tr><td><span class="sev MEDIO">MEDIO</span></td><td>suse15-sp5-sp7</td><td>jcastano</td><td><code class="cod">SUDO_COMPLETO_CLAVE_ROOT</code></td><td>sudo ALL pero exige la contraseña de root (root (targetpw)).</td></tr><tr><td><span class="sev MEDIO">MEDIO</span></td><td>suse15-sp5-sp7</td><td>srvinnops</td><td><code class="cod">SUDO_COMPLETO_CLAVE_ROOT</code></td><td>sudo ALL pero exige la contraseña de root (root (targetpw)).</td></tr><tr><td><span class="sev BAJO">BAJO</span></td><td>suse15-sp5-sp7</td><td>pos</td><td><code class="cod">NUNCA_INGRESO</code></td><td>Cuenta habilitada que nunca ha iniciado sesión.</td></tr><tr><td><span class="sev BAJO">BAJO</span></td><td>suse15-sp5-sp7</td><td>pos</td><td><code class="cod">CONTRASENA_SIN_CADUCIDAD</code></td><td>La contraseña no caduca.</td></tr><tr><td><span class="sev BAJO">BAJO</span></td><td>suse15-sp5-sp7</td><td>postgres</td><td><code class="cod">NUNCA_INGRESO</code></td><td>Cuenta habilitada que nunca ha iniciado sesión.</td></tr><tr><td><span class="sev BAJO">BAJO</span></td><td>suse15-sp5-sp7</td><td>postgres</td><td><code class="cod">CONTRASENA_SIN_CADUCIDAD</code></td><td>La contraseña no caduca.</td></tr><tr><td><span class="sev BAJO">BAJO</span></td><td>suse15-sp5-sp7</td><td>jcastano</td><td><code class="cod">NUNCA_INGRESO</code></td><td>Cuenta habilitada que nunca ha iniciado sesión.</td></tr><tr><td><span class="sev BAJO">BAJO</span></td><td>suse15-sp5-sp7</td><td>jcastano</td><td><code class="cod">CONTRASENA_SIN_CADUCIDAD</code></td><td>La contraseña no caduca.</td></tr><tr><td><span class="sev BAJO">BAJO</span></td><td>suse15-sp5-sp7</td><td>csotomonte</td><td><code class="cod">NUNCA_INGRESO</code></td><td>Cuenta habilitada que nunca ha iniciado sesión.</td></tr><tr><td><span class="sev BAJO">BAJO</span></td><td>suse15-sp5-sp7</td><td>csotomonte</td><td><code class="cod">CONTRASENA_SIN_CADUCIDAD</code></td><td>La contraseña no caduca.</td></tr><tr><td><span class="sev BAJO">BAJO</span></td><td>suse15-sp5-sp7</td><td>aromero</td><td><code class="cod">NUNCA_INGRESO</code></td><td>Cuenta habilitada que nunca ha iniciado sesión.</td></tr><tr><td><span class="sev BAJO">BAJO</span></td><td>suse15-sp5-sp7</td><td>aromero</td><td><code class="cod">CONTRASENA_SIN_CADUCIDAD</code></td><td>La contraseña no caduca.</td></tr><tr><td><span class="sev BAJO">BAJO</span></td><td>suse15-sp5-sp7</td><td>nmachado</td><td><code class="cod">NUNCA_INGRESO</code></td><td>Cuenta habilitada que nunca ha iniciado sesión.</td></tr><tr><td><span class="sev BAJO">BAJO</span></td><td>suse15-sp5-sp7</td><td>arodriguez</td><td><code class="cod">NUNCA_INGRESO</code></td><td>Cuenta habilitada que nunca ha iniciado sesión.</td></tr><tr><td><span class="sev BAJO">BAJO</span></td><td>suse15-sp5-sp7</td><td>srvinnops</td><td><code class="cod">NUNCA_INGRESO</code></td><td>Cuenta habilitada que nunca ha iniciado sesión.</td></tr><tr><td><span class="sev BAJO">BAJO</span></td><td>suse15-sp5-sp7</td><td>iacolcoauto</td><td><code class="cod">NUNCA_INGRESO</code></td><td>Cuenta habilitada que nunca ha iniciado sesión.</td></tr></tbody></table></div>
+
+<h2>Cuentas con privilegios sudo (10)</h2>
+<div class="tool"><input type="search" placeholder="Filtrar por servidor, usuario o comando…" data-tabla="t-sudo"></div>
+<div class="wrap"><table id="t-sudo">
+<thead><tr><th>Servidor</th><th>Usuario</th><th>Nombre</th><th>Nivel</th><th>Sin clave</th><th>Clave exigida</th><th>Comandos permitidos</th><th>Origen de la regla</th></tr></thead>
+<tbody><tr><td>suse15-sp5-sp7</td><td><b>pos</b></td><td>pos</td>
+<td class="COMPLETO">COMPLETO</td><td>no</td><td>root (targetpw)</td>
+<td><code class="">ALL</code></td>
+<td><code>/etc/sudoers</code><br></td></tr><tr><td>suse15-sp5-sp7</td><td><b>postgres</b></td><td>PostgreSQL</td>
+<td class="COMPLETO">COMPLETO</td><td>no</td><td>root (targetpw)</td>
+<td><code class="">ALL</code></td>
+<td><code>/etc/sudoers</code><br></td></tr><tr><td>suse15-sp5-sp7</td><td><b>jcastano</b></td><td>John Castano</td>
+<td class="COMPLETO">COMPLETO</td><td>no</td><td>root (targetpw)</td>
+<td><code class="">ALL</code></td>
+<td><code>/etc/sudoers</code><br></td></tr><tr><td>suse15-sp5-sp7</td><td><b>csotomonte</b></td><td>Cesar Sotomonte</td>
+<td class="COMPLETO">COMPLETO</td><td>SÍ</td><td></td>
+<td><code class="">ALL</code></td>
+<td><code>/etc/sudoers</code><br><code>/etc/sudoers:89: csotomonte         ALL=(ALL)  NOPASSWD: ALL</code><br></td></tr><tr><td>suse15-sp5-sp7</td><td><b>aromero</b></td><td>Alexis Romero</td>
+<td class="COMPLETO">COMPLETO</td><td>SÍ</td><td></td>
+<td><code class="">ALL</code></td>
+<td><code>/etc/sudoers</code><br><code>/etc/sudoers:88: aromero         ALL=(ALL)  NOPASSWD: ALL</code><br></td></tr><tr><td>suse15-sp5-sp7</td><td><b>nmachado</b></td><td>Nestor Machado</td>
+<td class="COMPLETO">COMPLETO</td><td>SÍ</td><td></td>
+<td><code class="">ALL</code></td>
+<td><code>/etc/sudoers</code><br><code>/etc/sudoers:85: nmachado        ALL=(ALL)  NOPASSWD: ALL</code><br></td></tr><tr><td>suse15-sp5-sp7</td><td><b>arodriguez</b></td><td>Alexander Rodriguez</td>
+<td class="COMPLETO">COMPLETO</td><td>SÍ</td><td></td>
+<td><code class="">ALL</code></td>
+<td><code>/etc/sudoers</code><br><code>/etc/sudoers:86: arodriguez      ALL=(ALL)  NOPASSWD: ALL</code><br></td></tr><tr><td>suse15-sp5-sp7</td><td><b>srvinnops</b></td><td>Plataforma de IA Infraestructura Corbeta</td>
+<td class="COMPLETO">COMPLETO</td><td>no</td><td>root (targetpw)</td>
+<td><code class="">ALL</code></td>
+<td><code>/etc/sudoers</code><br></td></tr><tr><td>suse15-sp5-sp7</td><td><b>iacolcoauto</b></td><td></td>
+<td class="COMPLETO">COMPLETO</td><td>SÍ</td><td></td>
+<td><code class="">ALL</code></td>
+<td><code>/etc/sudoers</code><br><code>/etc/sudoers.d/iacolcoauto</code><br><code>/etc/sudoers.d/iacolcoauto:1: iacolcoauto ALL=(ALL) NOPASSWD: ALL</code><br></td></tr><tr><td>suse15-sp5-sp7</td><td><b>ansible_test</b></td><td></td>
+<td class="COMPLETO">COMPLETO</td><td>SÍ</td><td></td>
+<td><code class="">ALL</code></td>
+<td><code>/etc/sudoers</code><br><code>/etc/sudoers.d/ansible_test</code><br><code>/etc/sudoers.d/ansible_test:1: ansible_test ALL=(ALL) NOPASSWD: ALL</code><br></td></tr></tbody></table></div>
+<p class="nota">En rojo: comandos que permiten obtener una shell de root (shells, editores, paginadores como less/journalctl/systemctl status, intérpretes; ver GTFOBins). "Clave exigida = root (targetpw)" indica que sudo pide la contraseña de root, típico de SUSE.</p>
+
+<h2>Detalle por servidor</h2>
+<div class="tool"><input type="search" placeholder="Filtrar en todas las tablas de servidores…" data-grupo="srv"></div><details data-srv>
+<summary>suse15-sp5-sp7<small>SUSE Linux Enterprise Server 15 SP7 · 10 cuentas · sudo completo 10 · limitado 0 · <span class="sev ALTO">6 alto(s)</span></small></summary>
+<div class="box">root: contraseña ACTIVA, último cambio 2024-04-02, caduca <b>nunca</b> · Sudo version 1.9.15p5 · Defaults targetpw · PermitRootLogin: yes</div>
+<div class="wrap"><table>
+<thead><tr><th>Usuario</th><th>UID</th><th>Nombre</th><th>Grupos</th><th>Acceso</th><th>Contraseña</th><th>Último cambio</th><th>Caduca</th><th>Cuenta expira</th><th>Llaves</th><th>Último acceso</th><th>Sudo</th><th>Hallazgos</th></tr></thead>
+<tbody><tr><td><b>pos</b></td><td class="n">1000</td><td>pos</td>
+<td>users</td>
+<td>Sí</td>
+<td>ACTIVA <small>sha512</small></td>
+<td>2024-04-22</td><td>nunca</td><td>nunca</td>
+<td class="n" title="pos@akb68-n2, pos@akb68-n2">2</td>
+<td>NUNCA</td>
+<td class="COMPLETO">COMPLETO</td>
+<td><span class="sev MEDIO" title="sudo ALL pero exige la contraseña de root (root (targetpw)).">SUDO_COMPLETO_CLAVE_ROOT</span> <span class="sev BAJO" title="Cuenta habilitada que nunca ha iniciado sesión.">NUNCA_INGRESO</span> <span class="sev BAJO" title="La contraseña no caduca.">CONTRASENA_SIN_CADUCIDAD</span> </td></tr><tr><td><b>postgres</b></td><td class="n">1001</td><td>PostgreSQL</td>
+<td>postgres, dialout</td>
+<td>Sí</td>
+<td>ACTIVA <small>sha512</small></td>
+<td>2024-04-22</td><td>nunca</td><td>nunca</td>
+<td class="n" title="">0</td>
+<td>NUNCA</td>
+<td class="COMPLETO">COMPLETO</td>
+<td><span class="sev MEDIO" title="sudo ALL pero exige la contraseña de root (root (targetpw)).">SUDO_COMPLETO_CLAVE_ROOT</span> <span class="sev BAJO" title="Cuenta habilitada que nunca ha iniciado sesión.">NUNCA_INGRESO</span> <span class="sev BAJO" title="La contraseña no caduca.">CONTRASENA_SIN_CADUCIDAD</span> </td></tr><tr><td><b>jcastano</b></td><td class="n">1002</td><td>John Castano</td>
+<td>users</td>
+<td>Sí</td>
+<td>ACTIVA <small>sha512</small></td>
+<td>2024-04-23</td><td>nunca</td><td>nunca</td>
+<td class="n" title="">0</td>
+<td>NUNCA</td>
+<td class="COMPLETO">COMPLETO</td>
+<td><span class="sev MEDIO" title="sudo ALL pero exige la contraseña de root (root (targetpw)).">SUDO_COMPLETO_CLAVE_ROOT</span> <span class="sev BAJO" title="Cuenta habilitada que nunca ha iniciado sesión.">NUNCA_INGRESO</span> <span class="sev BAJO" title="La contraseña no caduca.">CONTRASENA_SIN_CADUCIDAD</span> </td></tr><tr><td><b>csotomonte</b></td><td class="n">1003</td><td>Cesar Sotomonte</td>
+<td>users</td>
+<td>Sí</td>
+<td>ACTIVA <small>sha512</small></td>
+<td>2024-04-23</td><td>nunca</td><td>nunca</td>
+<td class="n" title="">0</td>
+<td>NUNCA</td>
+<td class="COMPLETO">COMPLETO · NOPASSWD</td>
+<td><span class="sev ALTO" title="sudo ALL sin contraseña (NOPASSWD).">SUDO_COMPLETO_SIN_CLAVE</span> <span class="sev BAJO" title="Cuenta habilitada que nunca ha iniciado sesión.">NUNCA_INGRESO</span> <span class="sev BAJO" title="La contraseña no caduca.">CONTRASENA_SIN_CADUCIDAD</span> </td></tr><tr><td><b>aromero</b></td><td class="n">1004</td><td>Alexis Romero</td>
+<td>users</td>
+<td>Sí</td>
+<td>ACTIVA <small>sha512</small></td>
+<td>2024-04-23</td><td>nunca</td><td>nunca</td>
+<td class="n" title="">0</td>
+<td>NUNCA</td>
+<td class="COMPLETO">COMPLETO · NOPASSWD</td>
+<td><span class="sev ALTO" title="sudo ALL sin contraseña (NOPASSWD).">SUDO_COMPLETO_SIN_CLAVE</span> <span class="sev BAJO" title="Cuenta habilitada que nunca ha iniciado sesión.">NUNCA_INGRESO</span> <span class="sev BAJO" title="La contraseña no caduca.">CONTRASENA_SIN_CADUCIDAD</span> </td></tr><tr><td><b>nmachado</b></td><td class="n">1005</td><td>Nestor Machado</td>
+<td>users</td>
+<td>Sí</td>
+<td>ACTIVA <small>sha512</small></td>
+<td>forzado (0)</td><td>nunca</td><td>nunca</td>
+<td class="n" title="">0</td>
+<td>NUNCA</td>
+<td class="COMPLETO">COMPLETO · NOPASSWD</td>
+<td><span class="sev ALTO" title="sudo ALL sin contraseña (NOPASSWD).">SUDO_COMPLETO_SIN_CLAVE</span> <span class="sev BAJO" title="Cuenta habilitada que nunca ha iniciado sesión.">NUNCA_INGRESO</span> </td></tr><tr><td><b>arodriguez</b></td><td class="n">1006</td><td>Alexander Rodriguez</td>
+<td>users</td>
+<td>Sí</td>
+<td>ACTIVA <small>sha512</small></td>
+<td>forzado (0)</td><td>nunca</td><td>nunca</td>
+<td class="n" title="">0</td>
+<td>NUNCA</td>
+<td class="COMPLETO">COMPLETO · NOPASSWD</td>
+<td><span class="sev ALTO" title="sudo ALL sin contraseña (NOPASSWD).">SUDO_COMPLETO_SIN_CLAVE</span> <span class="sev BAJO" title="Cuenta habilitada que nunca ha iniciado sesión.">NUNCA_INGRESO</span> </td></tr><tr><td><b>srvinnops</b></td><td class="n">1007</td><td>Plataforma de IA Infraestructura Corbeta</td>
+<td>srvinnops</td>
+<td>Sí</td>
+<td>SIN_CLAVE</td>
+<td>2026-10-07</td><td>2026-11-18</td><td>nunca</td>
+<td class="n" title="srvinnops@ansible">1</td>
+<td>NUNCA</td>
+<td class="COMPLETO">COMPLETO</td>
+<td><span class="sev MEDIO" title="sudo ALL pero exige la contraseña de root (root (targetpw)).">SUDO_COMPLETO_CLAVE_ROOT</span> <span class="sev BAJO" title="Cuenta habilitada que nunca ha iniciado sesión.">NUNCA_INGRESO</span> </td></tr><tr><td><b>iacolcoauto</b></td><td class="n">1008</td><td></td>
+<td>users</td>
+<td>Sí</td>
+<td>SIN_CLAVE</td>
+<td></td><td>nunca</td><td>nunca</td>
+<td class="n" title="iacolcoauto@ansibleawx">1</td>
+<td>NUNCA</td>
+<td class="COMPLETO">COMPLETO · NOPASSWD</td>
+<td><span class="sev ALTO" title="sudo ALL sin contraseña (NOPASSWD).">SUDO_COMPLETO_SIN_CLAVE</span> <span class="sev BAJO" title="Cuenta habilitada que nunca ha iniciado sesión.">NUNCA_INGRESO</span> </td></tr><tr><td><b>ansible_test</b></td><td class="n">1009</td><td></td>
+<td>users</td>
+<td>Sí</td>
+<td>SIN_CLAVE</td>
+<td></td><td>nunca</td><td>nunca</td>
+<td class="n" title="root@Ansible, root@localhost.localdomain">2</td>
+<td>2026-11-11 10:03</td>
+<td class="COMPLETO">COMPLETO · NOPASSWD</td>
+<td><span class="sev ALTO" title="sudo ALL sin contraseña (NOPASSWD).">SUDO_COMPLETO_SIN_CLAVE</span> </td></tr></tbody></table></div>
+</details></main>
+<script>
+document.querySelectorAll('input[type=search]').forEach(function (inp) {
+  inp.addEventListener('input', function () {
+    var q = inp.value.toLowerCase();
+    var tablas = inp.dataset.tabla ? [document.getElementById(inp.dataset.tabla)]
+      : Array.prototype.slice.call(document.querySelectorAll('details[data-srv] table'));
+    tablas.forEach(function (t) {
+      t.querySelectorAll('tbody tr').forEach(function (tr) {
+        tr.style.display = !q || tr.textContent.toLowerCase().indexOf(q) > -1 ? '' : 'none';
+      });
+    });
+    if (!inp.dataset.tabla) {
+      document.querySelectorAll('details[data-srv]').forEach(function (d) {
+        var visible = d.textContent.toLowerCase().indexOf(q) > -1;
+        d.style.display = !q || visible ? '' : 'none';
+        if (q && visible) d.open = true;
+      });
+    }
+  });
+});
+</script>
+</body>
+</html>

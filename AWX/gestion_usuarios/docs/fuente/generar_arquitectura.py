@@ -142,27 +142,27 @@ class Flujo(Flowable):
 # ---------------------------------------------------------------------------
 EFECTO = {
     'objetivo': 'En qué servidores se aplica: grupo, servidor o patrón. Debe existir en el inventario y no puede ser localhost.',
+    'relacion_usuario': 'Usuario con el que se entra hoy al servidor (tux, adminso…). Debe poder usar sudo.',
+    'relacion_clave': 'Contraseña SSH de ese usuario. AWX la guarda cifrada.',
+    'relacion_clave_sudo': 'Solo si sudo pide una contraseña distinta a la de conexión.',
     'ticket_cambio': 'Número de ticket y motivo. Lo revisa quien aprueba.',
-    'crear_metodo_acceso': '<b>contrasena</b>: cuenta con clave inicial. <b>llave</b>: acceso solo con llave SSH; la clave queda bloqueada.',
     'crear_origen': '<b>encuesta</b>: usuarios escritos abajo. <b>catalogo</b>: usuarios de un archivo de vars/catalogos/.',
     'crear_usuarios_texto': 'Una línea por usuario: <font name="Mono" size="7.6">usuario;Nombre completo;grupo</font>.',
     'crear_catalogo': 'Archivo a usar. El catálogo manda sobre la encuesta: admins_linux da sudo completo sin contraseña.',
+    'crear_permitir_ssh': 'SI: agrega al grupo ssh_access (si existe) y al final de la línea AllowUsers de sshd_config (si existe). NO: no toca SSH.',
     'crear_grupos_secundarios': 'Se agregan si ya existen en el servidor. No se aceptan grupos privilegiados.',
-    'crear_contrasena_inicial': 'Clave de las cuentas nuevas. Obligatoria con método contrasena.',
+    'crear_contrasena_inicial': 'Clave de las cuentas nuevas, mínimo 8 caracteres. AWX la guarda cifrada.',
     'crear_forzar_cambio': 'SI: el usuario debe cambiar la clave en su primer ingreso.',
-    'crear_llave_origen': '<b>keys</b>: reutiliza la llave guardada o genera una. <b>encuesta</b>: usa la llave pegada abajo.',
-    'crear_llaves_texto': 'Una línea por usuario: <font name="Mono" size="7.6">usuario;ssh-rsa AAAA...</font>.',
-    'crear_renovar_llave': 'SI: crea llave nueva, archiva la anterior y la reemplaza solo en los servidores del objetivo.',
+    'crear_renovar_llave': 'NO: reutiliza la llave guardada (o crea una si no tiene). SI: crea llave nueva, archiva la anterior y la reemplaza solo en los servidores del objetivo.',
     'crear_sudo_nivel': '<b>ninguno</b>, <b>completo</b> (ALL) o <b>limitado</b> (solo los comandos indicados).',
-    'crear_sudo_nopasswd': 'SI: sudo sin pedir clave. Con método llave se aplica siempre.',
+    'crear_sudo_nopasswd': 'SI: sudo sin pedir clave. (En 1b se aplica siempre que haya sudo, porque la cuenta no tiene clave.)',
     'crear_sudo_comandos': 'Un comando por línea con ruta absoluta (nivel limitado).',
     'crear_actualizar_existentes': 'NO: las cuentas existentes se omiten. SI: se les aplica grupos, llave y sudo; su clave no cambia.',
-    'contrasena_origen': '<b>lista</b>: los escritos. <b>catalogo</b>: los de un catálogo. <b>todos_uid_1000</b>: todas las cuentas UID ≥ 1000 de cada servidor. En bloque solo se permite solo_forzar_cambio.',
-    'contrasena_usuarios': 'Cuentas a cambiar, separadas por coma (si usuarios a incluir = lista).',
+    'contrasena_origen': '<b>lista</b>: los escritos. <b>catalogo</b>: los de un catálogo. <b>todos_uid_1000</b>: todas las cuentas UID ≥ 1000 de cada servidor. En bloque se omiten cuentas críticas, de servicio y sin clave.',
+    'contrasena_usuarios': 'Cuentas, separadas por coma. En 2b solo si usuarios a incluir = lista.',
     'contrasena_catalogo': 'Archivo de vars/catalogos/ (si usuarios a incluir = catalogo).',
-    'contrasena_accion': '<b>cambiar</b>: asigna la clave nueva. <b>solo_forzar_cambio</b>: conserva la clave actual y obliga a cambiarla al próximo ingreso.',
     'contrasena_confirmar_critica': 'Escribir CONFIRMAR para root, tux, adminso y similares. No se admite con all ni comodines.',
-    'contrasena_nueva': 'Nueva clave, mínimo 8 caracteres. Obligatoria solo con la acción cambiar. AWX la guarda cifrada.',
+    'contrasena_nueva': 'Nueva clave, mínimo 8 caracteres. AWX la guarda cifrada.',
     'contrasena_confirmacion': 'Debe ser igual a la anterior.',
     'contrasena_nunca_caduca': 'SI: la clave no expira. Exige "Forzar cambio" en NO.',
     'contrasena_forzar_cambio': 'SI: debe cambiarla en el próximo ingreso. En cuentas críticas debe ser NO.',
@@ -209,37 +209,64 @@ def seccion(titulo, intro, playbook, rol, nodos, clave, cmds, detiene, extra=Non
     return salida
 
 
-CREAR = [
-    ('Servidor', 'getent passwd', 'Verificación, solo lectura.'),
-    ('Contenedor', 'ssh-keygen -q -t rsa -b 4096 -N "" -C U@ansible -f <tmp>/U', 'El usuario no tiene llave, o Renovar = SI.'),
-    ('Contenedor', 'generar_ppk (módulo del proyecto) -> U.ppk', 'Llave nueva, o le falta el .ppk.'),
-    ('Contenedor', 'mv keys/U{,.pub,.ppk} keys/_anteriores/U_<fecha>*', 'Renovar = SI.'),
-    ('Contenedor', 'mv <tmp>/U{,.pub,.ppk} /data/work/gestion_usuarios/keys/', 'Llave nueva o renovada.'),
+VERIFICAR = [('Servidor', 'getent passwd', 'Verificación, solo lectura.')]
+VERIFICAR_SSH = [('Servidor', 'sshd -t', 'Verificación: si sshd_config tiene AllowUsers y Permitir SSH = SI.')]
+CUENTA = [
     ('Servidor', 'getent passwd ; getent group', 'Siempre.'),
     ('Servidor', '≈ groupadd GRUPO', 'Si el grupo primario no existe.'),
     ('Servidor', '≈ useradd -c "Nombre" -g GRUPO -G GRUPOS -s /bin/bash -d /home/U -m U', 'Cuenta nueva.'),
     ('Servidor', '≈ usermod -a -G GRUPOS U', 'Cuenta existente con Actualizar = SI.'),
     ('Servidor', '≈ chown U:GRUPO /home/U ; chmod 0750 /home/U', 'Cuenta nueva.'),
-    ('Servidor', 'chpasswd   (recibe U:clave por entrada estándar)', 'Método contrasena, cuenta nueva.'),
-    ('Servidor', 'chage -d 0 U', 'Método contrasena con Forzar cambio = SI.'),
-    ('Servidor', '≈ usermod -L U', 'Método llave, cuenta nueva.'),
-    ('Servidor', 'chage -m 0 -M 99999 -I -1 -E -1 U', 'Método llave, cuenta nueva.'),
-    ('Servidor', '≈ quita la llave anterior de ~U/.ssh/authorized_keys', 'Renovar = SI.'),
-    ('Servidor', '≈ agrega la llave pública a ~U/.ssh/authorized_keys', 'Método llave.'),
+    ('Servidor', '≈ usermod -a -G ssh_access U', 'Permitir SSH = SI y el grupo existe.'),
+    ('Servidor', '≈ agrega U al final de la última línea AllowUsers de /etc/ssh/sshd_config (respaldo y validación con sshd -t)', 'Permitir SSH = SI, existe la línea y U no está.'),
+    ('Servidor', 'systemctl reload sshd', 'Si se modificó AllowUsers.'),
+]
+SUDO = [
     ('Servidor', "grep -Eq '^[#@]includedir[[:space:]]+/etc/sudoers\\.d' /etc/sudoers", 'Sudo distinto de ninguno.'),
     ('Servidor', '≈ escribe /etc/sudoers.d/U (0440), validado con: visudo -cf <archivo>', 'Sudo distinto de ninguno.'),
     ('Servidor', '≈ rm -f /etc/sudoers.d/U', 'Sudo = ninguno y el archivo lo creó este proyecto.'),
 ]
-CONTRASENA = [
-    ('Servidor', 'getent passwd', 'Verificación, solo lectura.'),
-    ('Servidor', 'getent shadow', 'Acción solo_forzar_cambio: comprueba que la cuenta tenga clave y aplica las exclusiones. Resultado oculto.'),
-    ('Servidor', 'chpasswd   (recibe U:clave por entrada estándar)', 'Acción cambiar.'),
-    ('Servidor', 'getent shadow', 'Siempre, para comprobar el cambio. Resultado oculto.'),
-    ('Servidor', 'chage -m 0 -M 99999 -I -1 U', 'Nunca caduca = SI.'),
-    ('Servidor', 'chage -d 0 U', 'Forzar cambio = SI, o acción solo_forzar_cambio.'),
+CREAR_CLAVE = VERIFICAR + VERIFICAR_SSH + CUENTA + [
+    ('Servidor', 'chpasswd   (recibe U:clave por entrada estándar)', 'Cuenta nueva.'),
+    ('Servidor', 'chage -d 0 U', 'Cuenta nueva con Forzar cambio = SI.'),
+] + SUDO
+CREAR_LLAVE = VERIFICAR + VERIFICAR_SSH + [
+    ('Contenedor', 'ssh-keygen -q -t rsa -b 4096 -N "" -C U@ansible -f <tmp>/U', 'El usuario no tiene llave, o Renovar = SI.'),
+    ('Contenedor', 'generar_ppk (módulo del proyecto) -> U.ppk', 'Llave nueva, o le falta el .ppk.'),
+    ('Contenedor', 'mv keys/U{,.pub,.ppk} keys/_anteriores/U_<fecha>*', 'Renovar = SI.'),
+    ('Contenedor', 'mv <tmp>/U{,.pub,.ppk} /data/work/gestion_usuarios/keys/', 'Llave nueva o renovada.'),
+] + CUENTA + [
+    ('Servidor', '≈ usermod -L U', 'Cuenta nueva (queda sin contraseña).'),
+    ('Servidor', 'chage -m 0 -M 99999 -I -1 -E -1 U', 'Cuenta nueva.'),
+    ('Servidor', '≈ quita la llave anterior de ~U/.ssh/authorized_keys', 'Renovar = SI.'),
+    ('Servidor', '≈ agrega la llave pública a ~U/.ssh/authorized_keys', 'Siempre.'),
+] + SUDO
+DESBLOQUEO = [
     ('Servidor', 'faillock --user U --reset ; pam_tally2 --user U --reset', 'Desbloquear = SI, el que exista.'),
     ('Servidor', 'chage -E -1 U', 'Desbloquear = SI y la cuenta está vencida.'),
+]
+CAMBIAR = VERIFICAR + [
+    ('Servidor', 'chpasswd   (recibe U:clave por entrada estándar)', 'Siempre.'),
+    ('Servidor', 'chage -m 0 -M 99999 -I -1 U', 'Nunca caduca = SI.'),
+    ('Servidor', 'chage -d 0 U', 'Forzar cambio = SI.'),
+] + DESBLOQUEO + [
+    ('Servidor', 'getent shadow ; chage -l U', 'Siempre, para comprobar el cambio. Resultado de shadow oculto.'),
+]
+FORZAR = VERIFICAR + [
+    ('Servidor', 'getent shadow', 'Siempre: comprueba que cada cuenta tenga clave y aplica las exclusiones. Resultado oculto.'),
+    ('Servidor', 'chage -d 0 U', 'Siempre (no cambia la contraseña).'),
+] + DESBLOQUEO + [
     ('Servidor', 'chage -l U', 'Siempre, para mostrar el estado final.'),
+]
+RELACION = [
+    ('Servidor', 'getent passwd ; getent group ; sshd -t', 'Verificación, solo lectura (sshd -t solo si hay AllowUsers).'),
+    ('Servidor', '≈ comenta "Defaults requiretty" en /etc/sudoers (validado con visudo)', 'Si existe esa línea.'),
+    ('Servidor', '≈ agrega "#includedir /etc/sudoers.d" a /etc/sudoers (validado con visudo)', 'Si no está.'),
+    ('Servidor', '≈ useradd -s /bin/bash -m -p "*" U ; usermod -a -G ssh_access U', 'Cuenta nueva; el grupo solo si existe.'),
+    ('Servidor', '≈ escribe /etc/sudoers.d/U con: U ALL=(ALL) NOPASSWD: ALL (validado con visudo)', 'Siempre.'),
+    ('Servidor', '≈ agrega las llaves públicas a ~U/.ssh/authorized_keys', 'Siempre (no borra otras llaves).'),
+    ('Servidor', 'chage -m 0 -M 99999 -I -1 -E -1 U', 'Si la cuenta tiene caducidad.'),
+    ('Servidor', '≈ agrega U al final de la última línea AllowUsers ; systemctl reload sshd', 'Si existe la línea y U no está.'),
 ]
 AUDITORIA = [
     ('Servidor', 'lee /etc/passwd, /etc/shadow, /etc/group, /etc/sudoers, /etc/os-release', 'Siempre. No muestra los hashes.'),
@@ -263,6 +290,15 @@ BLOQUEAR = [
 ]
 
 
+QUE_HACE_WF = {
+    'wf_crear_con_contrasena': 'Pide aprobación, crea cuentas con contraseña inicial y audita.',
+    'wf_crear_con_llave': 'Pide aprobación, crea cuentas con llave SSH del almacén y audita.',
+    'wf_cambiar_contrasena': 'Pide aprobación, asigna una contraseña nueva y audita.',
+    'wf_forzar_cambio': 'Pide aprobación, obliga a cambiar la contraseña (también en bloque) y audita.',
+    'wf_bloquear_eliminar': 'Pide aprobación, bloquea, reactiva o elimina y audita.',
+}
+
+
 def portada():
     s = [P('Arquitectura de gestion_usuarios', 'titulo'),
          P('Versión 1.0 · Gestión de usuarios Linux desde AWX: qué hace cada workflow, plantilla y encuesta, y qué comandos ejecuta.', 'sub'),
@@ -273,23 +309,20 @@ def portada():
          Flujo([('Encuesta', 'el operador\nindica qué hacer'), ('Workflow', 'ordena\nlos pasos'), ('Aprobación', 'admin revisa\n(máx. 4 horas)'),
                 ('Plantilla', 'une playbook,\ninventario y llave'), ('Playbook y rol', 'validan\ny ejecutan'), ('Servidores', 'se aplica\nel cambio')]),
          P('Workflows: lo que normalmente se lanza', 'h1'),
-         P('Cada workflow tiene tres nodos y su encuesta es la de la plantilla que protege, más el ticket.'),
-         tabla(['Workflow', 'Qué hace', 'Plantilla del nodo 2', 'Preguntas'], [
-             ['USUARIOS | WF - Crear usuarios', 'Pide aprobación, crea las cuentas y audita el resultado.', '1 - Crear usuarios', '16'],
-             ['USUARIOS | WF - Cambio de contraseña', 'Pide aprobación, cambia la clave o fuerza su cambio, y audita el resultado.', '2 - Cambiar contraseña', '12'],
-             ['USUARIOS | WF - Bloquear o eliminar', 'Pide aprobación, bloquea, reactiva o elimina y audita el resultado.', '4 - Bloquear o eliminar', '6'],
-         ], [0.31, 0.37, 0.20, 0.12]),
+         P('Cada workflow tiene tres nodos y su encuesta es la de la plantilla que protege, más el ticket. La plantilla 3 (auditoría) no tiene workflow porque no modifica nada, y la 0 (relación de confianza) tampoco.'),
+         tabla(['Workflow', 'Qué hace', 'Plantilla del nodo 2', 'Preguntas'],
+               [[w['name'], QUE_HACE_WF[k], enc.ENCUESTAS[w['base']]['name'].split('| ')[1], str(len(enc.ENCUESTAS[w['base']]['spec']) + 1)]
+                for k, w in enc.WORKFLOWS.items()], [0.30, 0.35, 0.22, 0.13]),
          Spacer(1, 7),
          Flujo([('1. Aprobación', 'revisa ticket, objetivo\ny usuarios'), ('2. Plantilla', 'aplica el cambio\nsolicitado'), ('3. Auditoría', 'verifica cómo\nquedaron las cuentas')],
                pies={0: 'Rechazada o vencida:\ntermina sin cambios', 1: 'Si falla, no\ncorre la auditoría'}),
          P('El ticket y las demás respuestas se pasan a los nodos. La auditoría usa el mismo objetivo y sus valores por defecto.'),
          P('Plantillas', 'h1'),
-         tabla(['Plantilla', 'Playbook', 'Modifica', 'Preguntas'], [
-             ['USUARIOS | 1 - Crear usuarios', 'AWX/gestion_usuarios/01_crear_usuarios.yml', 'Sí', '15'],
-             ['USUARIOS | 2 - Cambiar contraseña', 'AWX/gestion_usuarios/02_cambiar_contrasena.yml', 'Sí', '11'],
-             ['USUARIOS | 3 - Auditoría', 'AWX/gestion_usuarios/03_auditoria_usuarios.yml', 'No', '3'],
-             ['USUARIOS | 4 - Bloquear o eliminar', 'AWX/gestion_usuarios/04_bloquear_eliminar_usuarios.yml', 'Sí', '5'],
-         ], [0.30, 0.46, 0.12, 0.12]),
+         tabla(['Plantilla', 'Playbook', 'Valores fijos', 'Preguntas'],
+               [[e['name'], 'AWX/gestion_usuarios/' + enc.PLANTILLAS[k]['playbook'],
+                 ', '.join('%s=%s' % x for x in enc.PLANTILLAS[k]['fijas'].items()) or '-', str(len(e['spec']))]
+                for k, e in enc.ENCUESTAS.items()], [0.26, 0.35, 0.26, 0.13], ['c', 'c', 'm', 'c']),
+         P('Los valores fijos van en las variables de la plantilla: la encuesta no los pregunta y quien lanza no los puede cambiar.', 'c'),
          Spacer(1, 4),
          P('Todas usan: proyecto <b>Playbooks-Corbeta</b>, inventario <b>Inventario 2026 - Gestion Usuarios</b>, credencial '
            '<b>SSH Private Key - ECDSA</b>, entorno <b>Corbeta AWX-EE</b> y grupo de instancias <b>Container_Group_Corbeta</b>.'),
@@ -307,6 +340,7 @@ def portada():
              ['Reglas sudo', '/etc/sudoers.d/&lt;usuario&gt; en cada servidor'],
              ['Catálogos de usuarios', 'vars/catalogos/ del proyecto'],
              ['Cuentas críticas, cuentas de servicio y grupos prohibidos', 'vars/comunes.yml del proyecto'],
+             ['Llaves públicas de las cuentas de automatización', 'roles/usuarios_automatizacion/files/'],
          ], [0.5, 0.5]),
          P('Protecciones principales', 'h1'),
          tabla(['Regla', 'Cómo se aplica'], [
@@ -336,29 +370,47 @@ def pie(canvas, doc):
 def main():
     historia = portada()
     historia += seccion(
-        'Opción 1 · Crear usuarios', 'Crea cuentas con contraseña o con llave SSH, con sus grupos y su nivel de sudo.',
-        '01_crear_usuarios.yml', 'usuarios_crear', 'Plantilla 1 y WF - Crear usuarios', '01_crear_usuarios', CREAR,
-        'el objetivo no existe, un usuario es crítico o inválido, un grupo es privilegiado, falta la clave, '
-        'no se puede escribir en la carpeta de llaves, o se quiere actualizar una cuenta de servicio.',
-        nota('<b>Llaves.</b> Si el usuario ya tiene llave se reutiliza en cualquier servidor. Solo se genera otra si no tiene o si se marca Renovar.'))
+        'Opción 0 · Relación de confianza', 'Crea o completa las cuentas de automatización iacolcoauto y ansible_test: llaves, sudo sin '
+        'contraseña, sin caducidad y acceso SSH. Es el prerrequisito de las demás opciones.',
+        '00_relacion_confianza.yml', 'usuarios_automatizacion', 'Plantilla 0 (sin workflow)', '00_relacion_confianza', RELACION,
+        'el objetivo no existe, falta el usuario o la contraseña de conexión, el servidor no es Linux, o sshd_config tiene errores.',
+        nota('<b>Conexión.</b> Usa el usuario y la contraseña de la encuesta, no la credencial de AWX, para poder entrar donde ansible_test '
+             'aún no existe. No elimina ni recrea cuentas: si ya existen, solo completa lo que falte. Las llaves públicas están en '
+             'roles/usuarios_automatizacion/files/.'))
     historia += seccion(
-        'Opción 2 · Cambiar contraseña', 'Cambia la clave de una o varias cuentas, o solo obliga a cambiarla en el próximo ingreso sin tocar la actual. Esto último también se puede hacer en bloque.',
-        '02_cambiar_contrasena.yml', 'usuarios_contrasena', 'Plantilla 2 y WF - Cambio de contraseña', '02_cambiar_contrasena', CONTRASENA,
-        'las claves no coinciden o son cortas, se pide "nunca caduca" y "forzar cambio" a la vez, se intenta cambiar una cuenta crítica '
-        'sin CONFIRMAR o con all, se pide solo forzar el cambio a una cuenta sin clave (solo llave o bloqueada), '
-        'o se usa catálogo o todos UID ≥ 1000 con una acción distinta de solo_forzar_cambio.',
+        'Opción 1a · Crear con contraseña', 'Crea cuentas con contraseña inicial, sus grupos y su nivel de sudo.',
+        '01_crear_usuarios.yml', 'usuarios_crear', 'Plantilla 1a y WF - Crear con contraseña', '01a_crear_con_contrasena', CREAR_CLAVE,
+        'el objetivo no existe, un usuario es crítico o inválido, un grupo es privilegiado, la contraseña es corta, '
+        'se quiere actualizar una cuenta de servicio, o sshd_config tiene errores (cuando hay que tocar AllowUsers).')
+    historia += seccion(
+        'Opción 1b · Crear con llave', 'Crea cuentas que entran solo con llave SSH, con sus grupos y su nivel de sudo.',
+        '01_crear_usuarios.yml', 'usuarios_crear', 'Plantilla 1b y WF - Crear con llave', '01b_crear_con_llave', CREAR_LLAVE,
+        'el objetivo no existe, un usuario es crítico o inválido, un grupo es privilegiado, no se puede escribir en la '
+        'carpeta de llaves, se quiere actualizar una cuenta de servicio, o sshd_config tiene errores (cuando hay que tocar AllowUsers).',
+        nota('<b>Llaves.</b> Todas viven en /data/work/gestion_usuarios/keys. Si el usuario ya tiene llave se reutiliza en cualquier servidor; '
+             'solo se genera otra si no tiene o si se marca Renovar. Con sudo, la regla queda sin contraseña porque la cuenta no tiene clave.'))
+    historia += seccion(
+        'Opción 2a · Cambiar contraseña', 'Asigna una contraseña nueva a una o varias cuentas, con caducidad y desbloqueo opcionales.',
+        '02_cambiar_contrasena.yml', 'usuarios_contrasena', 'Plantilla 2a y WF - Cambiar contraseña', '02a_cambiar_contrasena', CAMBIAR,
+        'las claves no coinciden o son cortas, se pide "nunca caduca" y "forzar cambio" a la vez, o se intenta cambiar una cuenta crítica '
+        'sin CONFIRMAR o con all.')
+    historia += seccion(
+        'Opción 2b · Forzar cambio de contraseña', 'Conserva la contraseña actual y obliga a cambiarla en el próximo ingreso. Se puede aplicar a una lista, a un catálogo o a todas las cuentas UID ≥ 1000.',
+        '02_cambiar_contrasena.yml', 'usuarios_contrasena', 'Plantilla 2b y WF - Forzar cambio de contraseña', '02b_forzar_cambio', FORZAR,
+        'la lista incluye una cuenta crítica, o una cuenta de la lista no tiene contraseña (solo llave o bloqueada): '
+        'si se le forzara el cambio no podría entrar.',
         nota('<b>En bloque</b> (catálogo o todos UID ≥ 1000) se omiten, sin detener el job: cuentas críticas, cuentas de servicio '
              '(lista cuentas_servicio en vars/comunes.yml), shells no interactivos y cuentas sin contraseña. Antes de lanzarlo, '
              'ejecute la auditoría: la columna "Se le forzaría el cambio" muestra exactamente a quiénes se aplicaría.'))
     historia += seccion(
         'Opción 3 · Auditoría', 'Revisa cuentas, contraseñas, llaves, último acceso y sudo. No modifica los servidores.',
-        '03_auditoria_usuarios.yml', 'usuarios_auditoria', 'Plantilla 3 y último nodo de los 3 workflows', '03_auditoria_usuarios', AUDITORIA,
+        '03_auditoria_usuarios.yml', 'usuarios_auditoria', 'Plantilla 3 y último nodo de los 5 workflows', '03_auditoria_usuarios', AUDITORIA,
         'el objetivo no existe o no se puede crear la carpeta de reportes.')
     historia += seccion(
         'Opción 4 · Bloquear, reactivar o eliminar', 'Bloquea una cuenta de forma reversible, la reactiva o la elimina con respaldo.',
         '04_bloquear_eliminar_usuarios.yml', 'usuarios_eliminar', 'Plantilla 4 y WF - Bloquear o eliminar', '04_bloquear_eliminar_usuarios', BLOQUEAR,
         'un usuario es crítico, falta CONFIRMAR para eliminar, o el home está fuera de /home o /export/home.',
-        nota('<b>Reactivar no restaura sudo.</b> Si la cuenta lo tenía, use la opción 1 con "Actualizar usuarios que ya existen".'))
+        nota('<b>Reactivar no restaura sudo.</b> Si la cuenta lo tenía, use la opción 1a o 1b con "Actualizar usuarios que ya existen".'))
     historia.pop()
 
     doc = SimpleDocTemplate(SALIDA, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm, topMargin=15 * mm, bottomMargin=16 * mm,

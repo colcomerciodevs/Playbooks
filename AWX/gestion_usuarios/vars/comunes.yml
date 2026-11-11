@@ -31,7 +31,8 @@ usuarios_protegidos:
   - sshd
   - polkitd
   - systemd-network
-  - ansible_test
+  - ansible_test   # cuentas de automatización: solo las gestiona la plantilla 0 (relación de confianza)
+  - iacolcoauto
   - adminso
   - tux
   - azureuser

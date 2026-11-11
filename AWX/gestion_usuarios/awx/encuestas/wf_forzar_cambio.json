@@ -1,0 +1,91 @@
+{
+  "name": "USUARIOS | WF - Forzar cambio de contraseña",
+  "description": "Aprobación -> forzar cambio de contraseña -> auditoría de verificación.",
+  "spec": [
+    {
+      "question_name": "Ticket o justificación",
+      "question_description": "Número de ticket o RFC y motivo del cambio. Es lo primero que revisa quien aprueba.",
+      "required": true,
+      "type": "text",
+      "variable": "ticket_cambio",
+      "min": 3,
+      "max": 300,
+      "default": "",
+      "choices": [],
+      "new_question": true
+    },
+    {
+      "question_name": "Servidores o grupo del inventario",
+      "question_description": "Grupo, servidor o patrón del inventario. No se permite localhost. Ejemplos: GEOPOS · PPU · srv1,srv2 · GEOPOS:!srv1",
+      "required": true,
+      "type": "text",
+      "variable": "objetivo",
+      "min": 1,
+      "max": 1024,
+      "default": "",
+      "choices": [],
+      "new_question": true
+    },
+    {
+      "question_name": "Usuarios a incluir",
+      "question_description": "[lista] Los usuarios escritos abajo. [catalogo] Los del catálogo elegido. [todos_uid_1000] Todas las cuentas con UID ≥ 1000 de cada servidor. En bloque se excluyen cuentas críticas, de servicio y sin contraseña. Revise antes la auditoría.",
+      "required": true,
+      "type": "multiplechoice",
+      "variable": "contrasena_origen",
+      "min": 0,
+      "max": 1024,
+      "default": "lista",
+      "choices": [
+        "lista",
+        "catalogo",
+        "todos_uid_1000"
+      ],
+      "new_question": true
+    },
+    {
+      "question_name": "Usuario(s) (si usuarios a incluir = lista)",
+      "question_description": "Uno o varios separados por coma. No se aceptan cuentas críticas. Ejemplo: jperez,soporte1",
+      "required": false,
+      "type": "text",
+      "variable": "contrasena_usuarios",
+      "min": 0,
+      "max": 1024,
+      "default": "",
+      "choices": [],
+      "new_question": true
+    },
+    {
+      "question_name": "Catálogo (si usuarios a incluir = catalogo)",
+      "question_description": "Archivo de vars/catalogos/ con los usuarios a incluir.",
+      "required": false,
+      "type": "multiplechoice",
+      "variable": "contrasena_catalogo",
+      "min": 0,
+      "max": 1024,
+      "default": "",
+      "choices": [
+        "usuarios_generales",
+        "admins_linux",
+        "cuentas_de_servicio",
+        "soporte_zona_norte",
+        "soporte_zona_centro"
+      ],
+      "new_question": true
+    },
+    {
+      "question_name": "Desbloquear la cuenta",
+      "question_description": "[SI] Reinicia intentos fallidos y quita una expiración vencida. También revierte un bloqueo hecho con la opción 4.",
+      "required": true,
+      "type": "multiplechoice",
+      "variable": "contrasena_desbloquear",
+      "min": 0,
+      "max": 1024,
+      "default": "NO",
+      "choices": [
+        "SI",
+        "NO"
+      ],
+      "new_question": true
+    }
+  ]
+}

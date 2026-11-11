@@ -1,6 +1,6 @@
 {
-  "name": "USUARIOS | WF - Crear usuarios",
-  "description": "Aprobación -> creación de usuarios -> auditoría de verificación.",
+  "name": "USUARIOS | WF - Crear con contraseña",
+  "description": "Aprobación -> creación de usuarios con contraseña -> auditoría de verificación.",
   "spec": [
     {
       "question_name": "Ticket o justificación",
@@ -27,21 +27,6 @@
       "new_question": true
     },
     {
-      "question_name": "Método de acceso",
-      "question_description": "[contrasena] La cuenta entra con la contraseña inicial. [llave] Entra solo con llave SSH (sin contraseña).",
-      "required": true,
-      "type": "multiplechoice",
-      "variable": "crear_metodo_acceso",
-      "min": 0,
-      "max": 1024,
-      "default": "contrasena",
-      "choices": [
-        "contrasena",
-        "llave"
-      ],
-      "new_question": true
-    },
-    {
       "question_name": "Origen de la lista de usuarios",
       "question_description": "[encuesta] Escriba los usuarios en el campo de abajo. [catalogo] Se toman de un archivo de vars/catalogos/.",
       "required": true,
@@ -58,7 +43,7 @@
     },
     {
       "question_name": "Usuarios (si origen = encuesta)",
-      "question_description": "Solo si origen = encuesta. Una línea por usuario: usuario;Nombre completo;grupo (grupo opcional). Ejemplo: jperez;Juan Pérez;soporte",
+      "question_description": "Una línea por usuario: usuario;Nombre completo;grupo (grupo opcional). Ejemplo: jperez;Juan Pérez;soporte",
       "required": false,
       "type": "textarea",
       "variable": "crear_usuarios_texto",
@@ -69,8 +54,8 @@
       "new_question": true
     },
     {
-      "question_name": "Catálogo (si origen = catalogo)",
-      "question_description": "Solo si origen = catalogo. ⚠ El catálogo manda sobre esta encuesta: admins_linux da sudo COMPLETO sin contraseña.",
+      "question_name": "Catálogo (si origen = catalogo) · el catálogo define sudo y grupos",
+      "question_description": "⚠ El catálogo manda sobre esta encuesta: admins_linux da sudo COMPLETO sin contraseña.",
       "required": false,
       "type": "multiplechoice",
       "variable": "crear_catalogo",
@@ -99,12 +84,27 @@
       "new_question": true
     },
     {
-      "question_name": "Contraseña inicial (método contrasena)",
-      "question_description": "Solo con método contrasena. Mínimo 8 caracteres. Se asigna únicamente a cuentas nuevas.",
-      "required": false,
+      "question_name": "Permitir acceso SSH",
+      "question_description": "[SI] Lo agrega al grupo ssh_access (si existe en el servidor) y al final de la línea AllowUsers de sshd_config (si existe esa línea). Lo que no exista se ignora. [NO] No toca el acceso SSH; si el servidor lo restringe, la cuenta no podrá entrar por SSH.",
+      "required": true,
+      "type": "multiplechoice",
+      "variable": "crear_permitir_ssh",
+      "min": 0,
+      "max": 1024,
+      "default": "SI",
+      "choices": [
+        "SI",
+        "NO"
+      ],
+      "new_question": true
+    },
+    {
+      "question_name": "Contraseña inicial",
+      "question_description": "Mínimo 8 caracteres. Se asigna únicamente a cuentas nuevas. No aparece en la salida del job.",
+      "required": true,
       "type": "password",
       "variable": "crear_contrasena_inicial",
-      "min": 0,
+      "min": 8,
       "max": 128,
       "default": "",
       "choices": [],
@@ -119,48 +119,6 @@
       "min": 0,
       "max": 1024,
       "default": "SI",
-      "choices": [
-        "SI",
-        "NO"
-      ],
-      "new_question": true
-    },
-    {
-      "question_name": "Origen de la llave (método llave)",
-      "question_description": "Solo con método llave. [keys] Reutiliza la llave guardada; si no tiene, crea una. [encuesta] Usa la llave pegada abajo.",
-      "required": false,
-      "type": "multiplechoice",
-      "variable": "crear_llave_origen",
-      "min": 0,
-      "max": 1024,
-      "default": "keys",
-      "choices": [
-        "keys",
-        "encuesta"
-      ],
-      "new_question": true
-    },
-    {
-      "question_name": "Llaves públicas (origen de llave = encuesta)",
-      "question_description": "Solo si origen de la llave = encuesta. Una línea por usuario. Ejemplo: jperez;ssh-rsa AAAA... comentario",
-      "required": false,
-      "type": "textarea",
-      "variable": "crear_llaves_texto",
-      "min": 0,
-      "max": 40000,
-      "default": "",
-      "choices": [],
-      "new_question": true
-    },
-    {
-      "question_name": "⚠ RENOVAR LLAVE (opción crítica)",
-      "question_description": "Deje NO salvo pérdida o robo de la llave. [SI] Crea una llave nueva, archiva la anterior y la reemplaza solo en los servidores de este objetivo.",
-      "required": true,
-      "type": "multiplechoice",
-      "variable": "crear_renovar_llave",
-      "min": 0,
-      "max": 1024,
-      "default": "NO",
       "choices": [
         "SI",
         "NO"
@@ -184,8 +142,20 @@
       "new_question": true
     },
     {
+      "question_name": "Comandos sudo permitidos (si nivel = limitado)",
+      "question_description": "Un comando por línea, con ruta completa. Ejemplo: /usr/bin/systemctl restart httpd",
+      "required": false,
+      "type": "textarea",
+      "variable": "crear_sudo_comandos",
+      "min": 0,
+      "max": 20000,
+      "default": "",
+      "choices": [],
+      "new_question": true
+    },
+    {
       "question_name": "sudo sin contraseña (NOPASSWD)",
-      "question_description": "[SI] Sudo no pide contraseña. Con método llave se aplica siempre (la cuenta no tiene contraseña).",
+      "question_description": "[SI] Sudo no pide contraseña.",
       "required": true,
       "type": "multiplechoice",
       "variable": "crear_sudo_nopasswd",
@@ -196,18 +166,6 @@
         "SI",
         "NO"
       ],
-      "new_question": true
-    },
-    {
-      "question_name": "Comandos sudo permitidos (nivel limitado)",
-      "question_description": "Solo con sudo limitado. Un comando por línea, con ruta completa. Ejemplo: /usr/bin/systemctl restart httpd",
-      "required": false,
-      "type": "textarea",
-      "variable": "crear_sudo_comandos",
-      "min": 0,
-      "max": 20000,
-      "default": "",
-      "choices": [],
       "new_question": true
     },
     {

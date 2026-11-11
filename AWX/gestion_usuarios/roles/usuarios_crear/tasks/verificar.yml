@@ -30,6 +30,15 @@
         - (ansible_facts.getent_passwd[item][1] | int) < (uid_minimo_humano | int)
         - ((crear_actualizar_existentes | string | lower | trim) in valores_si) or (hostvars['localhost']['_crear_renovar'] | bool)
 
+    # Si hay que tocar AllowUsers, la configuración actual de sshd debe ser válida.
+    - name: Verificar | Configuración de sshd
+      ansible.builtin.import_role:
+        name: usuarios_comun
+        tasks_from: verificar_sshd.yml
+      vars:
+        comun_sshd_config: "{{ crear_sshd_config }}"
+      when: (crear_permitir_ssh | string | lower | trim) in valores_si
+
     - name: Verificar | No modificar cuentas de sistema o de servicio
       ansible.builtin.assert:
         quiet: true

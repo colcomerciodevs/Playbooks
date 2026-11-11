@@ -1,0 +1,81 @@
+{
+  "plantillas": {
+    "USUARIOS | 0 - Relación de confianza": {
+      "playbook": "00_relacion_confianza.yml",
+      "fijas": {},
+      "encuesta": "00_relacion_confianza.json"
+    },
+    "USUARIOS | 1a - Crear con contraseña": {
+      "playbook": "01_crear_usuarios.yml",
+      "fijas": {
+        "crear_metodo_acceso": "contrasena"
+      },
+      "encuesta": "01a_crear_con_contrasena.json"
+    },
+    "USUARIOS | 1b - Crear con llave": {
+      "playbook": "01_crear_usuarios.yml",
+      "fijas": {
+        "crear_metodo_acceso": "llave"
+      },
+      "encuesta": "01b_crear_con_llave.json"
+    },
+    "USUARIOS | 2a - Cambiar contraseña": {
+      "playbook": "02_cambiar_contrasena.yml",
+      "fijas": {
+        "contrasena_accion": "cambiar",
+        "contrasena_origen": "lista"
+      },
+      "encuesta": "02a_cambiar_contrasena.json"
+    },
+    "USUARIOS | 2b - Forzar cambio de contraseña": {
+      "playbook": "02_cambiar_contrasena.yml",
+      "fijas": {
+        "contrasena_accion": "solo_forzar_cambio",
+        "contrasena_nunca_caduca": "NO"
+      },
+      "encuesta": "02b_forzar_cambio.json"
+    },
+    "USUARIOS | 3 - Auditoría": {
+      "playbook": "03_auditoria_usuarios.yml",
+      "fijas": {},
+      "encuesta": "03_auditoria_usuarios.json"
+    },
+    "USUARIOS | 4 - Bloquear o eliminar": {
+      "playbook": "04_bloquear_eliminar_usuarios.yml",
+      "fijas": {},
+      "encuesta": "04_bloquear_eliminar_usuarios.json"
+    }
+  },
+  "workflows": {
+    "USUARIOS | WF - Crear con contraseña": {
+      "plantilla": "USUARIOS | 1a - Crear con contraseña",
+      "encuesta": "wf_crear_con_contrasena.json",
+      "auditoria": "USUARIOS | 3 - Auditoría",
+      "aprobacion_timeout_seg": 14400
+    },
+    "USUARIOS | WF - Crear con llave": {
+      "plantilla": "USUARIOS | 1b - Crear con llave",
+      "encuesta": "wf_crear_con_llave.json",
+      "auditoria": "USUARIOS | 3 - Auditoría",
+      "aprobacion_timeout_seg": 14400
+    },
+    "USUARIOS | WF - Cambiar contraseña": {
+      "plantilla": "USUARIOS | 2a - Cambiar contraseña",
+      "encuesta": "wf_cambiar_contrasena.json",
+      "auditoria": "USUARIOS | 3 - Auditoría",
+      "aprobacion_timeout_seg": 14400
+    },
+    "USUARIOS | WF - Forzar cambio de contraseña": {
+      "plantilla": "USUARIOS | 2b - Forzar cambio de contraseña",
+      "encuesta": "wf_forzar_cambio.json",
+      "auditoria": "USUARIOS | 3 - Auditoría",
+      "aprobacion_timeout_seg": 14400
+    },
+    "USUARIOS | WF - Bloquear o eliminar": {
+      "plantilla": "USUARIOS | 4 - Bloquear o eliminar",
+      "encuesta": "wf_bloquear_eliminar.json",
+      "auditoria": "USUARIOS | 3 - Auditoría",
+      "aprobacion_timeout_seg": 14400
+    }
+  }
+}

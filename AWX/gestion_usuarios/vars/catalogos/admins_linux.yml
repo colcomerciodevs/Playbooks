@@ -12,3 +12,18 @@ usuarios:
     nombre: "Usuario administrador de Linux - Amaris"
     sudo: completo
     sudo_nopasswd: true
+
+  - usuario: jcastano
+    nombre: "Usuario administrador de Linux - Corbeta"
+    sudo: completo
+    sudo_nopasswd: true
+
+  - usuario: aromero
+    nombre: "Usuario administrador de Linux - Corbeta"
+    sudo: completo
+    sudo_nopasswd: true
+
+  - usuario: csotomonte
+    nombre: "Usuario administrador de Linux - Corbeta"
+    sudo: completo
+    sudo_nopasswd: true
