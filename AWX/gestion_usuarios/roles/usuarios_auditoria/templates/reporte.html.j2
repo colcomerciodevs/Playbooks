@@ -2,12 +2,12 @@
 {%- set rango = {'CRITICO': 0, 'ALTO': 1, 'MEDIO': 2, 'BAJO': 3, 'INFO': 4} %}
 {%- set ok = [] %}{% set ko = [] %}
 {%- for h in aud_hosts %}{% if (hostvars[h]['auditoria_resultado'] | default({})).usuarios is defined %}{% set _ = ok.append(h) %}{% else %}{% set _ = ko.append(h) %}{% endif %}{% endfor %}
-{%- set t = {'u': 0, 'c': 0, 'l': 0, 'n': 0, 'acc': 0} %}
+{%- set t = {'u': 0, 'c': 0, 'cr': 0, 'l': 0, 'n': 0, 'acc': 0, 'fz': 0} %}
 {%- set hall = [] %}
 {%- set sudos = [] %}
 {%- for h in ok %}
 {%-   set r = hostvars[h]['auditoria_resultado'] %}
-{%-   set _ = t.update({'u': t.u + r.resumen.usuarios, 'c': t.c + r.resumen.sudo_completo, 'l': t.l + r.resumen.sudo_limitado, 'n': t.n + r.resumen.sudo_sin_clave, 'acc': t.acc + r.resumen.pueden_iniciar_sesion}) %}
+{%-   set _ = t.update({'u': t.u + r.resumen.usuarios, 'c': t.c + r.resumen.sudo_completo, 'cr': t.cr + (r.resumen.sudo_clave_root | default(0)), 'l': t.l + r.resumen.sudo_limitado, 'n': t.n + r.resumen.sudo_sin_clave, 'acc': t.acc + r.resumen.pueden_iniciar_sesion, 'fz': t.fz + (r.resumen.forzaria_cambio | default(0))}) %}
 {%-   for x in r.hallazgos_servidor %}{% set _ = hall.append({'r': rango[x.severidad], 'sev': x.severidad, 'host': h, 'usuario': '(servidor)', 'codigo': x.codigo, 'detalle': x.detalle}) %}{% endfor %}
 {%-   for u in r.usuarios %}
 {%-     for x in u.hallazgos %}{% set _ = hall.append({'r': rango[x.severidad], 'sev': x.severidad, 'host': h, 'usuario': u.usuario, 'codigo': x.codigo, 'detalle': x.detalle}) %}{% endfor %}
@@ -66,6 +66,8 @@ details .wrap{border:0;border-top:1px solid var(--bd);border-radius:0 0 10px 10p
   <div class="kpi"><b>{{ t.u }}</b><span>cuentas (UID ≥ {{ auditoria_uid_minimo }})</span></div>
   <div class="kpi"><b>{{ t.acc }}</b><span>pueden iniciar sesión</span></div>
   <div class="kpi"><b>{{ t.c }}</b><span>con sudo completo</span></div>
+  <div class="kpi"><b>{{ t.cr }}</b><span>sudo solo con clave de root</span></div>
+  <div class="kpi"><b>{{ t.fz }}</b><span>se les forzaría el cambio (en bloque)</span></div>
   <div class="kpi"><b>{{ t.l }}</b><span>con sudo limitado</span></div>
   <div class="kpi"><b>{{ t.n }}</b><span>sudo sin contraseña</span></div>
   <div class="kpi crit"><b>{{ conteo.CRITICO }}</b><span>hallazgos críticos</span></div>
@@ -104,7 +106,7 @@ details .wrap{border:0;border-top:1px solid var(--bd);border-radius:0 0 10px 10p
 <div class="tool"><input type="search" placeholder="Filtrar en todas las tablas de servidores…" data-grupo="srv"></div>
 {%- for h in ok %}{% set r = hostvars[h]['auditoria_resultado'] %}
 <details data-srv>
-<summary>{{ h | e }}<small>{{ r.servidor.sistema | e }} · {{ r.resumen.usuarios }} cuentas · sudo completo {{ r.resumen.sudo_completo }} · limitado {{ r.resumen.sudo_limitado }}{% if r.resumen.hallazgos_critico %} · <span class="sev CRITICO">{{ r.resumen.hallazgos_critico }} crítico(s)</span>{% endif %}{% if r.resumen.hallazgos_alto %} · <span class="sev ALTO">{{ r.resumen.hallazgos_alto }} alto(s)</span>{% endif %}</small></summary>
+<summary>{{ h | e }}<small>{{ r.servidor.sistema | e }} · {{ r.resumen.usuarios }} cuentas · sudo completo {{ r.resumen.sudo_completo }} · con clave de root {{ r.resumen.sudo_clave_root | default(0) }} · limitado {{ r.resumen.sudo_limitado }}{% if r.resumen.hallazgos_critico %} · <span class="sev CRITICO">{{ r.resumen.hallazgos_critico }} crítico(s)</span>{% endif %}{% if r.resumen.hallazgos_alto %} · <span class="sev ALTO">{{ r.resumen.hallazgos_alto }} alto(s)</span>{% endif %}</small></summary>
 <div class="box">root: contraseña {{ r.servidor.root.estado_contrasena | default('?') }}, último cambio {{ r.servidor.root.ultimo_cambio | default('?') }}, caduca <b>{{ r.servidor.root.contrasena_caduca | default('?') }}</b>
 {%- if r.servidor.cuentas_uid0 | length > 1 %} · <span class="sev CRITICO">UID 0: {{ r.servidor.cuentas_uid0 | map(attribute='usuario') | join(', ') }}</span>{% endif %}
  · {{ r.servidor.sudo_version | default('sudo no instalado', true) | e }}{% if r.servidor.sudo_clave_destino %} · Defaults {{ r.servidor.sudo_clave_destino | join(', ') }}{% endif %}
@@ -112,7 +114,7 @@ details .wrap{border:0;border-top:1px solid var(--bd);border-radius:0 0 10px 10p
 {%- if r.servidor.sshd.allowusers is defined %} · AllowUsers: {{ r.servidor.sshd.allowusers | join(' ') | e }}{% endif %}
 {%- if r.servidor.sshd.permitrootlogin is defined %} · PermitRootLogin: {{ r.servidor.sshd.permitrootlogin }}{% endif %}</div>
 <div class="wrap"><table>
-<thead><tr><th>Usuario</th><th>UID</th><th>Nombre</th><th>Grupos</th><th>Acceso</th><th>Contraseña</th><th>Último cambio</th><th>Caduca</th><th>Cuenta expira</th><th>Llaves</th><th>Último acceso</th><th>Sudo</th><th>Hallazgos</th></tr></thead>
+<thead><tr><th>Usuario</th><th>UID</th><th>Nombre</th><th>Grupos</th><th>Acceso</th><th>Contraseña</th><th>Último cambio</th><th>Caduca</th><th>Cuenta expira</th><th>Llaves</th><th>Último acceso</th><th>Sudo</th><th>Forzar en bloque</th><th>Hallazgos</th></tr></thead>
 <tbody>
 {%- for u in r.usuarios %}
 <tr><td><b>{{ u.usuario | e }}</b></td><td class="n">{{ u.uid }}</td><td>{{ u.nombre | e }}</td>
@@ -123,9 +125,10 @@ details .wrap{border:0;border-top:1px solid var(--bd);border-radius:0 0 10px 10p
 <td class="n" title="{{ u.llaves_ssh | map(attribute='comentario') | join(', ') | e }}">{{ u.llaves_ssh | length }}</td>
 <td>{{ u.ultimo_acceso | e }}</td>
 <td class="{{ u.sudo.nivel }}">{{ u.sudo.nivel }}{{ ' · NOPASSWD' if u.sudo.nopasswd else '' }}</td>
+<td>{{ 'SÍ' if u.forzaria_cambio else ('excluida (servicio)' if u.cuenta_servicio else 'no') }}</td>
 <td>{% for x in u.hallazgos %}<span class="sev {{ x.severidad }}" title="{{ x.detalle | e }}">{{ x.codigo }}</span> {% endfor %}</td></tr>
 {%- else %}
-<tr><td colspan="13">Sin cuentas con UID ≥ {{ auditoria_uid_minimo }}.</td></tr>
+<tr><td colspan="14">Sin cuentas con UID ≥ {{ auditoria_uid_minimo }}.</td></tr>
 {%- endfor %}
 </tbody></table></div>
 </details>

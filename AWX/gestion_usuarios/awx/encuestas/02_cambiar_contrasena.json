@@ -4,7 +4,7 @@
   "spec": [
     {
       "question_name": "Servidores o grupo del inventario",
-      "question_description": "Grupo (ej. GEOPOS, PPU, OCI_PEOPLE_PRD), servidor, o patrón Ansible: grupo1:grupo2, grupo:!servidor, srv1,srv2.",
+      "question_description": "Grupo, servidor o patrón del inventario. No se permite localhost. Ejemplos: GEOPOS · PPU · srv1,srv2 · GEOPOS:!srv1",
       "required": true,
       "type": "text",
       "variable": "objetivo",
@@ -15,15 +15,64 @@
       "new_question": true
     },
     {
-      "question_name": "Usuario(s)",
-      "question_description": "Uno o varios separados por coma. Ej: jperez  o  jperez,soporte1",
+      "question_name": "Acción",
+      "question_description": "[cambiar] Asigna la contraseña nueva. [solo_forzar_cambio] No toca la contraseña; obliga a cambiarla en el próximo ingreso.",
       "required": true,
+      "type": "multiplechoice",
+      "variable": "contrasena_accion",
+      "min": 0,
+      "max": 1024,
+      "default": "cambiar",
+      "choices": [
+        "cambiar",
+        "solo_forzar_cambio"
+      ],
+      "new_question": true
+    },
+    {
+      "question_name": "Usuarios a incluir",
+      "question_description": "[lista] Los usuarios escritos abajo. [catalogo] Los del catálogo elegido. [todos_uid_1000] Todas las cuentas con UID ≥ 1000 de cada servidor. En bloque solo se permite solo_forzar_cambio. Revise antes la auditoría.",
+      "required": true,
+      "type": "multiplechoice",
+      "variable": "contrasena_origen",
+      "min": 0,
+      "max": 1024,
+      "default": "lista",
+      "choices": [
+        "lista",
+        "catalogo",
+        "todos_uid_1000"
+      ],
+      "new_question": true
+    },
+    {
+      "question_name": "Usuario(s) (si usuarios a incluir = lista)",
+      "question_description": "Solo si usuarios a incluir = lista. Separados por coma. Ejemplo: jperez,soporte1",
+      "required": false,
       "type": "text",
       "variable": "contrasena_usuarios",
-      "min": 1,
+      "min": 0,
       "max": 1024,
       "default": "",
       "choices": [],
+      "new_question": true
+    },
+    {
+      "question_name": "Catálogo (si usuarios a incluir = catalogo)",
+      "question_description": "Solo si usuarios a incluir = catalogo.",
+      "required": false,
+      "type": "multiplechoice",
+      "variable": "contrasena_catalogo",
+      "min": 0,
+      "max": 1024,
+      "default": "",
+      "choices": [
+        "usuarios_generales",
+        "admins_linux",
+        "cuentas_de_servicio",
+        "soporte_zona_norte",
+        "soporte_zona_centro"
+      ],
       "new_question": true
     },
     {
@@ -39,24 +88,24 @@
       "new_question": true
     },
     {
-      "question_name": "Nueva contraseña",
-      "question_description": "AWX la guarda cifrada y no aparece en la salida del job.",
-      "required": true,
+      "question_name": "Nueva contraseña (acción cambiar)",
+      "question_description": "Solo con acción cambiar. Mínimo 8 caracteres. No aparece en la salida del job.",
+      "required": false,
       "type": "password",
       "variable": "contrasena_nueva",
-      "min": 8,
+      "min": 0,
       "max": 128,
       "default": "",
       "choices": [],
       "new_question": true
     },
     {
-      "question_name": "Confirmar contraseña",
-      "question_description": "Debe coincidir con la anterior.",
-      "required": true,
+      "question_name": "Confirmar contraseña (acción cambiar)",
+      "question_description": "Repita la contraseña nueva.",
+      "required": false,
       "type": "password",
       "variable": "contrasena_confirmacion",
-      "min": 8,
+      "min": 0,
       "max": 128,
       "default": "",
       "choices": [],
@@ -64,7 +113,7 @@
     },
     {
       "question_name": "Contraseña sin caducidad (nunca expira)",
-      "question_description": "SI: chage -m 0 -M 99999 -I -1. Para cuentas críticas que el hardening haría caducar; requiere \"Forzar cambio\" en NO. NO: conserva la política actual.",
+      "question_description": "[SI] La contraseña no expira (para cuentas críticas). Requiere Forzar cambio = NO. [NO] Conserva la política actual.",
       "required": true,
       "type": "multiplechoice",
       "variable": "contrasena_nunca_caduca",
@@ -79,7 +128,7 @@
     },
     {
       "question_name": "Forzar cambio en el próximo inicio de sesión",
-      "question_description": "Recomendado SI para cuentas personales. Excluyente con \"sin caducidad\". En cuentas críticas debe ser NO.",
+      "question_description": "[SI] Debe cambiarla en el próximo ingreso (recomendado en cuentas personales). Debe ser NO en cuentas críticas o con «sin caducidad».",
       "required": true,
       "type": "multiplechoice",
       "variable": "contrasena_forzar_cambio",
@@ -94,7 +143,7 @@
     },
     {
       "question_name": "Desbloquear la cuenta",
-      "question_description": "Reinicia intentos fallidos (faillock/pam_tally2) y quita una expiración de cuenta ya vencida. También revierte un bloqueo hecho con la opción 4.",
+      "question_description": "[SI] Reinicia intentos fallidos y quita una expiración vencida. También revierte un bloqueo hecho con la opción 4.",
       "required": true,
       "type": "multiplechoice",
       "variable": "contrasena_desbloquear",

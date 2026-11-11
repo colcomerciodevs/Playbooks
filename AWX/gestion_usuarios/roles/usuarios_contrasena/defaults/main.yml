@@ -6,10 +6,24 @@
 # Uno o varios usuarios, separados por coma, espacio o salto de línea.
 contrasena_usuarios: ""
 
+# A quiénes se aplica:
+#   lista          = los usuarios escritos en contrasena_usuarios
+#   catalogo       = los usuarios de vars/catalogos/<contrasena_catalogo>.yml
+#   todos_uid_1000 = en cada servidor, todas las cuentas con UID >= uid_minimo_humano
+# Los dos últimos solo admiten la acción solo_forzar_cambio y excluyen automáticamente
+# cuentas críticas, cuentas_servicio, shells no interactivos y cuentas sin contraseña utilizable.
+contrasena_origen: lista
+contrasena_catalogo: ""
+
+# cambiar            = asigna una contraseña nueva.
+# solo_forzar_cambio = conserva la contraseña actual y obliga a cambiarla en el próximo inicio de sesión.
+contrasena_accion: cambiar
+
 # Para cuentas críticas (vars/comunes.yml -> usuarios_protegidos, o UID 0) hay que escribir CONFIRMAR.
 contrasena_confirmar_critica: ""
 
 # Llegan desde la encuesta (campos tipo contraseña: AWX los cifra y no los muestra).
+# Obligatorias solo con la acción "cambiar".
 contrasena_nueva: ""
 contrasena_confirmacion: ""
 

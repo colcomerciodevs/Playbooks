@@ -1,0 +1,94 @@
+---
+# Decide a qué cuentas se aplica el cambio en este servidor. Solo usa datos ya
+# leídos (getent passwd y, con solo_forzar_cambio, getent shadow): no ejecuta comandos.
+# getent passwd -> {usuario: [x, uid, gid, gecos, home, shell]}
+
+- name: Contraseña | Determinar usuarios de este servidor
+  ansible.builtin.set_fact:
+    _cp_masivo: "{{ hostvars['localhost']['_cp_origen'] != 'lista' }}"
+    _cp_lista: >-
+      {%- if hostvars['localhost']['_cp_origen'] == 'todos_uid_1000' -%}
+      {%- set r = [] -%}
+      {%- for u, d in ansible_facts.getent_passwd.items() if (d[1] | int) >= (uid_minimo_humano | int) and (d[1] | int) < 65534 -%}
+      {%- set _ = r.append(u) -%}
+      {%- endfor -%}
+      {{ r | sort }}
+      {%- else -%}
+      {{ hostvars['localhost']['contrasena_lista'] }}
+      {%- endif -%}
+
+- name: Contraseña | Clasificar usuarios
+  ansible.builtin.set_fact:
+    _cp_inexistentes: "{{ _cp_lista | reject('in', ansible_facts.getent_passwd.keys() | list) | list }}"
+    _cp_servicio: []
+    _cp_uid0: []
+    _cp_excluidas: {}
+
+- name: Contraseña | Detectar cuentas de servicio (UID entre 1 y uid_minimo_humano - 1)
+  ansible.builtin.set_fact:
+    _cp_servicio: "{{ _cp_servicio + [item] }}"
+  loop: "{{ _cp_lista | select('in', ansible_facts.getent_passwd.keys() | list) | list }}"
+  when:
+    - (ansible_facts.getent_passwd[item][1] | int) > 0
+    - (ansible_facts.getent_passwd[item][1] | int) < (uid_minimo_humano | int)
+    - not ((contrasena_permitir_cuentas_servicio | string | lower | trim) in valores_si)
+
+- name: Contraseña | Detectar cuentas con UID 0
+  ansible.builtin.set_fact:
+    _cp_uid0: "{{ _cp_uid0 + [item] }}"
+  loop: "{{ _cp_lista | select('in', ansible_facts.getent_passwd.keys() | list) | list }}"
+  when: (ansible_facts.getent_passwd[item][1] | int) == 0
+
+- name: Contraseña | Una cuenta con UID 0 es crítica aunque no esté en la lista
+  ansible.builtin.assert:
+    quiet: true
+    that: >-
+      _cp_uid0 | length == 0
+      or ((hostvars['localhost']['_cp_confirmada'] | bool) and not (hostvars['localhost']['objetivo_amplio'] | bool))
+    fail_msg: >-
+      En {{ inventory_hostname }} estas cuentas tienen UID 0: {{ _cp_uid0 | join(', ') }}. Escriba CONFIRMAR e
+      indique un objetivo concreto. No se modificó ningún servidor.
+  when: not (_cp_masivo | bool)
+
+# En bloque, las cuentas que no corresponden se omiten (se informan) en lugar de detener el job.
+- name: Contraseña | Excluir cuentas en operación en bloque
+  ansible.builtin.set_fact:
+    _cp_excluidas: "{{ _cp_excluidas | combine({item: _motivo}) }}"
+  loop: "{{ _cp_lista | reject('in', _cp_inexistentes) | reject('in', _cp_servicio) | list }}"
+  vars:
+    _d: "{{ ansible_facts.getent_passwd[item] }}"
+    _h: "{{ (ansible_facts.getent_shadow[item] | default(['']))[0] }}"
+    _motivo: >-
+      {{ 'crítica' if (item in usuarios_protegidos or (_d[1] | int) == 0)
+         else 'servicio' if item in cuentas_servicio
+         else 'shell no interactivo' if _d[5] is search('(nologin|false)$')
+         else 'sin contraseña utilizable' if (_h | length == 0 or _h is match('^[!*]') or _h in ['x', 'NP', 'UP'])
+         else '' }}
+  when:
+    - _cp_masivo | bool
+    - _motivo | length > 0
+
+- name: Contraseña | Definir usuarios a modificar
+  ansible.builtin.set_fact:
+    _cp_aplicar: >-
+      {{ _cp_lista | reject('in', _cp_inexistentes) | reject('in', _cp_servicio)
+         | reject('in', _cp_excluidas.keys() | list) | list }}
+
+# Sin clave nueva, forzar el cambio a una cuenta sin contraseña utilizable (solo llave
+# o bloqueada) la dejaría sin acceso: el sistema pediría la clave actual y no la tiene.
+- name: Contraseña | Exigir contraseña utilizable para solo forzar cambio
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - _h | length > 0
+      - _h is not match('^[!*]')
+      - _h not in ['x', 'NP', 'UP']
+    fail_msg: >-
+      {{ item }} no tiene una contraseña utilizable en {{ inventory_hostname }} (entra solo con llave o está bloqueada):
+      si se fuerza el cambio no podrá entrar. Use la acción "cambiar". No se modificó ningún servidor.
+  loop: "{{ _cp_aplicar }}"
+  vars:
+    _h: "{{ (ansible_facts.getent_shadow[item] | default(['']))[0] }}"
+  when:
+    - hostvars['localhost']['_cp_accion'] == 'solo_forzar_cambio'
+    - not (_cp_masivo | bool)

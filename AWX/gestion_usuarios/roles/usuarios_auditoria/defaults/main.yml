@@ -9,8 +9,6 @@ auditoria_uid_maximo: 0            # 0 = sin límite superior
 auditoria_excluir_usuarios: [nobody, nfsnobody]
 auditoria_dias_inactividad: 90     # marca cuentas habilitadas sin ingresar hace más de N días
 
-# Salida en el job: resumido (tabla por servidor) | completo (tabla + hallazgos por usuario)
-auditoria_detalle_salida: resumido
 
 # Reportes consolidados (HTML + CSV). Carpeta persistente: requiere el grupo de
 # instancias Container_Group_Corbeta en la plantilla.

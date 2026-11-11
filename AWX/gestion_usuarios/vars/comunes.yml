@@ -41,6 +41,14 @@ usuarios_protegidos:
   - cloud-user
   - ubuntu
 
+# Cuentas de servicio con UID >= 1000 (aplicaciones, bases de datos, integraciones).
+# Una sola lista para todos los servidores. Se EXCLUYEN de las operaciones en bloque
+# de la opción 2 (catálogo o todos UID >= 1000). Identifíquelas con la auditoría:
+# columna "Se le forzaría el cambio".
+cuentas_servicio:
+  - pos        # aplicación POS (GeoPOS)
+  - postgres   # PostgreSQL
+
 # Grupos que dan privilegios: no se pueden asignar desde la opción 1.
 grupos_prohibidos: [root, wheel, sudo, admin, adm, shadow, disk, kmem, docker, lxd, libvirt]
 

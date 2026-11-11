@@ -17,42 +17,14 @@
       ansible.builtin.getent:
         database: passwd
 
-    # getent passwd -> {usuario: [x, uid, gid, gecos, home, shell]}
-    - name: Contraseña | Clasificar usuarios
-      ansible.builtin.set_fact:
-        _cp_lista: "{{ hostvars['localhost']['contrasena_lista'] }}"
-        _cp_inexistentes: "{{ hostvars['localhost']['contrasena_lista'] | reject('in', ansible_facts.getent_passwd.keys() | list) | list }}"
-        _cp_servicio: []
-        _cp_uid0: []
+    - name: Contraseña | Leer /etc/shadow (solo forzar cambio)
+      ansible.builtin.getent:
+        database: shadow
+      no_log: true  # el resultado incluye los hashes de todas las cuentas
+      when: hostvars['localhost']['_cp_accion'] == 'solo_forzar_cambio'
 
-    - name: Contraseña | Detectar cuentas de servicio (UID entre 1 y uid_minimo_humano - 1)
-      ansible.builtin.set_fact:
-        _cp_servicio: "{{ _cp_servicio + [item] }}"
-      loop: "{{ _cp_lista | select('in', ansible_facts.getent_passwd.keys() | list) | list }}"
-      when:
-        - (ansible_facts.getent_passwd[item][1] | int) > 0
-        - (ansible_facts.getent_passwd[item][1] | int) < (uid_minimo_humano | int)
-        - not ((contrasena_permitir_cuentas_servicio | string | lower | trim) in valores_si)
-
-    - name: Contraseña | Detectar cuentas con UID 0
-      ansible.builtin.set_fact:
-        _cp_uid0: "{{ _cp_uid0 + [item] }}"
-      loop: "{{ _cp_lista | select('in', ansible_facts.getent_passwd.keys() | list) | list }}"
-      when: (ansible_facts.getent_passwd[item][1] | int) == 0
-
-    - name: Contraseña | Una cuenta con UID 0 es crítica aunque no esté en la lista
-      ansible.builtin.assert:
-        quiet: true
-        that: >-
-          _cp_uid0 | length == 0
-          or ((hostvars['localhost']['_cp_confirmada'] | bool) and not (hostvars['localhost']['objetivo_amplio'] | bool))
-        fail_msg: >-
-          En {{ inventory_hostname }} estas cuentas tienen UID 0: {{ _cp_uid0 | join(', ') }}. Escriba CONFIRMAR e
-          indique un objetivo concreto. No se modificó ningún servidor.
-
-    - name: Contraseña | Definir usuarios a modificar
-      ansible.builtin.set_fact:
-        _cp_aplicar: "{{ _cp_lista | reject('in', _cp_inexistentes) | reject('in', _cp_servicio) | list }}"
+    - name: Contraseña | Seleccionar cuentas
+      ansible.builtin.include_tasks: seleccionar.yml
 
     - name: Contraseña | Fallar si se exige que existan todos
       ansible.builtin.fail:
@@ -65,6 +37,11 @@
   ansible.builtin.debug:
     msg: "No existen en {{ inventory_hostname }}: {{ _cp_inexistentes | join(', ') }}"
   when: _cp_inexistentes | length > 0
+
+- name: Contraseña | Cuentas excluidas (operación en bloque)
+  ansible.builtin.debug:
+    msg: "Omitidas en {{ inventory_hostname }}: {{ _cp_excluidas | dict2items | map('join', ' = ') | join(', ') }}"
+  when: _cp_excluidas | length > 0
 
 - name: Contraseña | Cuentas de servicio omitidas
   ansible.builtin.debug:
@@ -86,7 +63,9 @@
   vars:
     comun_usuarios: "{{ _cp_aplicar }}"
     comun_clave: "{{ contrasena_nueva }}"
-  when: _cp_aplicar | length > 0
+  when:
+    - _cp_aplicar | length > 0
+    - hostvars['localhost']['_cp_accion'] == 'cambiar'
 
 - name: Contraseña | Aplicar política de caducidad
   ansible.builtin.include_role:
@@ -175,3 +154,4 @@
       - "Actualizados: {{ _cp_aplicar | join(', ') or '-' }}"
       - "Inexistentes: {{ _cp_inexistentes | join(', ') or '-' }}"
       - "Omitidos (servicio): {{ _cp_servicio | join(', ') or '-' }}"
+      - "Excluidos (en bloque): {{ _cp_excluidas.keys() | list | join(', ') or '-' }}"

@@ -15,20 +15,12 @@
     uid_maximo: "{{ auditoria_uid_maximo | int }}"
     excluir_usuarios: "{{ auditoria_excluir_usuarios }}"
     dias_inactividad: "{{ auditoria_dias_inactividad | int }}"
+    cuentas_criticas: "{{ usuarios_protegidos }}"
+    cuentas_servicio: "{{ cuentas_servicio }}"
+    uid_minimo_masivo: "{{ uid_minimo_humano | int }}"
   register: auditoria_resultado
   check_mode: false
 
 - name: Auditoría | Resultado del servidor
   ansible.builtin.debug:
     msg: "{{ auditoria_resultado.reporte_texto }}"
-
-- name: Auditoría | Hallazgos por usuario
-  ansible.builtin.debug:
-    msg: >-
-      {{ auditoria_resultado.usuarios | selectattr('hallazgos') | map(attribute='usuario')
-         | zip(auditoria_resultado.usuarios | selectattr('hallazgos') | map(attribute='hallazgos')
-               | map('map', attribute='detalle') | map('join', ' | '))
-         | map('join', ': ') | list }}
-  when:
-    - auditoria_detalle_salida == 'completo'
-    - auditoria_resultado.usuarios | selectattr('hallazgos') | list | length > 0

@@ -8,24 +8,69 @@
 
 - name: Preparar | Normalizar respuestas
   ansible.builtin.set_fact:
+    _cp_origen: "{{ contrasena_origen | default('lista') | string | lower | trim }}"
+    _cp_accion: "{{ contrasena_accion | default('cambiar') | string | lower | trim }}"
     contrasena_lista: >-
       {{ (contrasena_usuarios | default('') | string | regex_replace('[,;\s]+', ' ')).split(' ')
          | map('trim') | map('lower') | reject('equalto', '') | unique | list }}
     _cp_nunca: "{{ (contrasena_nunca_caduca | string | lower | trim) in valores_si }}"
-    _cp_forzar: "{{ (contrasena_forzar_cambio | string | lower | trim) in valores_si }}"
+    # "solo_forzar_cambio" equivale a forzar el cambio sin asignar clave nueva.
+    _cp_forzar: >-
+      {{ ((contrasena_forzar_cambio | string | lower | trim) in valores_si)
+         or ((contrasena_accion | default('cambiar') | string | lower | trim) == 'solo_forzar_cambio') }}
     _cp_confirmada: "{{ (contrasena_confirmar_critica | string | trim) == 'CONFIRMAR' }}"
+
+- name: Preparar | Validar acción y origen
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - _cp_accion in ['cambiar', 'solo_forzar_cambio']
+      - _cp_origen in ['lista', 'catalogo', 'todos_uid_1000']
+      - _cp_origen == 'lista' or _cp_accion == 'solo_forzar_cambio'
+    fail_msg: >-
+      Acción = cambiar | solo_forzar_cambio; usuarios a incluir = lista | catalogo | todos_uid_1000.
+      Con catálogo o todos UID >= 1000 solo se permite solo_forzar_cambio (no se asigna la misma clave a todos).
+      No se modificó ningún servidor.
+
+- name: Preparar | Validar que exista el catálogo
+  ansible.builtin.stat:
+    path: "{{ playbook_dir }}/vars/catalogos/{{ contrasena_catalogo }}.yml"
+  register: _cp_catalogo_stat
+  when: _cp_origen == 'catalogo'
+
+- name: Preparar | Fallar si el catálogo no existe
+  ansible.builtin.fail:
+    msg: "No existe vars/catalogos/{{ contrasena_catalogo }}.yml en el proyecto. No se modificó ningún servidor."
+  when:
+    - _cp_origen == 'catalogo'
+    - not _cp_catalogo_stat.stat.exists
+
+- name: Preparar | Cargar catálogo
+  ansible.builtin.include_vars:
+    file: "{{ playbook_dir }}/vars/catalogos/{{ contrasena_catalogo }}.yml"
+    name: _cp_catalogo_datos
+  when: _cp_origen == 'catalogo'
+
+- name: Preparar | Tomar usuarios del catálogo o del servidor
+  ansible.builtin.set_fact:
+    contrasena_lista: >-
+      {{ ((_cp_catalogo_datos.usuarios | default([])) | map(attribute='usuario', default='') | map('string')
+          | map('lower') | map('trim') | reject('equalto', '') | unique | list)
+         if _cp_origen == 'catalogo' else [] }}
+  when: _cp_origen != 'lista'
 
 - name: Preparar | Validar usuarios
   ansible.builtin.assert:
     quiet: true
     that:
-      - contrasena_lista | length > 0
+      - _cp_origen == 'todos_uid_1000' or contrasena_lista | length > 0
       - contrasena_lista | reject('match', regex_nombre_usuario) | list | length == 0
     fail_msg: "Indique al menos un usuario válido. Recibido: '{{ contrasena_usuarios }}'. No se modificó ningún servidor."
 
+# En catálogo o todos UID >= 1000 las cuentas críticas se excluyen solas (sin confirmación).
 - name: Preparar | Identificar cuentas críticas
   ansible.builtin.set_fact:
-    _cp_criticas: "{{ contrasena_lista | select('in', usuarios_protegidos) | list }}"
+    _cp_criticas: "{{ contrasena_lista | select('in', usuarios_protegidos) | list if _cp_origen == 'lista' else [] }}"
 
 - name: Preparar | Proteger cuentas críticas
   ansible.builtin.assert:
@@ -49,6 +94,7 @@
       La contraseña y su confirmación deben coincidir, tener al menos
       {{ contrasena_longitud_minima }} caracteres y no contener saltos de línea.
   no_log: true
+  when: _cp_accion == 'cambiar'
 
 - name: Preparar | Validar combinación de políticas
   ansible.builtin.assert:
@@ -64,7 +110,8 @@
 - name: Preparar | Resumen
   ansible.builtin.debug:
     msg:
-      - "Usuarios: {{ contrasena_lista | join(', ') }}"
+      - "Acción: {{ 'SOLO FORZAR CAMBIO (se conserva la contraseña actual)' if _cp_accion == 'solo_forzar_cambio' else 'cambiar contraseña' }}"
+      - "Usuarios: {{ {'lista': contrasena_lista | join(', '), 'catalogo': 'catálogo ' ~ contrasena_catalogo ~ ' -> ' ~ (contrasena_lista | join(', ')), 'todos_uid_1000': 'TODAS las cuentas con UID >= ' ~ uid_minimo_humano ~ ' de cada servidor, menos las excluidas'}[_cp_origen] }}"
       - "Servidores: {{ objetivo }}"
       - "Política: {{ 'NUNCA CADUCA' if (_cp_nunca | bool) else ('FORZAR CAMBIO en próximo inicio' if (_cp_forzar | bool) else 'se conserva la existente') }}"
       - "Desbloquear: {{ contrasena_desbloquear }}"

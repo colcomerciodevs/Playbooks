@@ -4,7 +4,7 @@
   "spec": [
     {
       "question_name": "Servidores o grupo del inventario",
-      "question_description": "Grupo (ej. GEOPOS, PPU, OCI_PEOPLE_PRD), servidor, o patrón Ansible: grupo1:grupo2, grupo:!servidor, srv1,srv2.",
+      "question_description": "Grupo, servidor o patrón del inventario. No se permite localhost. Ejemplos: GEOPOS · PPU · srv1,srv2 · GEOPOS:!srv1",
       "required": true,
       "type": "text",
       "variable": "objetivo",
@@ -16,7 +16,7 @@
     },
     {
       "question_name": "UID mínimo a auditar",
-      "question_description": "Por debajo de este UID son cuentas de servicio.",
+      "question_description": "Se auditan las cuentas desde este UID. Por debajo suelen ser cuentas del sistema.",
       "required": true,
       "type": "integer",
       "variable": "auditoria_uid_minimo",
@@ -27,8 +27,8 @@
       "new_question": true
     },
     {
-      "question_name": "Días sin ingreso para marcar cuenta inactiva",
-      "question_description": "",
+      "question_name": "Días sin ingreso para reportar una cuenta como inactiva (solo informe)",
+      "question_description": "Solo para el reporte: no bloquea ni cambia nada. Las cuentas sin ingresar en más de estos días aparecen como CUENTA_INACTIVA.",
       "required": true,
       "type": "integer",
       "variable": "auditoria_dias_inactividad",
@@ -36,21 +36,6 @@
       "max": 3650,
       "default": 90,
       "choices": [],
-      "new_question": true
-    },
-    {
-      "question_name": "Detalle en la salida del job",
-      "question_description": "resumido: tabla por servidor. completo: además los hallazgos de cada usuario.",
-      "required": true,
-      "type": "multiplechoice",
-      "variable": "auditoria_detalle_salida",
-      "min": 0,
-      "max": 1024,
-      "default": "resumido",
-      "choices": [
-        "resumido",
-        "completo"
-      ],
       "new_question": true
     }
   ]

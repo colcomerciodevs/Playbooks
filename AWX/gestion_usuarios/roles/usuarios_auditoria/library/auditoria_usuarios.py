@@ -25,6 +25,9 @@ options:
   uid_maximo: {type: int, default: 0, description: 0 = sin límite superior}
   excluir_usuarios: {type: list, elements: str, default: [nobody, nfsnobody]}
   dias_inactividad: {type: int, default: 90}
+  cuentas_criticas: {type: list, elements: str, default: []}
+  cuentas_servicio: {type: list, elements: str, default: []}
+  uid_minimo_masivo: {type: int, default: 1000, description: UID desde el que aplica el forzado en bloque de la opción 2}
 '''
 
 RETURN = r'''
@@ -84,6 +87,8 @@ GRUPOS_EQUIVALENTES_ROOT = set(['docker', 'lxd', 'lxc', 'disk', 'podman'])
 GRUPOS_SENSIBLES = set(['shadow', 'root', 'kmem', 'adm', 'systemd-journal', 'wheel', 'sudo', 'admin'])
 
 SEVERIDADES = ['CRITICO', 'ALTO', 'MEDIO', 'BAJO', 'INFO']
+# Días de anticipación para avisar que una contraseña va a vencer.
+DIAS_AVISO_VENCIMIENTO = 14
 MESES = {'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
          'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12}
 
@@ -196,7 +201,7 @@ def estado_contrasena(hash_):
 def caducidad(sh, hoy):
     """Interpreta los campos de /etc/shadow."""
     r = {'ultimo_cambio': '', 'dias_desde_cambio': None, 'max_dias': None,
-         'contrasena_caduca': 'nunca', 'contrasena_expirada': False,
+         'contrasena_caduca': 'nunca', 'contrasena_expirada': False, 'dias_para_vencer': None,
          'debe_cambiar': False, 'cuenta_expira': 'nunca', 'cuenta_expirada': False}
     if not sh:
         return r
@@ -212,6 +217,7 @@ def caducidad(sh, hoy):
         vence = ult + maxd
         r['contrasena_caduca'] = dias_a_fecha(vence)
         r['contrasena_expirada'] = hoy > vence
+        r['dias_para_vencer'] = vence - hoy
         if inact is not None and inact >= 0 and hoy > vence + inact:
             r['cuenta_expirada'] = True
     if exp is not None and exp >= 0:
@@ -224,6 +230,12 @@ def caducidad(sh, hoy):
 # ---------------------------------------------------------------------------
 # sudo
 # ---------------------------------------------------------------------------
+def clave_root(usuario):
+    """True si su sudo completo solo funciona con la contraseña de root (targetpw/rootpw)."""
+    s = usuario['sudo']
+    return not s['nopasswd'] and s['requiere_clave'].startswith('root')
+
+
 def separar_comandos(texto):
     """Separa una lista de comandos sudoers respetando comas escapadas (\\,)."""
     partes, actual, escape = [], '', False
@@ -544,6 +556,9 @@ def main():
             uid_maximo=dict(type='int', default=0),
             excluir_usuarios=dict(type='list', elements='str', default=['nobody', 'nfsnobody']),
             dias_inactividad=dict(type='int', default=90),
+            cuentas_criticas=dict(type='list', elements='str', default=[]),
+            cuentas_servicio=dict(type='list', elements='str', default=[]),
+            uid_minimo_masivo=dict(type='int', default=1000),
         ),
         supports_check_mode=True,
     )
@@ -661,8 +676,19 @@ def main():
                 hallazgo(h, 'ALTO', 'GRUPO_EQUIVALENTE_ROOT', 'Pertenece al grupo "%s" (equivale a root).' % g)
         if alg in ('md5', 'des', 'md5-sun', 'sha1') and est == 'ACTIVA':
             hallazgo(h, 'ALTO', 'HASH_DEBIL', 'Contraseña almacenada con algoritmo débil (%s).' % alg)
-        if est == 'ACTIVA' and cad['contrasena_expirada']:
-            hallazgo(h, 'MEDIO', 'CONTRASENA_EXPIRADA', 'Contraseña vencida desde %s.' % cad['contrasena_caduca'])
+        # Con PAM, una contraseña vencida también impide entrar con llave.
+        solo_llave = est != 'ACTIVA' and len(llaves) > 0
+        if cad['contrasena_expirada'] and not cad['cuenta_expirada'] and (est == 'ACTIVA' or solo_llave):
+            if solo_llave:
+                hallazgo(h, 'ALTO', 'CONTRASENA_EXPIRADA', 'Contraseña vencida desde %s: la cuenta entra solo con llave '
+                         'y ya no puede iniciar sesión.' % cad['contrasena_caduca'])
+            else:
+                hallazgo(h, 'MEDIO', 'CONTRASENA_EXPIRADA', 'Contraseña vencida desde %s.' % cad['contrasena_caduca'])
+        dias_vence = cad['dias_para_vencer']
+        if puede_entrar and not cad['contrasena_expirada'] and dias_vence is not None and dias_vence <= DIAS_AVISO_VENCIMIENTO:
+            hallazgo(h, 'ALTO', 'CONTRASENA_POR_VENCER', 'La contraseña vence el %s (en %d días).%s' % (
+                cad['contrasena_caduca'], dias_vence,
+                ' La cuenta entra solo con llave: al vencer perderá el acceso.' if solo_llave else ''))
         if cad['cuenta_expirada']:
             hallazgo(h, 'INFO', 'CUENTA_EXPIRADA', 'Cuenta expirada/deshabilitada (%s).' % cad['cuenta_expira'])
         if puede_entrar and acceso_dias is not None and acceso_dias > p['dias_inactividad']:
@@ -673,6 +699,11 @@ def main():
             hallazgo(h, 'BAJO', 'CONTRASENA_SIN_CADUCIDAD', 'La contraseña no caduca.')
         if any(l['con_opciones'] for l in llaves):
             hallazgo(h, 'INFO', 'LLAVE_CON_OPCIONES', 'Alguna llave SSH tiene opciones (command=, from=...).')
+
+        # Misma regla que el forzado en bloque de la opción 2 (todos UID >= 1000).
+        es_servicio = u in p['cuentas_servicio']
+        forzaria = (p['uid_minimo_masivo'] <= c['uid'] < 65534 and u not in p['cuentas_criticas'] and not es_servicio
+                    and interactivo and est == 'ACTIVA')
 
         h.sort(key=lambda x: SEVERIDADES.index(x['severidad']))
         usuarios.append({
@@ -688,6 +719,7 @@ def main():
             'puede_iniciar_sesion': puede_entrar,
             'ultimo_acceso': acceso_txt, 'dias_sin_acceso': acceso_dias,
             'sudo': sudo, 'hallazgos': h,
+            'cuenta_servicio': es_servicio, 'forzaria_cambio': forzaria,
             'severidad_max': h[0]['severidad'] if h else '',
         })
 
@@ -695,11 +727,16 @@ def main():
     todos_h = hallazgos_servidor + [x for u in usuarios for x in u['hallazgos']]
     resumen = {
         'usuarios': len(usuarios),
-        'sudo_completo': len([u for u in usuarios if u['sudo']['nivel'] == 'COMPLETO']),
+        # sudo completo con su propia clave o sin clave (privilegio real).
+        'sudo_completo': len([u for u in usuarios if u['sudo']['nivel'] == 'COMPLETO' and not clave_root(u)]),
+        # sudo completo que exige la clave de root (regla por defecto de SUSE: equivale a conocer root).
+        'sudo_clave_root': len([u for u in usuarios if u['sudo']['nivel'] == 'COMPLETO' and clave_root(u)]),
         'sudo_limitado': len([u for u in usuarios if u['sudo']['nivel'] == 'LIMITADO']),
         'sin_sudo': len([u for u in usuarios if u['sudo']['nivel'] not in ('COMPLETO', 'LIMITADO')]),
         'sudo_sin_clave': len([u for u in usuarios if u['sudo']['nopasswd']]),
         'pueden_iniciar_sesion': len([u for u in usuarios if u['puede_iniciar_sesion']]),
+        'forzaria_cambio': len([u for u in usuarios if u['forzaria_cambio']]),
+        'cuentas_servicio': len([u for u in usuarios if u['cuenta_servicio']]),
         'bloqueadas': len([u for u in usuarios if u['estado_contrasena'] == 'BLOQUEADA']),
         'cuentas_uid0': len(cuentas_uid0),
     }
@@ -719,9 +756,9 @@ def main():
     t.append('%s | sudo: %s' % (servidor['sistema'], version_sudo or 'no instalado'))
     t.append('root: clave %s, último cambio %s, caduca %s' % (
         root.get('estado_contrasena', '?'), root.get('ultimo_cambio', '?'), root.get('contrasena_caduca', '?')))
-    t.append('Usuarios UID >= %d: %d | sudo completo: %d | limitado: %d | sin sudo: %d | NOPASSWD: %d' % (
-        p['uid_minimo'], resumen['usuarios'], resumen['sudo_completo'], resumen['sudo_limitado'],
-        resumen['sin_sudo'], resumen['sudo_sin_clave']))
+    t.append('Usuarios UID >= %d: %d | sudo completo: %d | solo con clave de root: %d | limitado: %d | sin sudo: %d | NOPASSWD: %d' % (
+        p['uid_minimo'], resumen['usuarios'], resumen['sudo_completo'], resumen['sudo_clave_root'],
+        resumen['sudo_limitado'], resumen['sin_sudo'], resumen['sudo_sin_clave']))
     t.append('-' * 110)
     t.append('%-16s %6s %-9s %-4s %-10s %-11s %-6s %-17s %s' % (
         'USUARIO', 'UID', 'SUDO', 'NOPW', 'CLAVE', 'CADUCA', 'LLAVES', 'ULTIMO ACCESO', 'HALLAZGO'))

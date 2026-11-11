@@ -146,7 +146,7 @@ EFECTO = {
     'crear_metodo_acceso': '<b>contrasena</b>: cuenta con clave inicial. <b>llave</b>: acceso solo con llave SSH; la clave queda bloqueada.',
     'crear_origen': '<b>encuesta</b>: usuarios escritos abajo. <b>catalogo</b>: usuarios de un archivo de vars/catalogos/.',
     'crear_usuarios_texto': 'Una línea por usuario: <font name="Mono" size="7.6">usuario;Nombre completo;grupo</font>.',
-    'crear_catalogo': 'Archivo a usar. El catálogo manda sobre la encuesta: el de administradores da sudo completo.',
+    'crear_catalogo': 'Archivo a usar. El catálogo manda sobre la encuesta: admins_linux da sudo completo sin contraseña.',
     'crear_grupos_secundarios': 'Se agregan si ya existen en el servidor. No se aceptan grupos privilegiados.',
     'crear_contrasena_inicial': 'Clave de las cuentas nuevas. Obligatoria con método contrasena.',
     'crear_forzar_cambio': 'SI: el usuario debe cambiar la clave en su primer ingreso.',
@@ -157,16 +157,18 @@ EFECTO = {
     'crear_sudo_nopasswd': 'SI: sudo sin pedir clave. Con método llave se aplica siempre.',
     'crear_sudo_comandos': 'Un comando por línea con ruta absoluta (nivel limitado).',
     'crear_actualizar_existentes': 'NO: las cuentas existentes se omiten. SI: se les aplica grupos, llave y sudo; su clave no cambia.',
-    'contrasena_usuarios': 'Cuentas a cambiar, separadas por coma.',
+    'contrasena_origen': '<b>lista</b>: los escritos. <b>catalogo</b>: los de un catálogo. <b>todos_uid_1000</b>: todas las cuentas UID ≥ 1000 de cada servidor. En bloque solo se permite solo_forzar_cambio.',
+    'contrasena_usuarios': 'Cuentas a cambiar, separadas por coma (si usuarios a incluir = lista).',
+    'contrasena_catalogo': 'Archivo de vars/catalogos/ (si usuarios a incluir = catalogo).',
+    'contrasena_accion': '<b>cambiar</b>: asigna la clave nueva. <b>solo_forzar_cambio</b>: conserva la clave actual y obliga a cambiarla al próximo ingreso.',
     'contrasena_confirmar_critica': 'Escribir CONFIRMAR para root, tux, adminso y similares. No se admite con all ni comodines.',
-    'contrasena_nueva': 'Nueva clave, mínimo 8 caracteres. AWX la guarda cifrada.',
+    'contrasena_nueva': 'Nueva clave, mínimo 8 caracteres. Obligatoria solo con la acción cambiar. AWX la guarda cifrada.',
     'contrasena_confirmacion': 'Debe ser igual a la anterior.',
     'contrasena_nunca_caduca': 'SI: la clave no expira. Exige "Forzar cambio" en NO.',
     'contrasena_forzar_cambio': 'SI: debe cambiarla en el próximo ingreso. En cuentas críticas debe ser NO.',
     'contrasena_desbloquear': 'SI: reinicia intentos fallidos y quita una expiración vencida.',
     'auditoria_uid_minimo': 'Audita las cuentas desde este UID.',
-    'auditoria_dias_inactividad': 'Marca como inactivas las cuentas sin ingreso en estos días.',
-    'auditoria_detalle_salida': '<b>resumido</b>: tabla por servidor. <b>completo</b>: además los hallazgos por usuario.',
+    'auditoria_dias_inactividad': 'Solo informa: las cuentas sin ingreso en más de estos días aparecen como inactivas en el reporte. No bloquea ni modifica nada.',
     'eliminar_usuarios': 'Cuentas a procesar, separadas por coma. No se aceptan cuentas críticas.',
     'eliminar_accion': '<b>bloquear</b>, <b>reactivar</b> o <b>eliminar</b>.',
     'eliminar_respaldar_home': 'SI: comprime el home antes de borrarlo.',
@@ -230,10 +232,11 @@ CREAR = [
 ]
 CONTRASENA = [
     ('Servidor', 'getent passwd', 'Verificación, solo lectura.'),
-    ('Servidor', 'chpasswd   (recibe U:clave por entrada estándar)', 'Siempre.'),
+    ('Servidor', 'getent shadow', 'Acción solo_forzar_cambio: comprueba que la cuenta tenga clave y aplica las exclusiones. Resultado oculto.'),
+    ('Servidor', 'chpasswd   (recibe U:clave por entrada estándar)', 'Acción cambiar.'),
     ('Servidor', 'getent shadow', 'Siempre, para comprobar el cambio. Resultado oculto.'),
     ('Servidor', 'chage -m 0 -M 99999 -I -1 U', 'Nunca caduca = SI.'),
-    ('Servidor', 'chage -d 0 U', 'Forzar cambio = SI.'),
+    ('Servidor', 'chage -d 0 U', 'Forzar cambio = SI, o acción solo_forzar_cambio.'),
     ('Servidor', 'faillock --user U --reset ; pam_tally2 --user U --reset', 'Desbloquear = SI, el que exista.'),
     ('Servidor', 'chage -E -1 U', 'Desbloquear = SI y la cuenta está vencida.'),
     ('Servidor', 'chage -l U', 'Siempre, para mostrar el estado final.'),
@@ -273,7 +276,7 @@ def portada():
          P('Cada workflow tiene tres nodos y su encuesta es la de la plantilla que protege, más el ticket.'),
          tabla(['Workflow', 'Qué hace', 'Plantilla del nodo 2', 'Preguntas'], [
              ['USUARIOS | WF - Crear usuarios', 'Pide aprobación, crea las cuentas y audita el resultado.', '1 - Crear usuarios', '16'],
-             ['USUARIOS | WF - Cambio de contraseña', 'Pide aprobación, cambia la clave y audita el resultado.', '2 - Cambiar contraseña', '9'],
+             ['USUARIOS | WF - Cambio de contraseña', 'Pide aprobación, cambia la clave o fuerza su cambio, y audita el resultado.', '2 - Cambiar contraseña', '12'],
              ['USUARIOS | WF - Bloquear o eliminar', 'Pide aprobación, bloquea, reactiva o elimina y audita el resultado.', '4 - Bloquear o eliminar', '6'],
          ], [0.31, 0.37, 0.20, 0.12]),
          Spacer(1, 7),
@@ -283,8 +286,8 @@ def portada():
          P('Plantillas', 'h1'),
          tabla(['Plantilla', 'Playbook', 'Modifica', 'Preguntas'], [
              ['USUARIOS | 1 - Crear usuarios', 'AWX/gestion_usuarios/01_crear_usuarios.yml', 'Sí', '15'],
-             ['USUARIOS | 2 - Cambiar contraseña', 'AWX/gestion_usuarios/02_cambiar_contrasena.yml', 'Sí', '8'],
-             ['USUARIOS | 3 - Auditoría', 'AWX/gestion_usuarios/03_auditoria_usuarios.yml', 'No', '4'],
+             ['USUARIOS | 2 - Cambiar contraseña', 'AWX/gestion_usuarios/02_cambiar_contrasena.yml', 'Sí', '11'],
+             ['USUARIOS | 3 - Auditoría', 'AWX/gestion_usuarios/03_auditoria_usuarios.yml', 'No', '3'],
              ['USUARIOS | 4 - Bloquear o eliminar', 'AWX/gestion_usuarios/04_bloquear_eliminar_usuarios.yml', 'Sí', '5'],
          ], [0.30, 0.46, 0.12, 0.12]),
          Spacer(1, 4),
@@ -303,7 +306,7 @@ def portada():
              ['Respaldos de home eliminados', '/var/backups/usuarios_eliminados/ en cada servidor'],
              ['Reglas sudo', '/etc/sudoers.d/&lt;usuario&gt; en cada servidor'],
              ['Catálogos de usuarios', 'vars/catalogos/ del proyecto'],
-             ['Cuentas críticas y grupos prohibidos', 'vars/comunes.yml del proyecto'],
+             ['Cuentas críticas, cuentas de servicio y grupos prohibidos', 'vars/comunes.yml del proyecto'],
          ], [0.5, 0.5]),
          P('Protecciones principales', 'h1'),
          tabla(['Regla', 'Cómo se aplica'], [
@@ -339,9 +342,14 @@ def main():
         'no se puede escribir en la carpeta de llaves, o se quiere actualizar una cuenta de servicio.',
         nota('<b>Llaves.</b> Si el usuario ya tiene llave se reutiliza en cualquier servidor. Solo se genera otra si no tiene o si se marca Renovar.'))
     historia += seccion(
-        'Opción 2 · Cambiar contraseña', 'Cambia la clave de una o varias cuentas y, si se pide, su caducidad o bloqueo.',
+        'Opción 2 · Cambiar contraseña', 'Cambia la clave de una o varias cuentas, o solo obliga a cambiarla en el próximo ingreso sin tocar la actual. Esto último también se puede hacer en bloque.',
         '02_cambiar_contrasena.yml', 'usuarios_contrasena', 'Plantilla 2 y WF - Cambio de contraseña', '02_cambiar_contrasena', CONTRASENA,
-        'las claves no coinciden o son cortas, se pide "nunca caduca" y "forzar cambio" a la vez, o se intenta cambiar una cuenta crítica sin CONFIRMAR o con all.')
+        'las claves no coinciden o son cortas, se pide "nunca caduca" y "forzar cambio" a la vez, se intenta cambiar una cuenta crítica '
+        'sin CONFIRMAR o con all, se pide solo forzar el cambio a una cuenta sin clave (solo llave o bloqueada), '
+        'o se usa catálogo o todos UID ≥ 1000 con una acción distinta de solo_forzar_cambio.',
+        nota('<b>En bloque</b> (catálogo o todos UID ≥ 1000) se omiten, sin detener el job: cuentas críticas, cuentas de servicio '
+             '(lista cuentas_servicio en vars/comunes.yml), shells no interactivos y cuentas sin contraseña. Antes de lanzarlo, '
+             'ejecute la auditoría: la columna "Se le forzaría el cambio" muestra exactamente a quiénes se aplicaría.'))
     historia += seccion(
         'Opción 3 · Auditoría', 'Revisa cuentas, contraseñas, llaves, último acceso y sudo. No modifica los servidores.',
         '03_auditoria_usuarios.yml', 'usuarios_auditoria', 'Plantilla 3 y último nodo de los 3 workflows', '03_auditoria_usuarios', AUDITORIA,

@@ -4,7 +4,7 @@
   "spec": [
     {
       "question_name": "Ticket o justificación",
-      "question_description": "Número de ticket / RFC y motivo del cambio. Es lo primero que revisa quien aprueba.",
+      "question_description": "Número de ticket o RFC y motivo del cambio. Es lo primero que revisa quien aprueba.",
       "required": true,
       "type": "text",
       "variable": "ticket_cambio",
@@ -16,7 +16,7 @@
     },
     {
       "question_name": "Servidores o grupo del inventario",
-      "question_description": "Grupo (ej. GEOPOS, PPU, OCI_PEOPLE_PRD), servidor, o patrón Ansible: grupo1:grupo2, grupo:!servidor, srv1,srv2.",
+      "question_description": "Grupo, servidor o patrón del inventario. No se permite localhost. Ejemplos: GEOPOS · PPU · srv1,srv2 · GEOPOS:!srv1",
       "required": true,
       "type": "text",
       "variable": "objetivo",
@@ -28,7 +28,7 @@
     },
     {
       "question_name": "Método de acceso",
-      "question_description": "contrasena: cuenta con contraseña inicial. llave: solo acceso con llave SSH (la contraseña queda bloqueada).",
+      "question_description": "[contrasena] La cuenta entra con la contraseña inicial. [llave] Entra solo con llave SSH (sin contraseña).",
       "required": true,
       "type": "multiplechoice",
       "variable": "crear_metodo_acceso",
@@ -43,7 +43,7 @@
     },
     {
       "question_name": "Origen de la lista de usuarios",
-      "question_description": "encuesta: los usuarios se escriben abajo. catalogo: se toman de un archivo de vars/catalogos/ del proyecto.",
+      "question_description": "[encuesta] Escriba los usuarios en el campo de abajo. [catalogo] Se toman de un archivo de vars/catalogos/.",
       "required": true,
       "type": "multiplechoice",
       "variable": "crear_origen",
@@ -58,7 +58,7 @@
     },
     {
       "question_name": "Usuarios (si origen = encuesta)",
-      "question_description": "Una línea por usuario:  usuario;Nombre completo;grupo(opcional)\nEj: jperez;Juan Pérez;soporte",
+      "question_description": "Solo si origen = encuesta. Una línea por usuario: usuario;Nombre completo;grupo (grupo opcional). Ejemplo: jperez;Juan Pérez;soporte",
       "required": false,
       "type": "textarea",
       "variable": "crear_usuarios_texto",
@@ -70,7 +70,7 @@
     },
     {
       "question_name": "Catálogo (si origen = catalogo)",
-      "question_description": "Archivo de vars/catalogos/. El catálogo manda sobre esta encuesta: usuarios_llave_admin_linux otorga sudo COMPLETO sin contraseña.",
+      "question_description": "Solo si origen = catalogo. ⚠ El catálogo manda sobre esta encuesta: admins_linux da sudo COMPLETO sin contraseña.",
       "required": false,
       "type": "multiplechoice",
       "variable": "crear_catalogo",
@@ -78,17 +78,17 @@
       "max": 1024,
       "default": "",
       "choices": [
-        "usuarios_zona_norte",
-        "usuarios_zona_centro",
-        "usuarios_individuales",
-        "usuarios_llave_admin_linux",
-        "usuarios_llave_servicio"
+        "usuarios_generales",
+        "admins_linux",
+        "cuentas_de_servicio",
+        "soporte_zona_norte",
+        "soporte_zona_centro"
       ],
       "new_question": true
     },
     {
       "question_name": "Grupos secundarios",
-      "question_description": "Separados por coma. Solo se agregan los que ya existen en el servidor. No se permiten grupos privilegiados (wheel, sudo, root, docker...).",
+      "question_description": "Separados por coma. Solo se agregan si ya existen en el servidor. No se permiten grupos privilegiados (wheel, sudo, root, docker…).",
       "required": false,
       "type": "text",
       "variable": "crear_grupos_secundarios",
@@ -100,7 +100,7 @@
     },
     {
       "question_name": "Contraseña inicial (método contrasena)",
-      "question_description": "Obligatoria con método contrasena. Solo se asigna a cuentas nuevas. AWX la guarda cifrada.",
+      "question_description": "Solo con método contrasena. Mínimo 8 caracteres. Se asigna únicamente a cuentas nuevas.",
       "required": false,
       "type": "password",
       "variable": "crear_contrasena_inicial",
@@ -112,7 +112,7 @@
     },
     {
       "question_name": "Forzar cambio de contraseña en el primer ingreso",
-      "question_description": "Recomendado SI para cuentas personales.",
+      "question_description": "[SI] El usuario debe cambiar la contraseña en su primer ingreso (recomendado).",
       "required": true,
       "type": "multiplechoice",
       "variable": "crear_forzar_cambio",
@@ -127,7 +127,7 @@
     },
     {
       "question_name": "Origen de la llave (método llave)",
-      "question_description": "keys: usa la llave guardada del usuario; si no tiene, genera una nueva y la guarda. encuesta: usa la llave pública pegada abajo.",
+      "question_description": "Solo con método llave. [keys] Reutiliza la llave guardada; si no tiene, crea una. [encuesta] Usa la llave pegada abajo.",
       "required": false,
       "type": "multiplechoice",
       "variable": "crear_llave_origen",
@@ -142,7 +142,7 @@
     },
     {
       "question_name": "Llaves públicas (origen de llave = encuesta)",
-      "question_description": "Una línea por usuario:  usuario;ssh-rsa AAAA... comentario",
+      "question_description": "Solo si origen de la llave = encuesta. Una línea por usuario. Ejemplo: jperez;ssh-rsa AAAA... comentario",
       "required": false,
       "type": "textarea",
       "variable": "crear_llaves_texto",
@@ -154,7 +154,7 @@
     },
     {
       "question_name": "⚠ RENOVAR LLAVE (opción crítica)",
-      "question_description": "SI genera una llave NUEVA aunque el usuario ya tenga una. La anterior se archiva y se retira de los servidores del objetivo. En servidores NO incluidos en el objetivo el usuario seguirá entrando solo con la llave anterior. Deje NO salvo pérdida o compromiso de la llave.",
+      "question_description": "Deje NO salvo pérdida o robo de la llave. [SI] Crea una llave nueva, archiva la anterior y la reemplaza solo en los servidores de este objetivo.",
       "required": true,
       "type": "multiplechoice",
       "variable": "crear_renovar_llave",
@@ -169,7 +169,7 @@
     },
     {
       "question_name": "Nivel de sudo",
-      "question_description": "ninguno | completo (ALL) | limitado (solo los comandos indicados abajo).",
+      "question_description": "[ninguno] Sin sudo. [completo] Puede ejecutar todo como root. [limitado] Solo los comandos indicados abajo.",
       "required": true,
       "type": "multiplechoice",
       "variable": "crear_sudo_nivel",
@@ -185,7 +185,7 @@
     },
     {
       "question_name": "sudo sin contraseña (NOPASSWD)",
-      "question_description": "Con método llave se aplica SI automáticamente (la cuenta no tiene contraseña).",
+      "question_description": "[SI] Sudo no pide contraseña. Con método llave se aplica siempre (la cuenta no tiene contraseña).",
       "required": true,
       "type": "multiplechoice",
       "variable": "crear_sudo_nopasswd",
@@ -200,7 +200,7 @@
     },
     {
       "question_name": "Comandos sudo permitidos (nivel limitado)",
-      "question_description": "Un comando por línea, con ruta absoluta. Ej:\n/usr/bin/systemctl restart httpd\n/usr/bin/tail -f /var/log/messages",
+      "question_description": "Solo con sudo limitado. Un comando por línea, con ruta completa. Ejemplo: /usr/bin/systemctl restart httpd",
       "required": false,
       "type": "textarea",
       "variable": "crear_sudo_comandos",
@@ -212,7 +212,7 @@
     },
     {
       "question_name": "Actualizar usuarios que ya existen",
-      "question_description": "NO: se omiten. SI: se les agregan grupos, llave y regla sudo (no se cambia su contraseña, home ni shell).",
+      "question_description": "[NO] Las cuentas que ya existen se omiten. [SI] Se les agregan grupos, llave y sudo (no cambia su contraseña).",
       "required": true,
       "type": "multiplechoice",
       "variable": "crear_actualizar_existentes",

@@ -15,8 +15,23 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 SINO = ['SI', 'NO']
 
 
+def texto_awx(desc):
+    """AWX muestra la ayuda en un solo párrafo (ignora los saltos de línea).
+    Convierte cada línea '• valor → efecto' en '[valor] efecto' y las une con espacios."""
+    partes = []
+    for linea in desc.split('\n'):
+        linea = linea.strip()
+        if linea.startswith('• '):
+            linea = linea[2:]
+        if ' → ' in linea:
+            valor, efecto = linea.split(' → ', 1)
+            linea = '[%s] %s' % (valor, efecto[:1].upper() + efecto[1:])
+        partes.append(linea)
+    return ' '.join(x for x in partes if x)
+
+
 def q(var, nombre, desc, tipo='text', req=False, default='', choices=None, mn=0, mx=1024):
-    d = {'question_name': nombre, 'question_description': desc, 'required': req, 'type': tipo,
+    d = {'question_name': nombre, 'question_description': texto_awx(desc), 'required': req, 'type': tipo,
          'variable': var, 'min': mn, 'max': mx, 'default': default, 'choices': choices or [],
          'new_question': True}
     if tipo in ('integer', 'float'):
@@ -24,8 +39,12 @@ def q(var, nombre, desc, tipo='text', req=False, default='', choices=None, mn=0,
     return d
 
 
+CATALOGOS = ['usuarios_generales', 'admins_linux', 'cuentas_de_servicio',
+             'soporte_zona_norte', 'soporte_zona_centro']
+
 OBJETIVO = q('objetivo', 'Servidores o grupo del inventario',
-             'Grupo (ej. GEOPOS, PPU, OCI_PEOPLE_PRD), servidor, o patrón Ansible: grupo1:grupo2, grupo:!servidor, srv1,srv2.',
+             'Grupo, servidor o patrón del inventario. No se permite localhost.\n'
+             '• Ejemplos: GEOPOS · PPU · srv1,srv2 · GEOPOS:!srv1',
              req=True, mn=1)
 
 ENCUESTAS = {
@@ -35,45 +54,59 @@ ENCUESTAS = {
         'spec': [
             OBJETIVO,
             q('crear_metodo_acceso', 'Método de acceso',
-              'contrasena: cuenta con contraseña inicial. llave: solo acceso con llave SSH (la contraseña queda bloqueada).',
+              '• contrasena → la cuenta entra con la contraseña inicial.\n'
+              '• llave → entra solo con llave SSH (sin contraseña).',
               'multiplechoice', True, 'contrasena', ['contrasena', 'llave']),
             q('crear_origen', 'Origen de la lista de usuarios',
-              'encuesta: los usuarios se escriben abajo. catalogo: se toman de un archivo de vars/catalogos/ del proyecto.',
+              '• encuesta → escriba los usuarios en el campo de abajo.\n'
+              '• catalogo → se toman de un archivo de vars/catalogos/.',
               'multiplechoice', True, 'encuesta', ['encuesta', 'catalogo']),
             q('crear_usuarios_texto', 'Usuarios (si origen = encuesta)',
-              'Una línea por usuario:  usuario;Nombre completo;grupo(opcional)\nEj: jperez;Juan Pérez;soporte',
+              'Solo si origen = encuesta. Una línea por usuario: usuario;Nombre completo;grupo (grupo opcional).\n'
+              '• Ejemplo: jperez;Juan Pérez;soporte',
               'textarea', mx=20000),
             q('crear_catalogo', 'Catálogo (si origen = catalogo)',
-              'Archivo de vars/catalogos/. El catálogo manda sobre esta encuesta: usuarios_llave_admin_linux otorga sudo COMPLETO sin contraseña.',
-              'multiplechoice', False, '',
-              ['usuarios_zona_norte', 'usuarios_zona_centro', 'usuarios_individuales',
-               'usuarios_llave_admin_linux', 'usuarios_llave_servicio']),
+              'Solo si origen = catalogo.\n'
+              '• ⚠ El catálogo manda sobre esta encuesta: admins_linux da sudo COMPLETO sin contraseña.',
+              'multiplechoice', False, '', CATALOGOS),
             q('crear_grupos_secundarios', 'Grupos secundarios',
-              'Separados por coma. Solo se agregan los que ya existen en el servidor. No se permiten grupos privilegiados (wheel, sudo, root, docker...).'),
+              'Separados por coma. Solo se agregan si ya existen en el servidor.\n'
+              '• No se permiten grupos privilegiados (wheel, sudo, root, docker…).'),
             q('crear_contrasena_inicial', 'Contraseña inicial (método contrasena)',
-              'Obligatoria con método contrasena. Solo se asigna a cuentas nuevas. AWX la guarda cifrada.',
+              'Solo con método contrasena. Mínimo 8 caracteres. Se asigna únicamente a cuentas nuevas.',
               'password', mx=128),
             q('crear_forzar_cambio', 'Forzar cambio de contraseña en el primer ingreso',
-              'Recomendado SI para cuentas personales.', 'multiplechoice', True, 'SI', SINO),
+              'SI → el usuario debe cambiar la contraseña en su primer ingreso (recomendado).',
+              'multiplechoice', True, 'SI', SINO),
             q('crear_llave_origen', 'Origen de la llave (método llave)',
-              'keys: usa la llave guardada del usuario; si no tiene, genera una nueva y la guarda. encuesta: usa la llave pública pegada abajo.',
+              'Solo con método llave.\n'
+              '• keys → reutiliza la llave guardada; si no tiene, crea una.\n'
+              '• encuesta → usa la llave pegada abajo.',
               'multiplechoice', False, 'keys', ['keys', 'encuesta']),
             q('crear_llaves_texto', 'Llaves públicas (origen de llave = encuesta)',
-              'Una línea por usuario:  usuario;ssh-rsa AAAA... comentario', 'textarea', mx=40000),
+              'Solo si origen de la llave = encuesta. Una línea por usuario.\n'
+              '• Ejemplo: jperez;ssh-rsa AAAA... comentario',
+              'textarea', mx=40000),
             q('crear_renovar_llave', '⚠ RENOVAR LLAVE (opción crítica)',
-              'SI genera una llave NUEVA aunque el usuario ya tenga una. La anterior se archiva y se retira de los servidores del objetivo. En servidores NO incluidos en el objetivo el usuario seguirá entrando solo con la llave anterior. Deje NO salvo pérdida o compromiso de la llave.',
+              'Deje NO salvo pérdida o robo de la llave.\n'
+              '• SI → crea una llave nueva, archiva la anterior y la reemplaza solo en los servidores de este objetivo.',
               'multiplechoice', True, 'NO', SINO),
             q('crear_sudo_nivel', 'Nivel de sudo',
-              'ninguno | completo (ALL) | limitado (solo los comandos indicados abajo).',
+              '• ninguno → sin sudo.\n'
+              '• completo → puede ejecutar todo como root.\n'
+              '• limitado → solo los comandos indicados abajo.',
               'multiplechoice', True, 'ninguno', ['ninguno', 'completo', 'limitado']),
             q('crear_sudo_nopasswd', 'sudo sin contraseña (NOPASSWD)',
-              'Con método llave se aplica SI automáticamente (la cuenta no tiene contraseña).',
+              'SI → sudo no pide contraseña.\n'
+              '• Con método llave se aplica siempre (la cuenta no tiene contraseña).',
               'multiplechoice', True, 'NO', SINO),
             q('crear_sudo_comandos', 'Comandos sudo permitidos (nivel limitado)',
-              'Un comando por línea, con ruta absoluta. Ej:\n/usr/bin/systemctl restart httpd\n/usr/bin/tail -f /var/log/messages',
+              'Solo con sudo limitado. Un comando por línea, con ruta completa.\n'
+              '• Ejemplo: /usr/bin/systemctl restart httpd',
               'textarea', mx=20000),
             q('crear_actualizar_existentes', 'Actualizar usuarios que ya existen',
-              'NO: se omiten. SI: se les agregan grupos, llave y regla sudo (no se cambia su contraseña, home ni shell).',
+              '• NO → las cuentas que ya existen se omiten.\n'
+              '• SI → se les agregan grupos, llave y sudo (no cambia su contraseña).',
               'multiplechoice', True, 'NO', SINO),
         ],
     },
@@ -82,22 +115,42 @@ ENCUESTAS = {
         'description': 'Cambio de contraseña con política "nunca caduca" opcional (ej. root).',
         'spec': [
             OBJETIVO,
-            q('contrasena_usuarios', 'Usuario(s)', 'Uno o varios separados por coma. Ej: jperez  o  jperez,soporte1',
-              req=True, mn=1),
+            q('contrasena_accion', 'Acción',
+              '• cambiar → asigna la contraseña nueva.\n'
+              '• solo_forzar_cambio → no toca la contraseña; obliga a cambiarla en el próximo ingreso.',
+              'multiplechoice', True, 'cambiar', ['cambiar', 'solo_forzar_cambio']),
+            q('contrasena_origen', 'Usuarios a incluir',
+              '• lista → los usuarios escritos abajo.\n'
+              '• catalogo → los del catálogo elegido.\n'
+              '• todos_uid_1000 → todas las cuentas con UID ≥ 1000 de cada servidor.\n'
+              'En bloque solo se permite solo_forzar_cambio. Revise antes la auditoría.',
+              'multiplechoice', True, 'lista', ['lista', 'catalogo', 'todos_uid_1000']),
+            q('contrasena_usuarios', 'Usuario(s) (si usuarios a incluir = lista)',
+              'Solo si usuarios a incluir = lista. Separados por coma.\n'
+              '• Ejemplo: jperez,soporte1'),
+            q('contrasena_catalogo', 'Catálogo (si usuarios a incluir = catalogo)',
+              'Solo si usuarios a incluir = catalogo.',
+              'multiplechoice', False, '', CATALOGOS),
             q('contrasena_confirmar_critica', 'Confirmación para cuenta crítica',
-              'Solo para root, tux, adminso y otras cuentas administradoras: escriba CONFIRMAR. No se permite con objetivo all.'),
-            q('contrasena_nueva', 'Nueva contraseña', 'AWX la guarda cifrada y no aparece en la salida del job.',
-              'password', True, mn=8, mx=128),
-            q('contrasena_confirmacion', 'Confirmar contraseña', 'Debe coincidir con la anterior.',
-              'password', True, mn=8, mx=128),
+              'Solo para root, tux, adminso y otras cuentas administradoras: escriba CONFIRMAR.\n'
+              '• No se permite con objetivo all.'),
+            q('contrasena_nueva', 'Nueva contraseña (acción cambiar)',
+              'Solo con acción cambiar. Mínimo 8 caracteres. No aparece en la salida del job.',
+              'password', mx=128),
+            q('contrasena_confirmacion', 'Confirmar contraseña (acción cambiar)',
+              'Repita la contraseña nueva.',
+              'password', mx=128),
             q('contrasena_nunca_caduca', 'Contraseña sin caducidad (nunca expira)',
-              'SI: chage -m 0 -M 99999 -I -1. Para cuentas críticas que el hardening haría caducar; requiere "Forzar cambio" en NO. NO: conserva la política actual.',
+              '• SI → la contraseña no expira (para cuentas críticas). Requiere Forzar cambio = NO.\n'
+              '• NO → conserva la política actual.',
               'multiplechoice', True, 'NO', SINO),
             q('contrasena_forzar_cambio', 'Forzar cambio en el próximo inicio de sesión',
-              'Recomendado SI para cuentas personales. Excluyente con "sin caducidad". En cuentas críticas debe ser NO.',
+              '• SI → debe cambiarla en el próximo ingreso (recomendado en cuentas personales).\n'
+              '• Debe ser NO en cuentas críticas o con «sin caducidad».',
               'multiplechoice', True, 'SI', SINO),
             q('contrasena_desbloquear', 'Desbloquear la cuenta',
-              'Reinicia intentos fallidos (faillock/pam_tally2) y quita una expiración de cuenta ya vencida. También revierte un bloqueo hecho con la opción 4.',
+              'SI → reinicia intentos fallidos y quita una expiración vencida.\n'
+              '• También revierte un bloqueo hecho con la opción 4.',
               'multiplechoice', True, 'NO', SINO),
         ],
     },
@@ -106,13 +159,13 @@ ENCUESTAS = {
         'description': 'Inventario de cuentas UID >= 1000, permisos sudo (completo/limitado y comandos) y hallazgos.',
         'spec': [
             OBJETIVO,
-            q('auditoria_uid_minimo', 'UID mínimo a auditar', 'Por debajo de este UID son cuentas de servicio.',
+            q('auditoria_uid_minimo', 'UID mínimo a auditar',
+              'Se auditan las cuentas desde este UID. Por debajo suelen ser cuentas del sistema.',
               'integer', True, 1000, mn=0, mx=65535),
-            q('auditoria_dias_inactividad', 'Días sin ingreso para marcar cuenta inactiva', '',
+            q('auditoria_dias_inactividad', 'Días sin ingreso para reportar una cuenta como inactiva (solo informe)',
+              'Solo para el reporte: no bloquea ni cambia nada.\n'
+              '• Las cuentas sin ingresar en más de estos días aparecen como CUENTA_INACTIVA.',
               'integer', True, 90, mn=1, mx=3650),
-            q('auditoria_detalle_salida', 'Detalle en la salida del job',
-              'resumido: tabla por servidor. completo: además los hallazgos de cada usuario.',
-              'multiplechoice', True, 'resumido', ['resumido', 'completo']),
         ],
     },
     '04_bloquear_eliminar_usuarios': {
@@ -120,13 +173,16 @@ ENCUESTAS = {
         'description': 'Bloqueo, reactivación o eliminación de cuentas, con respaldo del home.',
         'spec': [
             OBJETIVO,
-            q('eliminar_usuarios', 'Usuario(s)', 'Uno o varios separados por coma.', req=True, mn=1),
+            q('eliminar_usuarios', 'Usuario(s)', 'Separados por coma. No se aceptan cuentas críticas.', req=True, mn=1),
             q('eliminar_accion', 'Acción',
-              'bloquear: bloquea clave y expira la cuenta (conserva el home). reactivar: revierte el bloqueo. eliminar: borra cuenta y home.',
+              '• bloquear → impide el ingreso y conserva el home (reversible).\n'
+              '• reactivar → revierte el bloqueo.\n'
+              '• eliminar → borra la cuenta y su home.',
               'multiplechoice', True, 'bloquear', ['bloquear', 'reactivar', 'eliminar']),
             q('eliminar_respaldar_home', 'Respaldar home antes de eliminar',
-              'Se guarda en /var/backups/usuarios_eliminados/ del servidor.', 'multiplechoice', True, 'SI', SINO),
-            q('eliminar_confirmacion', 'Confirmación (solo para eliminar)', 'Escriba CONFIRMAR para eliminar.'),
+              'SI → antes de eliminar, comprime el home en /var/backups/usuarios_eliminados/.',
+              'multiplechoice', True, 'SI', SINO),
+            q('eliminar_confirmacion', 'Confirmación (solo para eliminar)', 'Solo para eliminar: escriba CONFIRMAR.'),
         ],
     },
 }
@@ -137,7 +193,7 @@ ENCUESTAS = {
 # precedida por el ticket/justificación que verá quien aprueba.
 # ---------------------------------------------------------------------------
 TICKET = q('ticket_cambio', 'Ticket o justificación',
-           'Número de ticket / RFC y motivo del cambio. Es lo primero que revisa quien aprueba.',
+           'Número de ticket o RFC y motivo del cambio. Es lo primero que revisa quien aprueba.',
            req=True, mn=3, mx=300)
 
 WORKFLOWS = {

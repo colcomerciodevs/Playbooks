@@ -1,0 +1,9 @@
+---
+# Catálogo: usuarios generales, de cualquier tipo y para cualquier servidor.
+# El método de acceso (contraseña o llave) se elige en la encuesta; la contraseña
+# NO se guarda aquí. Campos disponibles: ver cuentas_de_servicio.yml.
+usuarios:
+  - usuario: jmolina
+    nombre: "Jose Amaya Molina"
+    grupo: soporte
+    shell: /bin/bash

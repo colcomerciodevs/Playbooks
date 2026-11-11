@@ -1,5 +1,9 @@
 ---
-# Catálogo: cuentas de plataforma con acceso por llave (migrado de 'con_LLave/vars/vars_usuarios.yml').
+# Catálogo: cuentas de servicio (aplicaciones, integraciones, plataformas).
+# El método de acceso (llave o contraseña) se elige en la encuesta. El sudo se define
+# por cuenta con los campos de abajo: ninguno, limitado (con sus comandos) o completo.
+# Agregue también estas cuentas a 'cuentas_servicio' en vars/comunes.yml para que
+# queden fuera del forzado de contraseña en bloque de la opción 2.
 usuarios:
   - usuario: srvinnops
     nombre: "Plataforma de IA Infraestructura Corbeta"
@@ -16,7 +20,7 @@ usuarios:
 #   shell          shell en Linux            (por defecto /bin/bash)
 #   shell_solaris  shell en Solaris 11       (por defecto /usr/bin/bash)
 #   home           directorio home           (por defecto /home/<usuario>)
-#   llave_publica  llave pública SSH en línea (tiene prioridad sobre el repositorio)
+#   llave_publica  llave pública SSH en línea (tiene prioridad sobre el almacén de llaves)
 #   sudo           ninguno | completo | limitado
 #   sudo_nopasswd  true | false
 #   sudo_comandos  lista de comandos con ruta absoluta (para sudo: limitado)

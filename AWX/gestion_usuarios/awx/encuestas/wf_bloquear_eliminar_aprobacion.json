@@ -4,7 +4,7 @@
   "spec": [
     {
       "question_name": "Ticket o justificación",
-      "question_description": "Número de ticket / RFC y motivo del cambio. Es lo primero que revisa quien aprueba.",
+      "question_description": "Número de ticket o RFC y motivo del cambio. Es lo primero que revisa quien aprueba.",
       "required": true,
       "type": "text",
       "variable": "ticket_cambio",
@@ -16,7 +16,7 @@
     },
     {
       "question_name": "Servidores o grupo del inventario",
-      "question_description": "Grupo (ej. GEOPOS, PPU, OCI_PEOPLE_PRD), servidor, o patrón Ansible: grupo1:grupo2, grupo:!servidor, srv1,srv2.",
+      "question_description": "Grupo, servidor o patrón del inventario. No se permite localhost. Ejemplos: GEOPOS · PPU · srv1,srv2 · GEOPOS:!srv1",
       "required": true,
       "type": "text",
       "variable": "objetivo",
@@ -28,7 +28,7 @@
     },
     {
       "question_name": "Usuario(s)",
-      "question_description": "Uno o varios separados por coma.",
+      "question_description": "Separados por coma. No se aceptan cuentas críticas.",
       "required": true,
       "type": "text",
       "variable": "eliminar_usuarios",
@@ -40,7 +40,7 @@
     },
     {
       "question_name": "Acción",
-      "question_description": "bloquear: bloquea clave y expira la cuenta (conserva el home). reactivar: revierte el bloqueo. eliminar: borra cuenta y home.",
+      "question_description": "[bloquear] Impide el ingreso y conserva el home (reversible). [reactivar] Revierte el bloqueo. [eliminar] Borra la cuenta y su home.",
       "required": true,
       "type": "multiplechoice",
       "variable": "eliminar_accion",
@@ -56,7 +56,7 @@
     },
     {
       "question_name": "Respaldar home antes de eliminar",
-      "question_description": "Se guarda en /var/backups/usuarios_eliminados/ del servidor.",
+      "question_description": "[SI] Antes de eliminar, comprime el home en /var/backups/usuarios_eliminados/.",
       "required": true,
       "type": "multiplechoice",
       "variable": "eliminar_respaldar_home",
@@ -71,7 +71,7 @@
     },
     {
       "question_name": "Confirmación (solo para eliminar)",
-      "question_description": "Escriba CONFIRMAR para eliminar.",
+      "question_description": "Solo para eliminar: escriba CONFIRMAR.",
       "required": false,
       "type": "text",
       "variable": "eliminar_confirmacion",

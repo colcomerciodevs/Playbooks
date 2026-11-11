@@ -1,7 +1,7 @@
 ---
-# Catálogo: administradores Linux con acceso por llave (migrado de 'con_LLave/vars/vars_usuarios_BK.yml').
+# Catálogo: administradores Linux. Otorga sudo COMPLETO sin contraseña.
 # Uso recomendado: Método = llave, Origen de la llave = keys
-#   (se reutiliza la llave de keys/<usuario>; si no existe se genera y se guarda en keys/).
+#   (se reutiliza la llave guardada del usuario; si no tiene, se genera una nueva).
 usuarios:
   - usuario: jcantor
     nombre: "Usuario administrador de Linux - Amaris"
