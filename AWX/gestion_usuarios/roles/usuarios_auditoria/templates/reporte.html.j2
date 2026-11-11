@@ -20,7 +20,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Auditoría de usuarios {{ aud_fecha }}</title>
+<title>{{ 'Verificación del cambio' if aud_cambio | bool else 'Auditoría de usuarios' }} {{ aud_fecha }}</title>
 <style>
 :root{--bg:#f6f7f9;--card:#fff;--tx:#1d2330;--mut:#5d6677;--bd:#dfe3ea;--hd:#eef1f5;--acc:#2456c7;
 --crit:#b3261e;--crit-bg:#fde8e6;--alto:#b15c00;--alto-bg:#fff0de;--medio:#8a6d00;--medio-bg:#fff8d6;--bajo:#2f6b3a;--bajo-bg:#e6f4e8;--info:#46556b;--info-bg:#eaeef4}
@@ -57,23 +57,39 @@ details .wrap{border:0;border-top:1px solid var(--bd);border-radius:0 0 10px 10p
 </head>
 <body>
 <main>
+{%- if aud_cambio | bool %}
+<h1>Verificación del cambio</h1>
+<p class="meta">Generado: {{ aud_fecha }} · Operación: <b>{{ cambio_operacion | default('-') | e }}</b> · Ticket: <b>{{ ticket_cambio | default('-') | e }}</b> · Objetivo: <b>{{ objetivo | default('-') | e }}</b> · Solo se revisan las cuentas modificadas por el workflow, en cada servidor.</p>
+{%- else %}
 <h1>Auditoría de usuarios y privilegios sudo</h1>
 <p class="meta">Generado: {{ aud_fecha }} · Objetivo: <b>{{ objetivo | default('-') | e }}</b> · Cuentas con UID ≥ {{ auditoria_uid_minimo }} · Fuente: /etc/passwd, /etc/shadow, sudo -ll -U, sshd -T</p>
+{%- endif %}
 
 <div class="kpis">
   <div class="kpi"><b>{{ ok | length }}</b><span>servidores auditados</span></div>
   <div class="kpi{{ ' alto' if ko else '' }}"><b>{{ ko | length }}</b><span>no alcanzados / fallidos</span></div>
-  <div class="kpi"><b>{{ t.u }}</b><span>cuentas (UID ≥ {{ auditoria_uid_minimo }})</span></div>
+  <div class="kpi"><b>{{ t.u }}</b><span>{{ 'cuentas revisadas' if aud_cambio | bool else 'cuentas (UID ≥ ' ~ auditoria_uid_minimo ~ ')' }}</span></div>
   <div class="kpi"><b>{{ t.acc }}</b><span>pueden iniciar sesión</span></div>
   <div class="kpi"><b>{{ t.c }}</b><span>con sudo completo</span></div>
   <div class="kpi"><b>{{ t.cr }}</b><span>sudo solo con clave de root</span></div>
+{%- if not (aud_cambio | bool) %}
   <div class="kpi"><b>{{ t.fz }}</b><span>se les forzaría el cambio (en bloque)</span></div>
+{%- endif %}
   <div class="kpi"><b>{{ t.l }}</b><span>con sudo limitado</span></div>
   <div class="kpi"><b>{{ t.n }}</b><span>sudo sin contraseña</span></div>
   <div class="kpi crit"><b>{{ conteo.CRITICO }}</b><span>hallazgos críticos</span></div>
   <div class="kpi alto"><b>{{ conteo.ALTO }}</b><span>hallazgos altos</span></div>
 </div>
 
+{%- set noenc = [] %}
+{%- for h in ok %}{% for u in hostvars[h]['auditoria_resultado'].no_encontrados | default([]) %}{% set _ = noenc.append({'host': h, 'u': u}) %}{% endfor %}{% endfor %}
+{%- if aud_cambio | bool %}
+<h2>Cuentas no encontradas ({{ noenc | length }})</h2>
+<p class="meta">Cuentas que el cambio indicó pero ya no existen en el servidor (lo esperado tras una eliminación).</p>
+{%- if noenc %}<div class="wrap"><table><thead><tr><th>Servidor</th><th>Cuenta</th></tr></thead><tbody>
+{%- for x in noenc %}<tr><td>{{ x.host | e }}</td><td>{{ x.u | e }}</td></tr>{% endfor %}
+</tbody></table></div>{% endif %}
+{%- endif %}
 <h2>Hallazgos ({{ hall | length }})</h2>
 <div class="tool"><input type="search" placeholder="Filtrar hallazgos por servidor, usuario o texto…" data-tabla="t-hall"></div>
 <div class="wrap"><table id="t-hall">
@@ -128,7 +144,7 @@ details .wrap{border:0;border-top:1px solid var(--bd);border-radius:0 0 10px 10p
 <td>{{ 'SÍ' if u.forzaria_cambio else ('excluida (servicio)' if u.cuenta_servicio else 'no') }}</td>
 <td>{% for x in u.hallazgos %}<span class="sev {{ x.severidad }}" title="{{ x.detalle | e }}">{{ x.codigo }}</span> {% endfor %}</td></tr>
 {%- else %}
-<tr><td colspan="14">Sin cuentas con UID ≥ {{ auditoria_uid_minimo }}.</td></tr>
+<tr><td colspan="14">{{ 'Sin cuentas modificadas en este servidor.' if aud_cambio | bool else 'Sin cuentas con UID ≥ ' ~ auditoria_uid_minimo ~ '.' }}</td></tr>
 {%- endfor %}
 </tbody></table></div>
 </details>

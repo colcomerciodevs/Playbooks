@@ -162,3 +162,20 @@
       - "Inexistentes: {{ _cp_inexistentes | join(', ') or '-' }}"
       - "Omitidos (servicio): {{ _cp_servicio | join(', ') or '-' }}"
       - "Excluidos (en bloque): {{ _cp_excluidas.keys() | list | join(', ') or '-' }}"
+
+# En un workflow, la auditoría siguiente recibe estos datos (artefactos de AWX) y revisa
+# solo las cuentas modificadas en cada servidor.
+- name: Contraseña | Publicar la operación (para la verificación del workflow)
+  ansible.builtin.set_stats:
+    data:
+      cambio_operacion: "{{ 'Forzar cambio de contraseña' if hostvars['localhost']['_cp_accion'] == 'solo_forzar_cambio' else 'Cambiar contraseña' }}"
+    per_host: false
+    aggregate: false
+  run_once: true
+
+- name: Contraseña | Publicar cuentas modificadas en este servidor
+  ansible.builtin.set_stats:
+    data:
+      cambio_cuentas: "{{ {inventory_hostname: _cp_aplicar} }}"
+    per_host: false
+    aggregate: true

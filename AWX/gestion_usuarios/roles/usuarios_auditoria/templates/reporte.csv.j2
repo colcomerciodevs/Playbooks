@@ -6,6 +6,9 @@
 {%     for u in r.usuarios %}
 {{ c(h) }};{{ c(r.servidor.sistema) }};{{ c('OK') }};{{ c(u.usuario) }};{{ c(u.uid) }};{{ c(u.nombre) }};{{ c(u.grupo_primario) }};{{ c(u.grupos_secundarios | join(', ')) }};{{ c(u.shell) }};{{ c('SI' if u.puede_iniciar_sesion else 'NO') }};{{ c('SI' if u.ssh_permitido else 'NO: ' ~ u.ssh_motivo) }};{{ c(u.estado_contrasena) }};{{ c(u.algoritmo_hash) }};{{ c(u.ultimo_cambio) }};{{ c(u.contrasena_caduca) }};{{ c('SI' if u.contrasena_expirada else 'NO') }};{{ c(u.cuenta_expira) }};{{ c(u.llaves_ssh | length) }};{{ c(u.ultimo_acceso) }};{{ c(u.dias_sin_acceso) }};{{ c(u.sudo.nivel) }};{{ c('SI' if u.sudo.nopasswd else 'NO') }};{{ c(u.sudo.requiere_clave) }};{{ c(u.sudo.comandos | join(' , ')) }};{{ c(u.sudo.comandos_riesgo | join(' , ')) }};{{ c((u.sudo.origenes + (u.sudo.fuentes_locales | default([]))) | unique | join(' | ')) }};{{ c(u.severidad_max) }};{{ c(u.hallazgos | map(attribute='detalle') | join(' | ')) }};{{ c('SI' if u.cuenta_servicio else 'NO') }};{{ c('SI' if u.forzaria_cambio else 'NO') }}
 {%     endfor %}
+{%     for u in r.no_encontrados | default([]) %}
+{{ c(h) }};{{ c(r.servidor.sistema) }};{{ c('OK') }};{{ c(u) }};{{ c('') }};{{ c('') }};{{ c('') }};{{ c('') }};{{ c('') }};{{ c('NO') }};{{ c('NO') }};{{ c('NO EXISTE') }}
+{%     endfor %}
 {%   else %}
 {{ c(h) }};{{ c('') }};{{ c('NO ALCANZADO / FALLO') }};{{ c(r.msg | default('Sin datos: el servidor no respondió o la tarea falló')) }}
 {%   endif %}

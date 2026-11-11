@@ -127,3 +127,20 @@
 - name: Eliminar | Resumen
   ansible.builtin.debug:
     msg: "{{ inventory_hostname }}: {{ {'bloquear': 'bloqueadas', 'reactivar': 'reactivadas', 'eliminar': 'eliminadas'}[_el_accion] }} -> {{ _el_aplicar | join(', ') or '-' }}"
+
+# En un workflow, la auditoría siguiente recibe estos datos (artefactos de AWX) y revisa
+# solo las cuentas modificadas en cada servidor.
+- name: Eliminar | Publicar la operación (para la verificación del workflow)
+  ansible.builtin.set_stats:
+    data:
+      cambio_operacion: "{{ {'bloquear': 'Bloquear cuentas', 'reactivar': 'Reactivar cuentas', 'eliminar': 'Eliminar cuentas'}[hostvars['localhost']['_el_accion']] }}"
+    per_host: false
+    aggregate: false
+  run_once: true
+
+- name: Eliminar | Publicar cuentas modificadas en este servidor
+  ansible.builtin.set_stats:
+    data:
+      cambio_cuentas: "{{ {inventory_hostname: _el_aplicar} }}"
+    per_host: false
+    aggregate: true

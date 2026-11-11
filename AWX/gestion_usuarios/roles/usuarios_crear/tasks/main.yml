@@ -262,3 +262,20 @@
       - "AllowUsers: {{ (comun_allowusers_agregados | default([]) | join(', ')) or 'sin cambios (no existe la línea o ya estaban)' }}"
       - "Con sudo: {{ _cu_procesar | selectattr('sudo', 'ne', 'ninguno') | map(attribute='usuario') | join(', ') or '-' }}"
       - "Llave renovada: {{ _cu_llave_destino | default([]) | selectattr('llave_anterior', 'ne', '') | map(attribute='usuario') | join(', ') or '-' }}"
+
+# En un workflow, la auditoría siguiente recibe estos datos (artefactos de AWX) y revisa
+# solo las cuentas modificadas en cada servidor.
+- name: Crear | Publicar la operación (para la verificación del workflow)
+  ansible.builtin.set_stats:
+    data:
+      cambio_operacion: "{{ 'Crear usuarios con ' ~ ('llave' if _cu_metodo == 'llave' else 'contraseña') }}"
+    per_host: false
+    aggregate: false
+  run_once: true
+
+- name: Crear | Publicar cuentas modificadas en este servidor
+  ansible.builtin.set_stats:
+    data:
+      cambio_cuentas: "{{ {inventory_hostname: ((_cu_procesar + (_cu_llave_destino | default([]))) | map(attribute='usuario') | unique | list)} }}"
+    per_host: false
+    aggregate: true

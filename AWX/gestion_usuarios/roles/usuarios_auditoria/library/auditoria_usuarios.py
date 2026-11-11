@@ -28,6 +28,10 @@ options:
   cuentas_criticas: {type: list, elements: str, default: []}
   cuentas_servicio: {type: list, elements: str, default: []}
   uid_minimo_masivo: {type: int, default: 1000, description: UID desde el que aplica el forzado en bloque de la opción 2}
+  solo_usuarios:
+    type: list
+    elements: str
+    description: Verificación de un cambio. Si se indica, solo se revisan estas cuentas (sin importar su UID).
 '''
 
 RETURN = r'''
@@ -559,6 +563,7 @@ def main():
             cuentas_criticas=dict(type='list', elements='str', default=[]),
             cuentas_servicio=dict(type='list', elements='str', default=[]),
             uid_minimo_masivo=dict(type='int', default=1000),
+            solo_usuarios=dict(type='list', elements='str', default=None),
         ),
         supports_check_mode=True,
     )
@@ -612,13 +617,19 @@ def main():
 
     # --- cuentas de persona --------------------------------------------------
     usuarios = []
+    modo_cambio = p['solo_usuarios'] is not None
     for c in cuentas:
-        if c['uid'] < p['uid_minimo'] or c['usuario'] in p['excluir_usuarios']:
-            continue
-        if c['uid'] in (65534, 4294967294, 4294967295):
-            continue
-        if p['uid_maximo'] and c['uid'] > p['uid_maximo']:
-            continue
+        if modo_cambio:
+            # Verificación de un cambio: solo las cuentas indicadas, sin filtrar por UID.
+            if c['usuario'] not in p['solo_usuarios']:
+                continue
+        else:
+            if c['uid'] < p['uid_minimo'] or c['usuario'] in p['excluir_usuarios']:
+                continue
+            if c['uid'] in (65534, 4294967294, 4294967295):
+                continue
+            if p['uid_maximo'] and c['uid'] > p['uid_maximo']:
+                continue
         u = c['usuario']
         h = []
         grupo_primario = grupos_por_gid.get(c['gid'], str(c['gid']))
@@ -772,8 +783,10 @@ def main():
     for x in hallazgos_servidor:
         t.append('[%s] %s' % (x['severidad'], x['detalle']))
 
+    no_encontrados = sorted(set(p['solo_usuarios'] or []) - set(c['usuario'] for c in cuentas))
     module.exit_json(changed=False, servidor=servidor, usuarios=usuarios, resumen=resumen,
-                     hallazgos_servidor=hallazgos_servidor, reporte_texto=t)
+                     hallazgos_servidor=hallazgos_servidor, reporte_texto=t,
+                     modo_cambio=modo_cambio, no_encontrados=no_encontrados)
 
 
 if __name__ == '__main__':

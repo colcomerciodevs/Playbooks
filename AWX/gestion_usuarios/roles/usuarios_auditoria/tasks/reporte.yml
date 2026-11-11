@@ -10,10 +10,12 @@
     aud_fecha: "{{ now(fmt='%Y-%m-%d %H:%M:%S') }}"
     aud_sello: "{{ now(fmt='%Y%m%d_%H%M%S') }}"
 
+# En un workflow (llega cambio_cuentas) el informe es la verificación del cambio realizado.
 - name: Reporte | Rutas de salida
   ansible.builtin.set_fact:
-    aud_html: "{{ auditoria_dir_salida }}/auditoria_usuarios_{{ aud_sello }}.html"
-    aud_csv: "{{ auditoria_dir_salida }}/auditoria_usuarios_{{ aud_sello }}.csv"
+    aud_cambio: "{{ cambio_cuentas is defined }}"
+    aud_html: "{{ auditoria_dir_salida }}/{{ 'verificacion_cambio' if cambio_cuentas is defined else 'auditoria_usuarios' }}_{{ aud_sello }}.html"
+    aud_csv: "{{ auditoria_dir_salida }}/{{ 'verificacion_cambio' if cambio_cuentas is defined else 'auditoria_usuarios' }}_{{ aud_sello }}.csv"
 
 - name: Reporte | Crear carpeta de reportes
   ansible.builtin.file:

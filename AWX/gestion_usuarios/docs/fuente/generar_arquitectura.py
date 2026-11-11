@@ -274,7 +274,8 @@ AUDITORIA = [
     ('Servidor', 'uname -srv ; sudo -V ; sshd -T', 'Por servidor.'),
     ('Servidor', 'sudo -n -ll -U U   (o sudo -n -l -U U)', 'Por cada cuenta.'),
     ('Servidor', 'lastlog2 -u U   (o lastlog -u U)', 'Por cada cuenta.'),
-    ('Contenedor', 'genera auditoria_usuarios_<fecha>.html y .csv en /data/work/gestion_usuarios/reportes/', 'Al final.'),
+    ('Contenedor', 'genera auditoria_usuarios_<fecha>.html y .csv en /data/work/gestion_usuarios/reportes/', 'Al final (plantilla 3 sola).'),
+    ('Contenedor', 'genera verificacion_cambio_<fecha>.html y .csv en la misma carpeta', 'Al final, dentro de un workflow: solo las cuentas modificadas.'),
 ]
 BLOQUEAR = [
     ('Servidor', 'getent passwd', 'Verificación, solo lectura.'),
@@ -334,7 +335,9 @@ def portada():
          Spacer(1, 7),
          Flujo([('1. Aprobación', 'revisa ticket, objetivo\ny usuarios'), ('2. Plantilla', 'aplica el cambio\nsolicitado'), ('3. Auditoría', 'verifica cómo\nquedaron las cuentas')],
                pies={0: 'Rechazada o vencida:\ntermina sin cambios', 1: 'Si falla, no\ncorre la auditoría'}),
-         P('El ticket y las demás respuestas se pasan a los nodos. La auditoría usa el mismo objetivo y sus valores por defecto.'),
+         P('El ticket y las demás respuestas se pasan a los nodos. La auditoría del nodo 3 revisa solo las cuentas que modificó el nodo 2, '
+           'en cada servidor, y genera el informe <b>verificacion_cambio_&lt;fecha&gt;</b> (HTML y CSV) con la operación y el ticket. '
+           'La plantilla 3 lanzada sola sigue siendo la auditoría general.'),
          P('Plantillas', 'h1'),
          tabla(['ID', 'Plantilla', 'Playbook', 'Valores fijos', 'Preguntas'],
                [[str(AWX_ID[e['name']]), e['name'], 'AWX/gestion_usuarios/' + enc.PLANTILLAS[k]['playbook'],
@@ -422,7 +425,8 @@ def main():
              '(lista cuentas_servicio en vars/comunes.yml), shells no interactivos y cuentas sin contraseña. Antes de lanzarlo, '
              'ejecute la auditoría: la columna "Se le forzaría el cambio" muestra exactamente a quiénes se aplicaría.'))
     historia += seccion(
-        'Opción 3 · Auditoría', 'Revisa cuentas, contraseñas, llaves, último acceso y sudo. No modifica los servidores.',
+        'Opción 3 · Auditoría', 'Revisa cuentas, contraseñas, llaves, último acceso y sudo. No modifica los servidores. Sola, audita todas '
+        'las cuentas; como último nodo de un workflow, verifica solo las cuentas que se acaban de modificar.',
         '03_auditoria_usuarios.yml', 'usuarios_auditoria', 'Plantilla 3 (ID 49) y último nodo de los 5 workflows', '03_auditoria_usuarios', AUDITORIA,
         'el objetivo no existe o no se puede crear la carpeta de reportes.')
     historia += seccion(

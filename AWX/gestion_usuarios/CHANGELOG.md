@@ -26,6 +26,7 @@ con encuestas, aprobación previa y auditoría de verificación. La descripción
 - **Plantillas separadas** (1a/1b y 2a/2b) para que cada encuesta muestre solo los campos que aplican. Los valores que distinguen cada plantilla van fijos en sus variables.
 - **Acceso SSH al crear usuarios:** agrega al grupo `ssh_access` si existe, y a la línea `AllowUsers` de `sshd_config` si existe (validado con `sshd -t`).
 - **Forzar cambio en bloque** (2b), con exclusión automática de cuentas críticas, cuentas de servicio (`cuentas_servicio` en `vars/comunes.yml`), shells no interactivos y cuentas sin contraseña.
+- **Verificación del cambio en los workflows:** la auditoría del último nodo revisa solo las cuentas que modificó el paso anterior (también en operaciones en bloque) y genera `verificacion_cambio_<fecha>.html/.csv` con la operación, el ticket y las cuentas no encontradas. La plantilla 3 sola sigue siendo la auditoría general.
 - **Auditoría:** avisa de contraseñas por vencer (cuentas de solo llave), separa el sudo real del sudo con clave de root (SUSE) y muestra a quién se le forzaría el cambio en bloque.
 - **Grupos privilegiados prohibidos** al crear (`wheel`, `sudo`, `root`, `docker`…), y protección de cuentas de servicio (UID < 1000).
 - **Sin secretos en los registros:** las lecturas de `/etc/shadow` y las contraseñas usan `no_log`.

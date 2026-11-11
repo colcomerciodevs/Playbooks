@@ -18,6 +18,8 @@
     cuentas_criticas: "{{ usuarios_protegidos }}"
     cuentas_servicio: "{{ cuentas_servicio }}"
     uid_minimo_masivo: "{{ uid_minimo_humano | int }}"
+    # En un workflow llegan las cuentas modificadas por el paso anterior (artefacto cambio_cuentas).
+    solo_usuarios: "{{ (cambio_cuentas[inventory_hostname] | default([])) if cambio_cuentas is defined else omit }}"
   register: auditoria_resultado
   check_mode: false
 

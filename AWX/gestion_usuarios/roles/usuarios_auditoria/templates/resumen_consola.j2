@@ -4,8 +4,8 @@
 {% for h in ok %}{% set s = hostvars[h]['auditoria_resultado']['resumen'] %}
 {% set _ = t.update({'u': t.u + s.usuarios, 'c': t.c + s.sudo_completo, 'rq': t.rq + (s.sudo_clave_root | default(0)), 'l': t.l + s.sudo_limitado, 'n': t.n + s.sudo_sin_clave, 'cr': t.cr + s.hallazgos_critico, 'al': t.al + s.hallazgos_alto}) %}
 {% endfor %}
-==================== AUDITORÍA DE USUARIOS - CONSOLIDADO ====================
-Fecha: {{ aud_fecha }} | Objetivo: {{ objetivo | default('-') }} | UID >= {{ auditoria_uid_minimo }}
+{{ '================== VERIFICACIÓN DEL CAMBIO: ' ~ (cambio_operacion | default('-')) ~ ' ==================' if aud_cambio | bool else '==================== AUDITORÍA DE USUARIOS - CONSOLIDADO ====================' }}
+Fecha: {{ aud_fecha }} | Objetivo: {{ objetivo | default('-') }} | {{ ('Ticket: ' ~ (ticket_cambio | default('-')) ~ ' | Solo cuentas modificadas') if aud_cambio | bool else ('UID >= ' ~ auditoria_uid_minimo) }}
 Servidores auditados: {{ ok | length }} | No alcanzados/fallidos: {{ ko | length }}
 Cuentas: {{ t.u }} | sudo COMPLETO: {{ t.c }} | solo con clave de root: {{ t.rq }} | sudo LIMITADO: {{ t.l }} | con NOPASSWD: {{ t.n }}
 Hallazgos CRÍTICOS: {{ t.cr }} | ALTOS: {{ t.al }}
