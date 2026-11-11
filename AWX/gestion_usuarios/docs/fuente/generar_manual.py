@@ -92,7 +92,7 @@ def pasos(items):
 
 def formulario(clave, respuestas, titulo_ejemplo):
     """Maqueta de la encuesta de AWX diligenciada."""
-    encuesta = ENCUESTAS[clave]
+    encuesta = ENCUESTAS[clave] if clave in ENCUESTAS else enc.encuesta_workflow(clave)
     filas = []
     for q in encuesta['spec']:
         if q['variable'] not in respuestas:
@@ -197,6 +197,62 @@ SVG_AWX = '''
  </g>
 </svg>'''
 
+APROBACION_MOCK = '''
+<div class="form apr">
+ <div class="barra"><span class="pt"></span><span class="pt"></span><span class="pt"></span>Views › Workflow Approvals</div>
+ <div class="apr-tools"><span class="chk">☐</span><span class="b ok">Approve</span><span class="b no">Deny</span><span class="b gr">Cancel</span></div>
+ <div class="apr-row head"><span></span><span>Name</span><span>Workflow Job</span><span>Started</span><span>Status</span></div>
+ <div class="apr-row sel"><span class="chk">☑</span><span><b>Aprobar cambio de contraseña</b></span><span>1532 - USUARIOS | WF - Cambio de contraseña con aprobación</span><span>10/11/2026 16:05</span><span class="pend">Pending · vence en 3 h 52 min</span></div>
+ <div class="apr-vars"><b>Details › Variables (lo que revisa el aprobador)</b>
+<pre>ticket_cambio: "RFC-2026-0458 · Rotación trimestral de la clave de root en POS"
+objetivo: PPU_GEOPOS
+contrasena_usuarios: root
+contrasena_nueva: $encrypted$
+contrasena_confirmacion: $encrypted$
+contrasena_nunca_caduca: "SI"
+contrasena_desbloquear: "SI"</pre></div>
+</div>'''
+
+SVG_WORKFLOW = '''
+<svg viewBox="0 0 680 250" class="diag" role="img" aria-label="Workflow con aprobación">
+ <defs><marker id="fw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5b6475"/></marker>
+ <marker id="fwv" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2f7d4a"/></marker>
+ <marker id="fwr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b3261e"/></marker></defs>
+ <g font-family="Inter" font-size="12" text-anchor="middle">
+  <rect x="2" y="34" width="112" height="70" rx="10" fill="#eef3fb" stroke="#b9c8e4"/>
+  <text x="58" y="58" font-weight="600" fill="#1d2a44">Operador</text>
+  <text x="58" y="75" fill="#46526a" font-size="11">lanza el workflow</text>
+  <text x="58" y="90" fill="#46526a" font-size="11">+ encuesta + ticket</text>
+  <line x1="114" y1="69" x2="146" y2="69" stroke="#5b6475" stroke-width="1.6" marker-end="url(#fw)"/>
+  <rect x="148" y="30" width="146" height="78" rx="10" fill="#fff4d6" stroke="#e8c260"/>
+  <text x="221" y="52" font-size="10.5" fill="#8a6200">NODO 1 · APPROVAL</text>
+  <text x="221" y="72" font-weight="700" fill="#5a4100">Aprobación</text>
+  <text x="221" y="90" fill="#6d5410" font-size="11">plazo: 4 horas</text>
+  <line x1="294" y1="69" x2="336" y2="69" stroke="#2f7d4a" stroke-width="1.8" marker-end="url(#fwv)"/>
+  <text x="315" y="61" font-size="10.5" fill="#2f7d4a">aprobado</text>
+  <rect x="338" y="30" width="156" height="78" rx="10" fill="#1f3a68"/>
+  <text x="416" y="52" font-size="10.5" fill="#b9cbf0">NODO 2 · ON SUCCESS</text>
+  <text x="416" y="72" font-weight="700" fill="#fff">Plantilla 1, 2 o 4</text>
+  <text x="416" y="90" fill="#d7e1f5" font-size="11">aplica el cambio</text>
+  <line x1="494" y1="69" x2="526" y2="69" stroke="#2f7d4a" stroke-width="1.8" marker-end="url(#fwv)"/>
+  <text x="510" y="61" font-size="10.5" fill="#2f7d4a">éxito</text>
+  <rect x="528" y="30" width="148" height="78" rx="10" fill="#e8f4ec" stroke="#a9d3b6"/>
+  <text x="602" y="52" font-size="10.5" fill="#2f7d4a">NODO 3 · ON SUCCESS</text>
+  <text x="602" y="72" font-weight="700" fill="#1d3a26">3 - Auditoría</text>
+  <text x="602" y="90" fill="#3b5a44" font-size="11">verifica el resultado</text>
+  <line x1="221" y1="108" x2="221" y2="160" stroke="#b3261e" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#fwr)"/>
+  <text x="229" y="138" font-size="10.5" text-anchor="start" fill="#b3261e">rechazado o vencido</text>
+  <rect x="128" y="162" width="186" height="56" rx="10" fill="#fdecea" stroke="#efb3ad"/>
+  <text x="221" y="185" font-weight="600" fill="#8c1d18">Fin: no se cambia nada</text>
+  <text x="221" y="203" fill="#8c1d18" font-size="11">se notifica al equipo</text>
+  <line x1="416" y1="108" x2="416" y2="160" stroke="#b3261e" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#fwr)"/>
+  <text x="424" y="138" font-size="10.5" text-anchor="start" fill="#b3261e">falla</text>
+  <rect x="330" y="162" width="172" height="56" rx="10" fill="#fdecea" stroke="#efb3ad"/>
+  <text x="416" y="185" font-weight="600" fill="#8c1d18">Fin en rojo</text>
+  <text x="416" y="203" fill="#8c1d18" font-size="11">la auditoría no corre</text>
+ </g>
+</svg>'''
+
 CSS = r'''
 @page { size: Letter; margin: 20mm 17mm 18mm 17mm;
   @top-left { content: "Gestión de usuarios Linux con Ansible y AWX"; font: 600 8pt Inter; color: #7a8396; }
@@ -256,6 +312,16 @@ ol.pasos > li::before { content: counter(p); position: absolute; left: 0; top: -
 .form .ctl.pwd { letter-spacing: 0.4mm; color: #556; }
 .form .ctl.area { line-height: 1.5; }
 .form .pie { font-size: 8.2pt; color: var(--mut); padding: 1mm 4mm 0; font-style: italic; }
+.apr-tools { display: flex; gap: 2mm; align-items: center; padding: 2mm 4mm; border-bottom: 1px solid #e1e5ec; }
+.apr-tools .b { font-size: 8.4pt; font-weight: 600; padding: 1mm 3.5mm; border-radius: 1.3mm; color: #fff; }
+.apr-tools .ok { background: #2f7d4a; } .apr-tools .no { background: #b3261e; } .apr-tools .gr { background: #8a93a3; }
+.apr-row { display: grid; grid-template-columns: 6mm 44mm 1fr 27mm 34mm; gap: 2mm; padding: 1.8mm 4mm; font-size: 8.3pt; border-bottom: 1px solid #eceff4; align-items: center; }
+.apr-row.head { background: #f2f4f8; font-weight: 600; color: #4a5468; }
+.apr-row.sel { background: #eef4ff; }
+.apr .pend { color: #8a6200; font-weight: 600; }
+.apr .chk { color: #2c5fb8; }
+.apr-vars { padding: 2.5mm 4mm 3.5mm; font-size: 8.6pt; }
+.apr-vars pre { margin: 1.5mm 0 0; border-left-color: #c27a00; }
 .form .btn { margin: 2.5mm 4mm 3mm auto; width: max-content; background: #2c5fb8; color: #fff; font-weight: 600; font-size: 8.8pt; padding: 1.5mm 5mm; border-radius: 1.5mm; }
 .sev { display: inline-block; padding: 0.2mm 2.2mm; border-radius: 9mm; font-size: 7.8pt; font-weight: 700; white-space: nowrap; }
 .sev.CRITICO { background: #fde3e1; color: #a3231b; } .sev.ALTO { background: #ffecd6; color: #a15400; }
@@ -306,9 +372,11 @@ def construir(paginas=None):
         ('c5', '5', 'Configurar AWX paso a paso', [('c5p1', 'Paso 1 · Subir el proyecto a Git'), ('c5p2', 'Paso 2 · Credenciales'),
                                                   ('c5p3', 'Paso 3 · Proyecto'), ('c5p4', 'Paso 4 · Inventario'),
                                                   ('c5p5', 'Paso 5 · Plantillas de trabajo'), ('c5p6', 'Paso 6 · Encuestas'),
-                                                  ('c5p7', 'Paso 7 · Permisos')]),
+                                                  ('c5p7', 'Paso 7 · Permisos'),
+                                                  ('c5p8', 'Paso 8 · Workflows con aprobación')]),
         ('c6', '6', 'Uso diario: cómo diligenciar cada opción', [('c61', 'Opción 1 · Crear usuarios'), ('c62', 'Opción 2 · Cambiar contraseña'),
-                                                                ('c63', 'Opción 3 · Auditoría'), ('c64', 'Opción 4 · Bloquear o eliminar')]),
+                                                                ('c63', 'Opción 3 · Auditoría'), ('c64', 'Opción 4 · Bloquear o eliminar'),
+                                                                ('c65', 'Lanzar y aprobar un workflow')]),
         ('c7', '7', 'Cómo leer la auditoría', []),
         ('c8', '8', 'Seguridad y buenas prácticas', []),
         ('c9', '9', 'Solución de problemas', []),
@@ -567,12 +635,89 @@ ansible-playbook awx/configurar_awx.yml \\
   -e awx_credencial_smtp="SMTP - Correo corporativo"</pre>''')
     a('<p>Las credenciales Machine y Source Control deben existir antes. El playbook se puede repetir sin problema: actualiza lo que haya cambiado.</p>')
 
-    a('<h2 id="c5p7" style="break-before: page; margin-top: 0">Paso 7 · Permisos</h2>')
+    a('<h2 id="c5p7">Paso 7 · Permisos</h2>')
     a('<p>En <b>Access → Teams</b> cree los equipos y asígneles roles en la pestaña <b>Access</b> de cada plantilla:</p>')
     a(tabla(['Equipo', 'Plantillas', 'Rol'], [
-        ['Soporte Linux - Operadores', '1, 2 y 4', 'Execute'], ['Seguridad - Auditores', '3', 'Execute'],
+        ['Soporte Linux - Operadores', '3 directamente; 1, 2 y 4 <b>solo a través de los workflows</b> del Paso 8', 'Execute'],
+        ['Seguridad - Auditores', '3', 'Execute'],
+        ['Infraestructura - Aprobadores', 'Workflows del Paso 8', 'Approve'],
         ['Infraestructura - Administradores', 'Todas, más proyecto e inventarios', 'Admin']]))
-    a(nota('ok', 'Recomendado para cambiar la clave de root en producción', 'Cree un <b>Workflow</b> con un nodo de <b>aprobación</b> antes de la plantilla 2 (<b>Templates → Add → Add workflow template → Approval node</b>). Así un segundo responsable aprueba cada cambio. Active también <b>Notifications</b> en las plantillas 2 y 4.'))
+    a(nota('info', 'Si todavía no usa workflows', 'Mientras crea los workflows del Paso 8 puede dar a los operadores el rol Execute en las plantillas 1, 2 y 4. Cuando los workflows estén listos, retíreselo: así ningún cambio se ejecuta sin aprobación.'))
+
+    # ---------------- Paso 8: workflows ----------------
+    a('<h2 id="c5p8" style="break-before: page; margin-top: 0">Paso 8 · Workflows con aprobación</h2>')
+    a('<p>Un <b>workflow</b> encadena varias plantillas. Aquí se usa para que los cambios sensibles (claves, altas y bajas) <b>esperen la aprobación de un responsable</b> antes de ejecutarse y, al terminar, se verifiquen con una auditoría automática. Se crean tres, todos con la misma forma:</p>')
+    a(SVG_WORKFLOW)
+    a(tabla(['Workflow', 'Nodo de aprobación', 'Plantilla que protege', 'Encuesta (JSON)'], [
+        ['<b>USUARIOS | WF - Cambio de contraseña con aprobación</b>', 'Aprobar cambio de contraseña', '2 - Cambiar contraseña', '<code>wf_cambio_contrasena_aprobacion</code>'],
+        ['<b>USUARIOS | WF - Crear usuarios con aprobación</b>', 'Aprobar creación de usuarios', '1 - Crear usuarios', '<code>wf_crear_usuarios_aprobacion</code>'],
+        ['<b>USUARIOS | WF - Bloquear o eliminar con aprobación</b>', 'Aprobar bloqueo o eliminación', '4 - Bloquear o eliminar', '<code>wf_bloquear_eliminar_aprobacion</code>']], 'compacta'))
+    a(nota('info', 'Cómo viajan las respuestas', 'El operador llena la encuesta <b>del workflow</b>, no la de la plantilla. AWX pasa esas respuestas a todos los nodos: la plantilla de cambio recibe sus datos y la auditoría recibe el mismo «objetivo», así que verifica exactamente los servidores que se modificaron. Por eso la encuesta del workflow repite las preguntas de su plantilla, con los mismos nombres de variable, más el ticket.'))
+
+    a('<h3>8.1 Crear el workflow</h3>')
+    a('<p>El ejemplo es el de cambio de contraseña. Los otros dos se crean igual, cambiando los nombres y la plantilla de la tabla anterior.</p>')
+    a(pasos(['Menú <b>Resources → Templates → Add → Add workflow template</b>.',
+             'Llene los datos generales y pulse <b>Save</b>:']))
+    a(campos([['Name', '<code>USUARIOS | WF - Cambio de contraseña con aprobación</code>'],
+              ['Description', 'Aprobación → cambio de contraseña → auditoría de verificación'],
+              ['Organization', 'La misma de las plantillas'],
+              ['Inventory', 'Vacío (cada nodo usa el inventario de su plantilla)'],
+              ['Limit / Source control branch / Labels', 'Vacíos'],
+              ['Options', '☐ Enable Concurrent Jobs · ☐ Enable Webhook']]))
+    a('<p>Al guardar se abre el <b>Workflow Visualizer</b>, con un único botón <b>Start</b>.</p>')
+
+    a('<h3>8.2 Nodo 1 · Aprobación</h3>')
+    a(pasos(['Pulse <b>Start</b>. En <b>Node Type</b> elija <b>Approval</b>.',
+             'Complete los campos y pulse <b>Save</b>:']))
+    a(campos([['Name', '<code>Aprobar cambio de contraseña</code>'],
+              ['Description', 'Revise el ticket, el objetivo y los usuarios antes de aprobar.'],
+              ['Timeout', '<b>4 horas</b> (240 minutos). Si nadie aprueba en ese tiempo, el nodo vence y el workflow termina <b>sin hacer cambios</b>. Use 0 solo si quiere que espere indefinidamente.']]))
+
+    a('<h3>8.3 Nodo 2 · La plantilla de cambio</h3>')
+    a(pasos(['Pase el mouse sobre el nodo de aprobación y pulse el <b>+</b> que aparece a su derecha.',
+             'En <b>Run</b> elija <b>On Success</b>. Para una aprobación, «éxito» significa <b>aprobado</b>.',
+             'En <b>Node Type</b> elija <b>Job Template</b>, seleccione <code>USUARIOS | 2 - Cambiar contraseña</code> y pulse <b>Next</b>.',
+             'Si AWX muestra pasos de <b>Prompt</b> (inventario, límite, encuesta), déjelos como están y pulse <b>Next</b> hasta <b>Save</b>. Los datos llegan desde la encuesta del workflow.']))
+
+    a('<h3>8.4 Nodo 3 · Auditoría de verificación</h3>')
+    a(pasos(['Pulse el <b>+</b> del nodo «USUARIOS | 2 - Cambiar contraseña».',
+             '<b>Run: On Success</b> → <b>Node Type: Job Template</b> → <code>USUARIOS | 3 - Auditoría</code> → <b>Save</b>.',
+             'No agregue nodos en «On Failure» ni en el rechazo: si la aprobación se rechaza o el cambio falla, el workflow termina en rojo y la notificación avisa (8.7).',
+             'Pulse <b>Save</b> arriba a la derecha del visualizador. Debe verse: <b>Start → Aprobar cambio de contraseña → USUARIOS | 2 - Cambiar contraseña → USUARIOS | 3 - Auditoría</b>, con líneas verdes (On Success) entre ellos.']))
+    a(nota('alerta', 'La auditoría usa sus valores por defecto', 'En el workflow, la auditoría corre con UID mínimo 1000 y salida resumida, y sin correo salvo que agregue esas preguntas a la encuesta del workflow. Su objetivo es comprobar el resultado: en el cambio de clave de root, la línea <i>«root: … caduca nunca»</i> de cada servidor confirma que se aplicó la política.'))
+
+    a('<h3>8.5 Encuesta del workflow</h3>')
+    a('<p>En el workflow, pestaña <b>Survey</b>. Cárguela de una de estas dos formas y active <b>Survey Enabled</b>:</p>')
+    a(tabla(['Forma', 'Cómo'], [
+        ['<b>A mano</b>', 'Primero la pregunta <b>Ticket o justificación</b> (variable <code>ticket_cambio</code>, texto, obligatoria, mínimo 3 caracteres). Después, las mismas preguntas de la plantilla que protege, en el mismo orden y con los <b>mismos nombres de variable</b> (Anexo A).'],
+        ['<b>Por API</b>', 'Igual que en el Paso 6, pero con el endpoint de workflows (comandos abajo).']]))
+    a("""<pre>ID=$(curl -sk -H "Authorization: Bearer $TOKEN" \\
+  "$AWX/api/v2/workflow_job_templates/?name=USUARIOS%20|%20WF%20-%20Cambio%20de%20contrase%C3%B1a%20con%20aprobaci%C3%B3n" \\
+  | jq '.results[0].id')
+
+curl -sk -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \\
+  --data @awx/encuestas/wf_cambio_contrasena_aprobacion.json \\
+  "$AWX/api/v2/workflow_job_templates/$ID/survey_spec/"
+
+curl -sk -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \\
+  --data '{"survey_enabled": true}' "$AWX/api/v2/workflow_job_templates/$ID/"</pre>""")
+    a(nota('alerta', 'Mantenga las dos encuestas iguales', 'Si cambia una pregunta de la plantilla 1, 2 o 4, cambie también la de su workflow. Si lo hace con <code>awx/generar_encuestas.py</code>, ambos JSON se regeneran juntos; luego recárguelos (o ejecute <code>configurar_awx.yml</code>).'))
+
+    a('<h3>8.6 Permisos del workflow</h3>')
+    a('<p>En el workflow, pestaña <b>Access → Add</b>:</p>')
+    a(tabla(['Equipo', 'Rol en el workflow', 'Para qué'], [
+        ['Soporte Linux - Operadores', '<b>Execute</b>', 'Lanzar el workflow y llenar la encuesta.'],
+        ['Infraestructura - Aprobadores', '<b>Approve</b>', 'Aprobar o rechazar el nodo de aprobación. Con este rol no pueden lanzarlo ni editarlo.'],
+        ['Infraestructura - Administradores', 'Admin', 'Editar nodos y encuesta.']]))
+    a(nota('peligro', 'Cierre el atajo', 'Después de crear los workflows, <b>retire a los operadores el rol Execute directo</b> sobre las plantillas 1, 2 y 4 (pestaña Access de cada plantilla). Para lanzar un workflow no necesitan permiso sobre las plantillas que contiene. Si conservan el Execute directo, pueden saltarse la aprobación.'))
+    a(nota('info', 'Separación de funciones', 'Quien lanza no debería aprobar su propio cambio. AWX no lo impide por sí solo: no ponga a las mismas personas en el equipo de operadores y en el de aprobadores.'))
+
+    a('<h3>8.7 Notificaciones</h3>')
+    a(pasos(['Cree (o reutilice) una plantilla de notificación en <b>Administration → Notifications → Add</b>: tipo Email, Microsoft Teams o Slack, según lo que usen los aprobadores.',
+             'En el workflow, pestaña <b>Notifications</b>, active para esa notificación: <b>Approval</b> (avisa a los aprobadores cuando hay algo pendiente, aprobado, rechazado o vencido), <b>Failure</b> y <b>Success</b>.']))
+
+    a('<h3>8.8 Crearlos automáticamente</h3>')
+    a('<p><code>awx/configurar_awx.yml</code> crea los tres workflows con sus nodos, el plazo de 4 horas (<code>awx_aprobacion_timeout</code>) y sus encuestas. Los permisos (8.6) y las notificaciones (8.7) se asignan a mano.</p>')
 
     # ======================= 6 =======================
     a(h1('c6'))
@@ -643,6 +788,23 @@ ansible-playbook awx/configurar_awx.yml \\
         ['<b>bloquear</b>', 'Bloquea la clave, expira la cuenta (impide también entrar con llave) y retira su regla sudo. Conserva el home y sus archivos.', 'Opción 2 con «Desbloquear = SI» y una clave nueva. La regla sudo se vuelve a crear con la opción 1.'],
         ['<b>eliminar</b>', 'Respalda el home en <code>/var/backups/usuarios_eliminados/</code>, retira sudo y borra la cuenta y su home. Exige escribir <code>CONFIRMAR</code>.', 'Crear de nuevo y restaurar el respaldo.']]))
 
+    a('<h2 id="c65">Lanzar y aprobar un workflow</h2>')
+    a('<p>En producción los cambios se lanzan desde los workflows del Paso 8. Para el operador solo cambian dos cosas: el formulario empieza con el <b>ticket</b> y, después de lanzar, hay que esperar la aprobación.</p>')
+    a('<h3>Operador · Lanzar</h3>')
+    a(pasos(['<b>Resources → Templates</b>, busque <code>USUARIOS | WF - Cambio de contraseña con aprobación</code> y pulse el cohete (<b>Launch</b>).',
+             'Llene la encuesta, que tiene las mismas preguntas de la opción 2 más el ticket, y pulse <b>Launch</b>.',
+             'El workflow queda en <b>Pending approval</b>. No cierre el ticket hasta ver el workflow en verde.']))
+    a(formulario('wf_cambio_contrasena_aprobacion', {
+        'ticket_cambio': 'RFC-2026-0458 · Rotación trimestral de la clave de root en POS',
+        'objetivo': 'PPU_GEOPOS', 'contrasena_usuarios': 'root', 'contrasena_nueva': 'x', 'contrasena_confirmacion': 'x',
+        'contrasena_nunca_caduca': 'SI', 'contrasena_desbloquear': 'SI'}, 'Encuesta del workflow: el ticket va primero'))
+    a('<h3 style="break-before: page; margin-top: 0">Aprobador · Revisar y aprobar</h3>')
+    a(pasos(['Llega la notificación, o aparece un número en la campana superior. Abra <b>Views → Workflow Approvals</b>.',
+             'Pulse el nombre del workflow para ver sus <b>Details</b>. En <b>Variables</b> revise el ticket, el <code>objetivo</code> y los usuarios. La contraseña aparece como <code>$encrypted$</code>: nadie la ve.',
+             'Vuelva a la lista, marque la fila y pulse <b>Approve</b> o <b>Deny</b>. Con Deny el workflow termina sin cambiar nada.']))
+    a(APROBACION_MOCK)
+    a(nota('ok', 'Después de aprobar', 'Corre la plantilla de cambio y, si termina bien, la auditoría de los mismos servidores. El workflow completo queda en <b>Views → Jobs</b> con quién lo lanzó, quién lo aprobó y la salida de cada nodo: es el registro del cambio para el ticket.'))
+
     # ======================= 7 =======================
     a(h1('c7'))
     a('<h2>Dónde ver los resultados</h2>')
@@ -695,7 +857,7 @@ ansible-playbook awx/configurar_awx.yml \\
       '<li><b>El repositorio guarda llaves privadas.</b> Manténgalo privado, con acceso solo para infraestructura, y use un token de escritura exclusivo para AWX. Entregue cada llave privada a su dueño por un canal seguro (nunca por correo sin cifrar).</li>'
       '<li><b>«Renovar llave» solo cuando haga falta</b> (llave perdida o expuesta), y con un objetivo que incluya todos los servidores donde existe el usuario.</li>'
       '<li><b>«Nunca caduca» es una excepción a la política.</b> Documente para qué cuentas se aplica (root y cuentas de aplicación) y ejecute la auditoría periódicamente para revisarlas.</li>'
-      '<li><b>Aprobación para root.</b> Use un Workflow con nodo de aprobación para cambiar la clave de root en producción.</li>'
+      '<li><b>Cambios con aprobación.</b> En producción, los operadores lanzan las opciones 1, 2 y 4 solo mediante los workflows del Paso 8, y nunca aprueban sus propios cambios.</li>'
       '<li><b>Pruebe antes de un cambio masivo.</b> Lance la plantilla con <b>Job Type = Check</b> sobre un servidor: muestra qué cambiaría sin aplicarlo. Los cambios de contraseña no se simulan, y en la opción 1 las tareas que dependen de una cuenta aún no creada pueden marcar error en ese modo (en la ejecución real no ocurre).</li>'
       '<li><b>Auditoría periódica.</b> Programe la plantilla 3 (<b>Schedules</b>) cada mes con envío por correo.</li></ul>')
 
@@ -711,6 +873,9 @@ ansible-playbook awx/configurar_awx.yml \\
         ['El usuario con llave <b>no puede entrar</b>', 'Revise que su grupo esté permitido en AllowGroups/AllowUsers de sshd (la auditoría lo muestra en «Acceso»). El proyecto agrega el grupo <code>ssh_access</code> automáticamente si existe.'],
         ['<b>«Hay que generar llaves … el contenedor se borra»</b>', 'La plantilla 1 no tiene la credencial «Git - publicar llaves» (Paso 2.4). Es intencional: sin ella la llave se perdería y la próxima vez se generaría otra. No se modificó ningún servidor.'],
         ['<b>«No se pudieron publicar las llaves … push rechazado»</b>', 'El token no tiene permiso de escritura o la rama está protegida. Corrija y vuelva a lanzar: no se modificó ningún servidor.'],
+        ['El workflow queda en <b>«Pending approval»</b>', 'Espera a un aprobador. Los aprobadores lo ven en <b>Views → Workflow Approvals</b> (y en la campana superior). Si nadie lo ve, revise el rol Approve (8.6) y la notificación Approval (8.7).'],
+        ['El nodo de aprobación terminó en <b>«Timed out»</b>', 'Pasó el plazo de 4 horas sin respuesta. No se cambió nada: lance de nuevo el workflow.'],
+        ['Un operador ejecutó un cambio <b>sin aprobación</b>', 'Todavía tiene Execute directo sobre la plantilla 1, 2 o 4. Retírelo (8.6).'],
         ['<b>Solaris 11</b>', 'Programado pero no probado en equipo real; valide en uno de prueba. Las cuentas de solo llave se dejan con <code>passwd -N</code>, porque en Solaris <code>passwd -l</code> también bloquea el acceso por llave.']], 'campos'))
 
     # ======================= 10 =======================
@@ -736,6 +901,15 @@ ansible-playbook -i inventario/hosts.ini 02_cambiar_contrasena.yml \\
     a(h1('aA'))
     a('<p>Generado desde <code>awx/generar_encuestas.py</code>, la misma fuente de los archivos JSON. La columna «Variable» debe escribirse exactamente igual en AWX.</p>')
     a(''.join(anexo_a))
+    a('<h3>Encuestas de los workflows (Paso 8)</h3>')
+    a('<p>Cada workflow usa la encuesta de su plantilla con esta pregunta adicional al inicio:</p>')
+    tq = enc.TICKET
+    a(tabla(['#', 'Pregunta y ayuda (* = obligatoria)', 'Variable', 'Tipo', 'Por defecto'], [[
+        '0', '<b>%s</b> <span style="color:#c0392b">*</span><br><span style="color:#5b6475">%s</span>' % (e(tq['question_name']), e(tq['question_description'])),
+        '<code>ticket_cambio</code>', 'Texto', '—']], 'compacta anexo'))
+    a(tabla(['Workflow', 'Archivo de encuesta', 'Preguntas'], [
+        [e(w['name']), '<code>awx/encuestas/%s.json</code>' % k, 'Ticket + las %d de «%s»' % (len(ENCUESTAS[w['base']]['spec']), e(ENCUESTAS[w['base']]['name']))]
+        for k, w in enc.WORKFLOWS.items()], 'compacta'))
     a(h1('aB'))
     a('<p>Calculado desde <code>inventario/hosts.ini</code>. El nombre del grupo es lo que se escribe en «Servidores o grupo del inventario». El inventario no tiene IP duplicadas ni nombres repetidos.</p>')
     a(anexo_b)
@@ -783,9 +957,9 @@ def paginas_de_anclas(pdf):
         'c1': 'Qué hace el proyecto', 'c2': 'Cómo funciona una ejecución', 'c3': 'Antes de empezar',
         'c4': 'Estructura del proyecto', 'c5': 'Configurar AWX paso a paso', 'c5p1': 'Paso 1 · Subir el proyecto a Git',
         'c5p2': 'Paso 2 · Credenciales', 'c5p3': 'Paso 3 · Proyecto', 'c5p4': 'Paso 4 · Inventario',
-        'c5p5': 'Paso 5 · Plantillas de trabajo', 'c5p6': 'Paso 6 · Encuestas', 'c5p7': 'Paso 7 · Permisos',
+        'c5p5': 'Paso 5 · Plantillas de trabajo', 'c5p6': 'Paso 6 · Encuestas', 'c5p7': 'Paso 7 · Permisos', 'c5p8': 'Paso 8 · Workflows con aprobación',
         'c6': 'Uso diario: cómo diligenciar cada opción', 'c61': 'Opción 1 · Crear usuarios', 'c62': 'Opción 2 · Cambiar contraseña',
-        'c63': 'Opción 3 · Auditoría', 'c64': 'Opción 4 · Bloquear o eliminar', 'c7': 'Cómo leer la auditoría',
+        'c63': 'Opción 3 · Auditoría', 'c64': 'Opción 4 · Bloquear o eliminar', 'c65': 'Lanzar y aprobar un workflow', 'c7': 'Cómo leer la auditoría',
         'c8': 'Seguridad y buenas prácticas', 'c9': 'Solución de problemas', 'c10': 'Uso por línea de comandos',
         'aA': 'Todas las preguntas de las encuestas', 'aB': 'Grupos del inventario', 'aC': 'Cambios frente a los proyectos anteriores'}
     with pdfplumber.open(pdf) as doc:

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """Fuente única de las encuestas de AWX.
-Genera awx/encuestas/*.json (formato survey_spec de la API de AWX).
+Genera awx/encuestas/*.json (formato survey_spec de la API de AWX): una por
+plantilla (01..04) y una por workflow con aprobación (wf_*).
 El manual PDF toma las preguntas de aquí: después de cambiar una encuesta,
 regenérelo con  python3 docs/fuente/generar_manual.py
 
@@ -43,29 +44,25 @@ ENCUESTAS = {
               'Una línea por usuario:  usuario;Nombre completo;grupo(opcional)\nEj: jperez;Juan Pérez;soporte',
               'textarea', mx=20000),
             q('crear_catalogo', 'Catálogo (si origen = catalogo)',
-              'Archivo de vars/catalogos/. Para agregar opciones, cree el archivo y añádalo a esta lista.',
+              'Archivo de vars/catalogos/. El catálogo manda sobre esta encuesta: usuarios_llave_admin_linux otorga sudo COMPLETO sin contraseña.',
               'multiplechoice', False, '',
               ['usuarios_zona_norte', 'usuarios_zona_centro', 'usuarios_individuales',
                'usuarios_llave_admin_linux', 'usuarios_llave_servicio']),
-            q('crear_grupo_primario', 'Grupo primario',
-              'Vacío = un grupo con el mismo nombre de cada usuario. Se crea si no existe. El catálogo puede definirlo por usuario.'),
             q('crear_grupos_secundarios', 'Grupos secundarios',
-              'Separados por coma. Solo se agregan los que ya existen en el servidor (los demás se informan).'),
+              'Separados por coma. Solo se agregan los que ya existen en el servidor. No se permiten grupos privilegiados (wheel, sudo, root, docker...).'),
             q('crear_contrasena_inicial', 'Contraseña inicial (método contrasena)',
               'Obligatoria con método contrasena. Solo se asigna a cuentas nuevas. AWX la guarda cifrada.',
               'password', mx=128),
             q('crear_forzar_cambio', 'Forzar cambio de contraseña en el primer ingreso',
               'Recomendado SI para cuentas personales.', 'multiplechoice', True, 'SI', SINO),
             q('crear_llave_origen', 'Origen de la llave (método llave)',
-              'keys: usa la llave del usuario guardada en keys/ del proyecto; si no tiene, genera una nueva y la guarda ahí. encuesta: usa la llave pública pegada abajo.',
+              'keys: usa la llave guardada del usuario; si no tiene, genera una nueva y la guarda. encuesta: usa la llave pública pegada abajo.',
               'multiplechoice', False, 'keys', ['keys', 'encuesta']),
             q('crear_llaves_texto', 'Llaves públicas (origen de llave = encuesta)',
               'Una línea por usuario:  usuario;ssh-rsa AAAA... comentario', 'textarea', mx=40000),
             q('crear_renovar_llave', '⚠ RENOVAR LLAVE (opción crítica)',
-              'SI genera una llave NUEVA aunque el usuario ya tenga una en keys/. La anterior se archiva y se retira de los servidores del objetivo. En servidores NO incluidos en el objetivo el usuario seguirá entrando solo con la llave anterior. Deje NO salvo pérdida o compromiso de la llave.',
+              'SI genera una llave NUEVA aunque el usuario ya tenga una. La anterior se archiva y se retira de los servidores del objetivo. En servidores NO incluidos en el objetivo el usuario seguirá entrando solo con la llave anterior. Deje NO salvo pérdida o compromiso de la llave.',
               'multiplechoice', True, 'NO', SINO),
-            q('crear_llaves_custodio_host', 'Servidor custodio de llaves (opcional)',
-              'Servidor del inventario donde además se copian las llaves nuevas (/root/llaves_generadas). En AWX es obligatorio solo si la plantilla no tiene la credencial "Git - publicar llaves".'),
             q('crear_sudo_nivel', 'Nivel de sudo',
               'ninguno | completo (ALL) | limitado (solo los comandos indicados abajo).',
               'multiplechoice', True, 'ninguno', ['ninguno', 'completo', 'limitado']),
@@ -85,25 +82,23 @@ ENCUESTAS = {
         'description': 'Cambio de contraseña con política "nunca caduca" opcional (ej. root).',
         'spec': [
             OBJETIVO,
-            q('contrasena_usuarios', 'Usuario(s)', 'Uno o varios separados por coma. Ej: root  o  root,soporte1',
-              req=True, default='root', mn=1),
+            q('contrasena_usuarios', 'Usuario(s)', 'Uno o varios separados por coma. Ej: jperez  o  jperez,soporte1',
+              req=True, mn=1),
+            q('contrasena_confirmar_critica', 'Confirmación para cuenta crítica',
+              'Solo para root, tux, adminso y otras cuentas administradoras: escriba CONFIRMAR. No se permite con objetivo all.'),
             q('contrasena_nueva', 'Nueva contraseña', 'AWX la guarda cifrada y no aparece en la salida del job.',
               'password', True, mn=8, mx=128),
             q('contrasena_confirmacion', 'Confirmar contraseña', 'Debe coincidir con la anterior.',
               'password', True, mn=8, mx=128),
             q('contrasena_nunca_caduca', 'Contraseña sin caducidad (nunca expira)',
-              'SI: chage -m 0 -M 99999 -I -1. Evita que el hardening haga caducar la clave (crítico para root). NO: conserva la política actual.',
-              'multiplechoice', True, 'SI', SINO),
-            q('contrasena_quitar_expiracion_cuenta', 'Quitar también la fecha de expiración de la cuenta',
-              'SI: chage -E -1 (la cuenta queda permanente).', 'multiplechoice', True, 'NO', SINO),
-            q('contrasena_forzar_cambio', 'Forzar cambio en el próximo inicio de sesión',
-              'Excluyente con "sin caducidad". No permitido para root ni cuentas protegidas.',
+              'SI: chage -m 0 -M 99999 -I -1. Para cuentas críticas que el hardening haría caducar; requiere "Forzar cambio" en NO. NO: conserva la política actual.',
               'multiplechoice', True, 'NO', SINO),
-            q('contrasena_desbloquear', 'Desbloquear la cuenta',
-              'Reinicia intentos fallidos (faillock/pam_tally2) y quita una expiración de cuenta ya vencida.',
+            q('contrasena_forzar_cambio', 'Forzar cambio en el próximo inicio de sesión',
+              'Recomendado SI para cuentas personales. Excluyente con "sin caducidad". En cuentas críticas debe ser NO.',
               'multiplechoice', True, 'SI', SINO),
-            q('contrasena_permitir_cuentas_servicio', 'Permitir cuentas de servicio (UID 1-999)',
-              'Por seguridad NO. root (UID 0) siempre está permitido.', 'multiplechoice', True, 'NO', SINO),
+            q('contrasena_desbloquear', 'Desbloquear la cuenta',
+              'Reinicia intentos fallidos (faillock/pam_tally2) y quita una expiración de cuenta ya vencida. También revierte un bloqueo hecho con la opción 4.',
+              'multiplechoice', True, 'NO', SINO),
         ],
     },
     '03_auditoria_usuarios': {
@@ -118,22 +113,17 @@ ENCUESTAS = {
             q('auditoria_detalle_salida', 'Detalle en la salida del job',
               'resumido: tabla por servidor. completo: además los hallazgos de cada usuario.',
               'multiplechoice', True, 'resumido', ['resumido', 'completo']),
-            q('auditoria_enviar_correo', 'Enviar reporte por correo',
-              'Requiere la credencial SMTP asociada a la plantilla.', 'multiplechoice', True, 'NO', SINO),
-            q('auditoria_correo_destinatarios', 'Destinatarios', 'Separados por coma.'),
-            q('auditoria_copiar_a_host', 'Copiar reportes a servidor',
-              'Opcional. Servidor del inventario donde se dejan HTML y CSV (/var/reportes/auditoria_usuarios).'),
         ],
     },
     '04_bloquear_eliminar_usuarios': {
         'name': 'USUARIOS | 4 - Bloquear o eliminar',
-        'description': 'Bloqueo (reversible) o eliminación de cuentas, con respaldo del home.',
+        'description': 'Bloqueo, reactivación o eliminación de cuentas, con respaldo del home.',
         'spec': [
             OBJETIVO,
             q('eliminar_usuarios', 'Usuario(s)', 'Uno o varios separados por coma.', req=True, mn=1),
             q('eliminar_accion', 'Acción',
-              'bloquear: bloquea clave y expira la cuenta (conserva el home). eliminar: borra cuenta y home.',
-              'multiplechoice', True, 'bloquear', ['bloquear', 'eliminar']),
+              'bloquear: bloquea clave y expira la cuenta (conserva el home). reactivar: revierte el bloqueo. eliminar: borra cuenta y home.',
+              'multiplechoice', True, 'bloquear', ['bloquear', 'reactivar', 'eliminar']),
             q('eliminar_respaldar_home', 'Respaldar home antes de eliminar',
               'Se guarda en /var/backups/usuarios_eliminados/ del servidor.', 'multiplechoice', True, 'SI', SINO),
             q('eliminar_confirmacion', 'Confirmación (solo para eliminar)', 'Escriba CONFIRMAR para eliminar.'),
@@ -142,13 +132,58 @@ ENCUESTAS = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Workflows con aprobación: su encuesta es la de la plantilla que protegen,
+# precedida por el ticket/justificación que verá quien aprueba.
+# ---------------------------------------------------------------------------
+TICKET = q('ticket_cambio', 'Ticket o justificación',
+           'Número de ticket / RFC y motivo del cambio. Es lo primero que revisa quien aprueba.',
+           req=True, mn=3, mx=300)
+
+WORKFLOWS = {
+    'wf_cambio_contrasena_aprobacion': {
+        'name': 'USUARIOS | WF - Cambio de contraseña',
+        'description': 'Aprobación -> cambio de contraseña -> auditoría de verificación.',
+        'base': '02_cambiar_contrasena',
+        'aprobacion': 'Aprobacion',
+        'plantilla': 'USUARIOS | 2 - Cambiar contraseña',
+    },
+    'wf_crear_usuarios_aprobacion': {
+        'name': 'USUARIOS | WF - Crear usuarios',
+        'description': 'Aprobación -> creación de usuarios -> auditoría de verificación.',
+        'base': '01_crear_usuarios',
+        'aprobacion': 'Aprobacion',
+        'plantilla': 'USUARIOS | 1 - Crear usuarios',
+    },
+    'wf_bloquear_eliminar_aprobacion': {
+        'name': 'USUARIOS | WF - Bloquear o eliminar',
+        'description': 'Aprobación -> bloqueo o eliminación -> auditoría de verificación.',
+        'base': '04_bloquear_eliminar_usuarios',
+        'aprobacion': 'Aprobacion',
+        'plantilla': 'USUARIOS | 4 - Bloquear o eliminar',
+    },
+}
+AUDITORIA = 'USUARIOS | 3 - Auditoría'
+APROBACION_TIMEOUT_SEG = 4 * 3600   # 4 horas
+
+
+def encuesta_workflow(clave):
+    wf = WORKFLOWS[clave]
+    return {'name': wf['name'], 'description': wf['description'],
+            'spec': [TICKET] + ENCUESTAS[wf['base']]['spec']}
+
+
 def main():
     os.makedirs(os.path.join(BASE, 'encuestas'), exist_ok=True)
+    for clave in WORKFLOWS:
+        with open(os.path.join(BASE, 'encuestas', clave + '.json'), 'w', encoding='utf-8') as f:
+            json.dump(encuesta_workflow(clave), f, ensure_ascii=False, indent=2)
+            f.write('\n')
     for archivo, enc in ENCUESTAS.items():
         with open(os.path.join(BASE, 'encuestas', archivo + '.json'), 'w', encoding='utf-8') as f:
             json.dump(enc, f, ensure_ascii=False, indent=2)
             f.write('\n')
-    print('Encuestas generadas:', ', '.join(ENCUESTAS))
+    print('Encuestas generadas:', ', '.join(list(ENCUESTAS) + list(WORKFLOWS)))
 
 
 if __name__ == '__main__':

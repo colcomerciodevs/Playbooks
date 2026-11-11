@@ -5,11 +5,24 @@
 # Por servidor: cuentas con UID >= 1000, estado/caducidad de contraseña, llaves
 # SSH, último acceso, grupos privilegiados y privilegios sudo efectivos
 # (NINGUNO / LIMITADO / COMPLETO, comandos permitidos, NOPASSWD, origen).
-# Consolidado: reporte HTML + CSV, resumen en el job y artefactos en AWX.
+# Consolidado: reporte HTML + CSV en /data/work/gestion_usuarios/reportes,
+# resumen en el job y artefactos en AWX.
 #
 # AWX: plantilla "USUARIOS | 3 - Auditoría" con awx/encuestas/03_auditoria_usuarios.json
 # CLI: ansible-playbook -i inventario/hosts.ini 03_auditoria_usuarios.yml -e objetivo=PPU
 # =============================================================================
+
+- name: "Opción 3 | Validar objetivo y carpeta de reportes"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - vars/comunes.yml
+  tasks:
+    - name: Validar
+      ansible.builtin.include_role:
+        name: usuarios_auditoria
+        tasks_from: preparar.yml
 
 - name: "Opción 3 | Auditar servidores"
   hosts: "{{ objetivo | default('NINGUN_SERVIDOR_SELECCIONADO') }}"

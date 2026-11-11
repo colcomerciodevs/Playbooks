@@ -12,21 +12,6 @@ auditoria_dias_inactividad: 90     # marca cuentas habilitadas sin ingresar hace
 # Salida en el job: resumido (tabla por servidor) | completo (tabla + hallazgos por usuario)
 auditoria_detalle_salida: resumido
 
-# Reportes consolidados (HTML + CSV) en el controlador
-auditoria_dir_salida: "{{ playbook_dir }}/reportes"
-
-# En AWX el contenedor se destruye al terminar: use al menos una de estas dos
-# opciones para conservar los archivos.
-# 1) Copiar los reportes a un servidor del inventario
-auditoria_copiar_a_host: ""
-auditoria_copiar_ruta: /var/reportes/auditoria_usuarios
-
-# 2) Enviar por correo (las variables smtp_* se recomiendan vía credencial personalizada de AWX)
-auditoria_enviar_correo: "NO"
-auditoria_correo_destinatarios: ""   # separados por coma
-auditoria_correo_remitente: "ansible-awx@{{ smtp_dominio | default('localhost') }}"
-smtp_servidor: ""
-smtp_puerto: 25
-smtp_usuario: ""
-smtp_clave: ""
-smtp_seguridad: try               # always | never | starttls | try
+# Reportes consolidados (HTML + CSV). Carpeta persistente: requiere el grupo de
+# instancias Container_Group_Corbeta en la plantilla.
+auditoria_dir_salida: "{{ gestion_dir_persistente }}/reportes"

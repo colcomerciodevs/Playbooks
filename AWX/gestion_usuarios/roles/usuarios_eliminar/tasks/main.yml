@@ -1,24 +1,39 @@
 ---
-- name: Eliminar | Consultar cuentas
-  ansible.builtin.getent:
-    database: passwd
+# Comprobaciones (solo lectura): si fallan en un servidor, se detienen todos antes de cambiar nada.
+- name: Eliminar | Comprobaciones previas en los servidores
+  any_errors_fatal: true
+  block:
+    - name: Eliminar | Consultar cuentas
+      ansible.builtin.getent:
+        database: passwd
 
-# Solo cuentas existentes y con UID >= uid_minimo_humano (nunca cuentas de servicio).
-- name: Eliminar | Definir cuentas a procesar
-  ansible.builtin.set_fact:
-    _el_accion: "{{ hostvars['localhost']['_el_accion'] }}"
-    _el_existentes: "{{ hostvars['localhost']['eliminar_lista'] | select('in', ansible_facts.getent_passwd.keys() | list) | list }}"
-    _el_omitidas: []
+    # Solo cuentas existentes y con UID >= uid_minimo_humano (nunca cuentas de servicio).
+    - name: Eliminar | Definir cuentas a procesar
+      ansible.builtin.set_fact:
+        _el_accion: "{{ hostvars['localhost']['_el_accion'] }}"
+        _el_existentes: "{{ hostvars['localhost']['eliminar_lista'] | select('in', ansible_facts.getent_passwd.keys() | list) | list }}"
+        _el_omitidas: []
 
-- name: Eliminar | Detectar cuentas de servicio
-  ansible.builtin.set_fact:
-    _el_omitidas: "{{ _el_omitidas + [item] }}"
-  loop: "{{ _el_existentes }}"
-  when: (ansible_facts.getent_passwd[item][1] | int) < (uid_minimo_humano | int)
+    - name: Eliminar | Detectar cuentas de servicio
+      ansible.builtin.set_fact:
+        _el_omitidas: "{{ _el_omitidas + [item] }}"
+      loop: "{{ _el_existentes }}"
+      when: (ansible_facts.getent_passwd[item][1] | int) < (uid_minimo_humano | int)
 
-- name: Eliminar | Lista final
-  ansible.builtin.set_fact:
-    _el_aplicar: "{{ _el_existentes | reject('in', _el_omitidas) | list }}"
+    - name: Eliminar | Lista final
+      ansible.builtin.set_fact:
+        _el_aplicar: "{{ _el_existentes | reject('in', _el_omitidas) | list }}"
+
+    # userdel -r borraría el home sin respaldo si está fuera de las rutas conocidas.
+    - name: Eliminar | Exigir home en ruta conocida
+      ansible.builtin.assert:
+        quiet: true
+        that: ansible_facts.getent_passwd[item][4] is match('^/(home|export/home)/[^/]+/?$')
+        fail_msg: >-
+          El home de {{ item }} en {{ inventory_hostname }} es {{ ansible_facts.getent_passwd[item][4] }}, fuera de
+          /home o /export/home. No se elimina de forma automática. No se modificó ningún servidor.
+      loop: "{{ _el_aplicar }}"
+      when: _el_accion == 'eliminar'
 
 - name: Eliminar | Cuentas omitidas o inexistentes
   ansible.builtin.debug:
@@ -31,6 +46,7 @@
     path: "/etc/sudoers.d/{{ item | regex_replace('[.~]', '_') }}"
     state: absent
   loop: "{{ _el_aplicar }}"
+  when: _el_accion != 'reactivar'
 
 # --- BLOQUEAR ----------------------------------------------------------------
 - name: Eliminar | Bloquear contraseña y expirar cuenta (Linux)
@@ -51,6 +67,29 @@
     - _el_accion == 'bloquear'
     - ansible_system == 'SunOS'
 
+# --- REACTIVAR ---------------------------------------------------------------
+# Reinicia intentos fallidos y quita la expiración (también lee /etc/shadow).
+- name: Eliminar | Reactivar cuentas
+  ansible.builtin.include_role:
+    name: usuarios_comun
+    tasks_from: desbloquear.yml
+  vars:
+    comun_usuarios: "{{ _el_aplicar }}"
+  when:
+    - _el_accion == 'reactivar'
+    - _el_aplicar | length > 0
+
+# Solo si hay una contraseña real bloqueada ("!$6$..."); las cuentas de solo llave siguen sin contraseña.
+- name: Eliminar | Desbloquear contraseña (Linux)
+  ansible.builtin.command:
+    argv: [usermod, -U, "{{ item }}"]
+  loop: "{{ _el_aplicar }}"
+  changed_when: true
+  when:
+    - _el_accion == 'reactivar'
+    - ansible_system == 'Linux'
+    - (ansible_facts.getent_shadow[item] | default(['']))[0] is match('^!+[$]')
+
 # --- ELIMINAR ----------------------------------------------------------------
 - name: Eliminar | Respaldar home antes de borrar
   when:
@@ -69,12 +108,12 @@
         argv:
           - tar
           - -czf
-          - "{{ eliminar_dir_respaldo }}/{{ item }}_{{ ansible_date_time.date }}.tar.gz"
+          - "{{ eliminar_dir_respaldo }}/{{ item }}_{{ ansible_date_time.iso8601_basic_short }}.tar.gz"
           - -C
           - "{{ ansible_facts.getent_passwd[item][4] | dirname }}"
           - "{{ ansible_facts.getent_passwd[item][4] | basename }}"
-        creates: "{{ eliminar_dir_respaldo }}/{{ item }}_{{ ansible_date_time.date }}.tar.gz"
       loop: "{{ _el_aplicar }}"
+      changed_when: true
       when: ansible_facts.getent_passwd[item][4] is match('^/(home|export/home)/')
 
 - name: Eliminar | Borrar cuenta y home
@@ -87,4 +126,4 @@
 
 - name: Eliminar | Resumen
   ansible.builtin.debug:
-    msg: "{{ inventory_hostname }}: {{ 'bloqueadas' if _el_accion == 'bloquear' else 'eliminadas' }} -> {{ _el_aplicar | join(', ') or '-' }}"
+    msg: "{{ inventory_hostname }}: {{ {'bloquear': 'bloqueadas', 'reactivar': 'reactivadas', 'eliminar': 'eliminadas'}[_el_accion] }} -> {{ _el_aplicar | join(', ') or '-' }}"

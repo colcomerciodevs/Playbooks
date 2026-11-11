@@ -1,7 +1,6 @@
 ---
 # =============================================================================
-# OPCIÓN 4 - BLOQUEAR O ELIMINAR USUARIOS
-# Reemplaza a los eliminar_usuarios.yml de los proyectos anteriores.
+# OPCIÓN 4 - BLOQUEAR, REACTIVAR O ELIMINAR USUARIOS
 # Protecciones: no toca cuentas protegidas (vars/comunes.yml) ni UID < 1000.
 #
 # AWX: plantilla "USUARIOS | 4 - Bloquear o eliminar" con awx/encuestas/04_bloquear_eliminar_usuarios.json

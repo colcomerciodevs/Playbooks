@@ -1,6 +1,11 @@
 ---
 # Validaciones en localhost antes de tocar servidores.
 
+- name: Preparar | Validar objetivo
+  ansible.builtin.include_role:
+    name: usuarios_comun
+    tasks_from: validar_objetivo.yml
+
 - name: Preparar | Normalizar respuestas
   ansible.builtin.set_fact:
     contrasena_lista: >-
@@ -8,17 +13,30 @@
          | map('trim') | map('lower') | reject('equalto', '') | unique | list }}
     _cp_nunca: "{{ (contrasena_nunca_caduca | string | lower | trim) in valores_si }}"
     _cp_forzar: "{{ (contrasena_forzar_cambio | string | lower | trim) in valores_si }}"
+    _cp_confirmada: "{{ (contrasena_confirmar_critica | string | trim) == 'CONFIRMAR' }}"
 
-- name: Preparar | Validar objetivo y usuarios
+- name: Preparar | Validar usuarios
   ansible.builtin.assert:
     quiet: true
     that:
-      - objetivo is defined and (objetivo | string | trim | length > 0)
       - contrasena_lista | length > 0
       - contrasena_lista | reject('match', regex_nombre_usuario) | list | length == 0
+    fail_msg: "Indique al menos un usuario válido. Recibido: '{{ contrasena_usuarios }}'. No se modificó ningún servidor."
+
+- name: Preparar | Identificar cuentas críticas
+  ansible.builtin.set_fact:
+    _cp_criticas: "{{ contrasena_lista | select('in', usuarios_protegidos) | list }}"
+
+- name: Preparar | Proteger cuentas críticas
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - _cp_criticas | length == 0 or (_cp_confirmada | bool)
+      - _cp_criticas | length == 0 or not (objetivo_amplio | bool)
     fail_msg: >-
-      Indique los servidores (objetivo) y al menos un usuario válido.
-      Recibido: '{{ contrasena_usuarios }}'.
+      {{ _cp_criticas | join(', ') }} es una cuenta crítica. Para cambiar su clave escriba CONFIRMAR en
+      "Confirmación para cuenta crítica" e indique un objetivo concreto (no se permite all ni comodines).
+      No se modificó ningún servidor.
 
 - name: Preparar | Validar contraseña
   ansible.builtin.assert:
@@ -37,11 +55,11 @@
     quiet: true
     that:
       - not ((_cp_nunca | bool) and (_cp_forzar | bool))
-      - not (_cp_forzar | bool) or (contrasena_lista | select('in', usuarios_protegidos) | list | length == 0)
+      - not (_cp_forzar | bool) or (_cp_criticas | length == 0)
     fail_msg: >-
-      'Nunca caduca' y 'Forzar cambio en el próximo inicio' son excluyentes. Además, no se puede
-      forzar el cambio a root ni a cuentas protegidas ({{ contrasena_lista | select('in', usuarios_protegidos) | join(', ') }}):
-      la automatización que las usa dejaría de funcionar.
+      'Nunca caduca' y 'Forzar cambio en el próximo inicio' son excluyentes: deje uno en NO. Además, no se
+      puede forzar el cambio a cuentas críticas ({{ _cp_criticas | join(', ') }}): la automatización que las
+      usa dejaría de funcionar.
 
 - name: Preparar | Resumen
   ansible.builtin.debug:

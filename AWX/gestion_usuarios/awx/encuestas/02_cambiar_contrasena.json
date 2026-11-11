@@ -16,13 +16,25 @@
     },
     {
       "question_name": "Usuario(s)",
-      "question_description": "Uno o varios separados por coma. Ej: root  o  root,soporte1",
+      "question_description": "Uno o varios separados por coma. Ej: jperez  o  jperez,soporte1",
       "required": true,
       "type": "text",
       "variable": "contrasena_usuarios",
       "min": 1,
       "max": 1024,
-      "default": "root",
+      "default": "",
+      "choices": [],
+      "new_question": true
+    },
+    {
+      "question_name": "Confirmación para cuenta crítica",
+      "question_description": "Solo para root, tux, adminso y otras cuentas administradoras: escriba CONFIRMAR. No se permite con objetivo all.",
+      "required": false,
+      "type": "text",
+      "variable": "contrasena_confirmar_critica",
+      "min": 0,
+      "max": 1024,
+      "default": "",
       "choices": [],
       "new_question": true
     },
@@ -52,25 +64,10 @@
     },
     {
       "question_name": "Contraseña sin caducidad (nunca expira)",
-      "question_description": "SI: chage -m 0 -M 99999 -I -1. Evita que el hardening haga caducar la clave (crítico para root). NO: conserva la política actual.",
+      "question_description": "SI: chage -m 0 -M 99999 -I -1. Para cuentas críticas que el hardening haría caducar; requiere \"Forzar cambio\" en NO. NO: conserva la política actual.",
       "required": true,
       "type": "multiplechoice",
       "variable": "contrasena_nunca_caduca",
-      "min": 0,
-      "max": 1024,
-      "default": "SI",
-      "choices": [
-        "SI",
-        "NO"
-      ],
-      "new_question": true
-    },
-    {
-      "question_name": "Quitar también la fecha de expiración de la cuenta",
-      "question_description": "SI: chage -E -1 (la cuenta queda permanente).",
-      "required": true,
-      "type": "multiplechoice",
-      "variable": "contrasena_quitar_expiracion_cuenta",
       "min": 0,
       "max": 1024,
       "default": "NO",
@@ -82,25 +79,10 @@
     },
     {
       "question_name": "Forzar cambio en el próximo inicio de sesión",
-      "question_description": "Excluyente con \"sin caducidad\". No permitido para root ni cuentas protegidas.",
+      "question_description": "Recomendado SI para cuentas personales. Excluyente con \"sin caducidad\". En cuentas críticas debe ser NO.",
       "required": true,
       "type": "multiplechoice",
       "variable": "contrasena_forzar_cambio",
-      "min": 0,
-      "max": 1024,
-      "default": "NO",
-      "choices": [
-        "SI",
-        "NO"
-      ],
-      "new_question": true
-    },
-    {
-      "question_name": "Desbloquear la cuenta",
-      "question_description": "Reinicia intentos fallidos (faillock/pam_tally2) y quita una expiración de cuenta ya vencida.",
-      "required": true,
-      "type": "multiplechoice",
-      "variable": "contrasena_desbloquear",
       "min": 0,
       "max": 1024,
       "default": "SI",
@@ -111,11 +93,11 @@
       "new_question": true
     },
     {
-      "question_name": "Permitir cuentas de servicio (UID 1-999)",
-      "question_description": "Por seguridad NO. root (UID 0) siempre está permitido.",
+      "question_name": "Desbloquear la cuenta",
+      "question_description": "Reinicia intentos fallidos (faillock/pam_tally2) y quita una expiración de cuenta ya vencida. También revierte un bloqueo hecho con la opción 4.",
       "required": true,
       "type": "multiplechoice",
-      "variable": "contrasena_permitir_cuentas_servicio",
+      "variable": "contrasena_desbloquear",
       "min": 0,
       "max": 1024,
       "default": "NO",

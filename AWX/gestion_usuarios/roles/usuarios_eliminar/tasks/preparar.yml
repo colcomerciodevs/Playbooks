@@ -1,4 +1,9 @@
 ---
+- name: Preparar | Validar objetivo
+  ansible.builtin.include_role:
+    name: usuarios_comun
+    tasks_from: validar_objetivo.yml
+
 - name: Preparar | Normalizar lista
   ansible.builtin.set_fact:
     eliminar_lista: >-
@@ -10,13 +15,12 @@
   ansible.builtin.assert:
     quiet: true
     that:
-      - objetivo is defined and (objetivo | string | trim | length > 0)
-      - _el_accion in ['bloquear', 'eliminar']
+      - _el_accion in ['bloquear', 'reactivar', 'eliminar']
       - eliminar_lista | length > 0
       - eliminar_lista | reject('match', regex_nombre_usuario) | list | length == 0
       - eliminar_lista | select('in', usuarios_protegidos) | list | length == 0
     fail_msg: >-
-      Revise objetivo, acción (bloquear|eliminar) y usuarios. No se permiten cuentas protegidas:
+      Revise acción (bloquear|reactivar|eliminar) y usuarios. No se permiten cuentas protegidas:
       {{ eliminar_lista | default([]) | select('in', usuarios_protegidos) | join(', ') }}.
 
 - name: Preparar | Confirmación obligatoria para eliminar

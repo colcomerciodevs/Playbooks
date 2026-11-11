@@ -5,19 +5,12 @@
 # AWX: plantilla "USUARIOS | 1 - Crear usuarios" con la encuesta
 #      awx/encuestas/01_crear_usuarios.json
 #
-# CLI (ejemplos):
-#   ansible-playbook -i inventario/hosts.ini 01_crear_usuarios.yml \
-#     -e objetivo=GEOPOS -e crear_metodo_acceso=contrasena \
-#     -e crear_origen=catalogo -e crear_catalogo=usuarios_zona_norte \
-#     -e crear_contrasena_inicial='********'
+# Orden: validar encuesta -> verificar servidores (solo lectura) -> llaves ->
+# crear cuentas. Si una validación falla no se modifica nada.
 #
-#   ansible-playbook -i inventario/hosts.ini 01_crear_usuarios.yml \
-#     -e objetivo=PPU -e crear_metodo_acceso=llave -e crear_llave_origen=keys \
-#     -e crear_origen=catalogo -e crear_catalogo=usuarios_llave_admin_linux
-#
-# LLAVES (método llave, origen keys): si keys/<usuario>.pub existe se REUTILIZA en
-# cualquier servidor. Solo se genera una nueva si el usuario no tiene llave, o si
-# se marca la opción crítica crear_renovar_llave=SI.
+# LLAVES (método llave, origen keys): viven en /data/work/gestion_usuarios/keys.
+# Si el usuario ya tiene llave se REUTILIZA en cualquier servidor. Solo se genera
+# una nueva si no tiene, o si se marca la opción crítica crear_renovar_llave=SI.
 # =============================================================================
 
 - name: "Opción 1 | Validar encuesta y preparar usuarios"
@@ -32,11 +25,35 @@
         name: usuarios_crear
         tasks_from: preparar.yml
 
-- name: "Opción 1 | Crear usuarios en los servidores"
+- name: "Opción 1 | Verificar servidores (solo lectura)"
   hosts: "{{ objetivo | default('NINGUN_SERVIDOR_SELECCIONADO') }}"
   become: true
   gather_facts: true
   gather_subset: [min]
+  vars_files:
+    - vars/comunes.yml
+  tasks:
+    - name: Verificar
+      ansible.builtin.include_role:
+        name: usuarios_crear
+        tasks_from: verificar.yml
+
+- name: "Opción 1 | Reutilizar o generar llaves"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - vars/comunes.yml
+  tasks:
+    - name: Llaves
+      ansible.builtin.include_role:
+        name: usuarios_crear
+        tasks_from: llaves.yml
+
+- name: "Opción 1 | Crear usuarios en los servidores"
+  hosts: "{{ objetivo | default('NINGUN_SERVIDOR_SELECCIONADO') }}"
+  become: true
+  gather_facts: false
   vars_files:
     - vars/comunes.yml
   roles:

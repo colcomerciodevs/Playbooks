@@ -1,0 +1,6 @@
+---
+# Los nombres de variables siguen la convención del proyecto (crear_, contrasena_, ...).
+skip_list:
+  - var-naming[no-role-prefix]
+exclude_paths:
+  - collections/

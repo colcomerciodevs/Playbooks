@@ -1,0 +1,25 @@
+---
+# Valida el campo "objetivo" en localhost, antes de tocar servidores.
+# Deja objetivo_amplio = true si el patrón abarca todo o usa comodines
+# (all, *, ~regex): con esos patrones no se permite cambiar cuentas críticas.
+
+- name: Objetivo | Separar el patrón
+  ansible.builtin.set_fact:
+    objetivo_partes: >-
+      {{ (objetivo | default('') | string | trim | regex_replace('[:,]', ' ')).split()
+         | map('regex_replace', '^[!&]', '') | list }}
+
+- name: Objetivo | Clasificar el patrón
+  ansible.builtin.set_fact:
+    objetivo_amplio: "{{ objetivo_partes | select('match', '^(all$|~|.*[*])') | list | length > 0 }}"
+
+- name: Objetivo | Validar
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - objetivo_partes | length > 0
+      - objetivo_partes | select('in', ['localhost', '127.0.0.1']) | list | length == 0
+      - query('ansible.builtin.inventory_hostnames', objetivo) | length > 0
+    fail_msg: >-
+      El objetivo '{{ objetivo | default('') }}' no es válido: no puede ir vacío, no puede ser localhost
+      y debe coincidir con al menos un servidor del inventario. No se modificó ningún servidor.

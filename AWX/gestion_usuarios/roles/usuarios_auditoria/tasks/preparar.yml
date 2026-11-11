@@ -1,0 +1,13 @@
+---
+# Se ejecuta en localhost antes de conectarse a los servidores.
+
+- name: Preparar | Validar objetivo
+  ansible.builtin.include_role:
+    name: usuarios_comun
+    tasks_from: validar_objetivo.yml
+
+- name: Preparar | Crear carpeta de reportes
+  ansible.builtin.file:
+    path: "{{ auditoria_dir_salida }}"
+    state: directory
+    mode: "0750"

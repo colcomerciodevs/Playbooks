@@ -1,0 +1,39 @@
+---
+# Comprobaciones en cada servidor (solo lectura). Se ejecuta antes de generar
+# llaves o cambiar nada: si falla en un servidor, se detienen todos.
+
+- name: Verificar | Comprobaciones previas en los servidores
+  any_errors_fatal: true
+  block:
+    - name: Verificar | Sistema operativo soportado
+      ansible.builtin.assert:
+        quiet: true
+        that: ansible_system in ['Linux', 'SunOS']
+        fail_msg: "Sistema operativo no soportado: {{ ansible_system }}"
+
+    - name: Verificar | Consultar cuentas
+      ansible.builtin.getent:
+        database: passwd
+
+    - name: Verificar | Iniciar lista de cuentas no permitidas
+      ansible.builtin.set_fact:
+        _cv_no_permitidas: []
+
+    # Solo importa si se van a modificar cuentas existentes.
+    - name: Verificar | Detectar cuentas de sistema o de servicio
+      ansible.builtin.set_fact:
+        _cv_no_permitidas: "{{ _cv_no_permitidas + [item] }}"
+      loop: >-
+        {{ hostvars['localhost']['crear_usuarios_normalizados'] | map(attribute='usuario')
+           | select('in', ansible_facts.getent_passwd.keys() | list) | list }}
+      when:
+        - (ansible_facts.getent_passwd[item][1] | int) < (uid_minimo_humano | int)
+        - ((crear_actualizar_existentes | string | lower | trim) in valores_si) or (hostvars['localhost']['_crear_renovar'] | bool)
+
+    - name: Verificar | No modificar cuentas de sistema o de servicio
+      ansible.builtin.assert:
+        quiet: true
+        that: _cv_no_permitidas | length == 0
+        fail_msg: >-
+          En {{ inventory_hostname }} estas cuentas ya existen con UID < {{ uid_minimo_humano }}:
+          {{ _cv_no_permitidas | join(', ') }}. No se les puede agregar llave ni sudo. No se modificó ningún servidor.

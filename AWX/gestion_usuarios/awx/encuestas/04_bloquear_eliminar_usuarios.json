@@ -1,6 +1,6 @@
 {
   "name": "USUARIOS | 4 - Bloquear o eliminar",
-  "description": "Bloqueo (reversible) o eliminación de cuentas, con respaldo del home.",
+  "description": "Bloqueo, reactivación o eliminación de cuentas, con respaldo del home.",
   "spec": [
     {
       "question_name": "Servidores o grupo del inventario",
@@ -28,7 +28,7 @@
     },
     {
       "question_name": "Acción",
-      "question_description": "bloquear: bloquea clave y expira la cuenta (conserva el home). eliminar: borra cuenta y home.",
+      "question_description": "bloquear: bloquea clave y expira la cuenta (conserva el home). reactivar: revierte el bloqueo. eliminar: borra cuenta y home.",
       "required": true,
       "type": "multiplechoice",
       "variable": "eliminar_accion",
@@ -37,6 +37,7 @@
       "default": "bloquear",
       "choices": [
         "bloquear",
+        "reactivar",
         "eliminar"
       ],
       "new_question": true

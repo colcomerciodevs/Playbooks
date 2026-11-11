@@ -24,6 +24,7 @@
 - name: Desbloqueo | Leer expiración de cuenta (Linux)
   ansible.builtin.getent:
     database: shadow
+  no_log: true  # el resultado incluye los hashes de todas las cuentas
   when:
     - ansible_system == 'Linux'
     - comun_usuarios | length > 0

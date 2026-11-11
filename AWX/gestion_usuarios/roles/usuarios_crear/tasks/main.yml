@@ -1,14 +1,8 @@
 ---
 # =============================================================================
 # OPCIÓN 1 - Crear usuarios en cada servidor.
-# Requiere que preparar.yml se haya ejecutado en localhost (playbook 01).
+# Requiere que preparar.yml, verificar.yml y llaves.yml ya se hayan ejecutado (playbook 01).
 # =============================================================================
-
-- name: Crear | Validar sistema operativo soportado
-  ansible.builtin.assert:
-    quiet: true
-    that: ansible_system in ['Linux', 'SunOS']
-    fail_msg: "Sistema operativo no soportado: {{ ansible_system }}"
 
 - name: Crear | Tomar la lista validada en localhost
   ansible.builtin.set_fact:

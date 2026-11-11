@@ -1,7 +1,7 @@
 ---
 # =============================================================================
 # OPCIÓN 3 - Consolidado en localhost: HTML + CSV, resumen en el job,
-# estadísticas para AWX y entrega opcional (servidor / correo).
+# estadísticas para AWX. Los archivos quedan en auditoria_dir_salida.
 # =============================================================================
 
 - name: Reporte | Determinar servidores y archivos
@@ -46,60 +46,3 @@
         servidores: "{{ dict(aud_hosts | zip(aud_hosts | map('extract', hostvars) | map(attribute='auditoria_resultado.resumen', default={'estado': 'SIN_DATOS'}))) }}"
     per_host: false
     aggregate: false
-
-# ---------------------------------------------------------------------------
-# Entrega
-# ---------------------------------------------------------------------------
-- name: Reporte | Copiar a servidor de reportes
-  when: auditoria_copiar_a_host | default('') | length > 0
-  block:
-    - name: Reporte | Crear carpeta destino
-      ansible.builtin.file:
-        path: "{{ auditoria_copiar_ruta }}"
-        state: directory
-        mode: "0750"
-      delegate_to: "{{ auditoria_copiar_a_host }}"
-      become: true
-
-    - name: Reporte | Copiar archivos
-      ansible.builtin.copy:
-        src: "{{ item }}"
-        dest: "{{ auditoria_copiar_ruta }}/"
-        mode: "0640"
-      loop: ["{{ aud_html }}", "{{ aud_csv }}"]
-      delegate_to: "{{ auditoria_copiar_a_host }}"
-      become: true
-
-    - name: Reporte | Ubicación
-      ansible.builtin.debug:
-        msg: "Reportes copiados a {{ auditoria_copiar_a_host }}:{{ auditoria_copiar_ruta }}/"
-
-- name: Reporte | Enviar por correo
-  community.general.mail:
-    host: "{{ smtp_servidor }}"
-    port: "{{ smtp_puerto | int }}"
-    username: "{{ smtp_usuario if smtp_usuario | length > 0 else omit }}"
-    password: "{{ smtp_clave if smtp_clave | length > 0 else omit }}"
-    secure: "{{ smtp_seguridad }}"
-    from: "{{ auditoria_correo_remitente }}"
-    to: "{{ auditoria_correo_destinatarios.split(',') | map('trim') | reject('equalto', '') | list }}"
-    subject: "Auditoría de usuarios - {{ objetivo | default('') }} - {{ aud_fecha }}"
-    subtype: html
-    body: "{{ lookup('ansible.builtin.template', 'correo.html.j2') }}"
-    attach: ["{{ aud_html }}", "{{ aud_csv }}"]
-    charset: utf-8
-  when:
-    - (auditoria_enviar_correo | string | lower | trim) in valores_si
-    - auditoria_correo_destinatarios | length > 0
-  no_log: "{{ smtp_clave | length > 0 }}"
-
-- name: Reporte | Advertencia de persistencia en AWX
-  ansible.builtin.debug:
-    msg: >-
-      Los archivos {{ aud_html | basename }} y {{ aud_csv | basename }} quedaron en el contenedor de AWX,
-      que se elimina al terminar. Para conservarlos active el envío por correo o indique
-      'auditoria_copiar_a_host'. El resumen sigue disponible en esta salida y en Artefactos.
-  when:
-    - (awx_job_id is defined) or (tower_job_id is defined)
-    - auditoria_copiar_a_host | default('') | length == 0
-    - not ((auditoria_enviar_correo | string | lower | trim) in valores_si)

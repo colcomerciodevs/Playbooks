@@ -1,28 +1,25 @@
 ---
 # =============================================================================
-# Se ejecuta en localhost ANTES de tocar servidores:
-#   1. Valida las respuestas de la encuesta.
+# Se ejecuta en localhost ANTES de tocar servidores y sin escribir nada:
+#   1. Valida el objetivo y las respuestas de la encuesta.
 #   2. Construye la lista de usuarios (encuesta o catálogo).
-#   3. Llaves: reutiliza las de keys/, genera las que falten (o renueva si se
-#      marcó la opción crítica) y las deja guardadas en Git / servidor custodio.
-#   4. Deja la lista final en 'crear_usuarios_normalizados' (hostvars['localhost']).
-# Si algo está mal, el job falla aquí y no se modifica ningún servidor.
+#   3. Comprueba que el almacén de llaves esté disponible.
+#   4. Deja la lista en 'crear_usuarios_normalizados' (hostvars['localhost']).
+# Las llaves se generan después, en llaves.yml, cuando todo ya fue validado.
 # =============================================================================
+
+- name: Preparar | Validar objetivo
+  ansible.builtin.include_role:
+    name: usuarios_comun
+    tasks_from: validar_objetivo.yml
 
 - name: Preparar | Normalizar opciones de la encuesta
   ansible.builtin.set_fact:
     _crear_metodo: "{{ crear_metodo_acceso | string | lower | trim }}"
     _crear_origen: "{{ crear_origen | string | lower | trim }}"
-    # 'repositorio' y 'generar' son nombres de versiones anteriores: hoy ambos son 'keys'.
-    _crear_llave_origen: >-
-      {{ 'keys' if (crear_llave_origen | string | lower | trim) in ['repositorio', 'generar']
-         else (crear_llave_origen | string | lower | trim) }}
+    _crear_llave_origen: "{{ crear_llave_origen | string | lower | trim }}"
     _crear_renovar: "{{ (crear_renovar_llave | string | lower | trim) in valores_si }}"
-    _crear_llaves_generar: []
-    _crear_llaves_renovadas: []
-    _crear_llaves_anteriores: {}
     _crear_sudo_global: "{{ crear_sudo_nivel | string | lower | trim }}"
-    _crear_es_awx: "{{ (awx_job_id is defined) or (tower_job_id is defined) }}"
     _crear_base: []
     _crear_llaves_mapa: {}
     crear_usuarios_normalizados: []
@@ -38,16 +35,15 @@
   ansible.builtin.assert:
     quiet: true
     that:
-      - objetivo is defined and (objetivo | string | trim | length > 0)
       - _crear_metodo in ['contrasena', 'llave']
       - _crear_origen in ['encuesta', 'catalogo']
       - _crear_sudo_global in ['ninguno', 'completo', 'limitado']
       - _crear_metodo != 'llave' or _crear_llave_origen in ['keys', 'encuesta']
       - not (_crear_renovar | bool) or (_crear_metodo == 'llave' and _crear_llave_origen == 'keys')
     fail_msg: >-
-      Opciones inválidas. Revise: objetivo (servidores/grupo) no puede ir vacío;
-      método = contrasena|llave; origen = encuesta|catalogo; sudo = ninguno|completo|limitado;
-      origen de llave = keys|encuesta. "Renovar llave" solo aplica con método llave y origen keys.
+      Opciones inválidas. Revise: método = contrasena|llave; origen = encuesta|catalogo;
+      sudo = ninguno|completo|limitado; origen de llave = keys|encuesta.
+      "Renovar llave" solo aplica con método llave y origen keys.
 
 # ---------------------------------------------------------------------------
 # Construcción de la lista base
@@ -107,9 +103,6 @@
       No se recibió ningún usuario. En la encuesta escriba una línea por usuario con el formato
       usuario;Nombre completo;grupo(opcional), o elija un catálogo con usuarios.
 
-# ---------------------------------------------------------------------------
-# Llaves SSH
-# ---------------------------------------------------------------------------
 - name: Preparar | Leer llaves públicas desde la encuesta (usuario;llave)
   ansible.builtin.set_fact:
     _crear_llaves_mapa: "{{ _crear_llaves_mapa | combine({(_c[0] | lower): _c[1] | default('')}) }}"
@@ -124,141 +117,8 @@
     - _crear_metodo == 'llave'
     - _crear_llave_origen == 'encuesta'
 
-# Los nombres se validan ANTES de tocar keys/: se usan para formar rutas de archivo.
-- name: Preparar | Validar nombres antes de manejar llaves
-  ansible.builtin.assert:
-    quiet: true
-    that:
-      - item.usuario is match(regex_nombre_usuario)
-      - item.usuario not in usuarios_protegidos
-    fail_msg: "Usuario '{{ item.usuario }}' inválido o protegido."
-  loop: "{{ _crear_base }}"
-  loop_control:
-    label: "{{ item.usuario }}"
-  when: _crear_metodo == 'llave'
-
-- name: Preparar | Llaves del almacén keys/ (reutilizar, generar o renovar)
-  when:
-    - _crear_metodo == 'llave'
-    - _crear_llave_origen == 'keys'
-  block:
-    - name: Preparar | Buscar llave existente de cada usuario en keys/
-      ansible.builtin.stat:
-        path: "{{ crear_llaves_dir }}/{{ item.usuario }}.pub"
-      loop: "{{ _crear_base }}"
-      loop_control:
-        label: "{{ item.usuario }}"
-      register: _crear_stat_llaves
-
-    # Un usuario con 'llave_publica' en su catálogo usa esa llave y no participa.
-    - name: Preparar | Clasificar usuarios (reutilizar / generar / renovar)
-      ansible.builtin.set_fact:
-        _crear_con_llave: >-
-          {{ _crear_stat_llaves.results | selectattr('stat.exists') | map(attribute='item.usuario')
-             | reject('in', _crear_llave_catalogo) | list }}
-        _crear_sin_llave: >-
-          {{ _crear_stat_llaves.results | rejectattr('stat.exists') | map(attribute='item.usuario')
-             | reject('in', _crear_llave_catalogo) | list }}
-      vars:
-        _crear_llave_catalogo: >-
-          {{ _crear_base | selectattr('llave_publica', 'defined') | rejectattr('llave_publica', 'equalto', '')
-             | map(attribute='usuario') | list }}
-
-    - name: Preparar | Definir llaves a generar
-      ansible.builtin.set_fact:
-        _crear_llaves_renovadas: "{{ _crear_con_llave if (_crear_renovar | bool) else [] }}"
-        _crear_llaves_generar: "{{ _crear_sin_llave + (_crear_con_llave if (_crear_renovar | bool) else []) }}"
-
-    - name: Preparar | Resumen de llaves
-      ansible.builtin.debug:
-        msg:
-          - "Reutilizan su llave de keys/: {{ (_crear_con_llave | reject('in', _crear_llaves_renovadas) | join(', ')) or '-' }}"
-          - "Llave nueva (no tenían en keys/): {{ _crear_sin_llave | join(', ') or '-' }}"
-          - "RENOVACIÓN (opción crítica): {{ _crear_llaves_renovadas | join(', ') or '-' }}"
-
-    - name: Preparar | En AWX las llaves nuevas deben quedar guardadas fuera del contenedor
-      ansible.builtin.assert:
-        quiet: true
-        that: >-
-          (not (_crear_es_awx | bool)) or (_crear_llaves_generar | length == 0)
-          or (llaves_git_url | length > 0) or (crear_llaves_custodio_host | length > 0)
-        fail_msg: >-
-          Hay que generar llaves para {{ _crear_llaves_generar | join(', ') }}, pero en AWX el contenedor se borra
-          al terminar y las llaves se perderían (y la próxima vez se generaría otra distinta). Asocie a la
-          plantilla la credencial "Git - publicar llaves" (recomendado) o indique un servidor custodio.
-          No se modificó ningún servidor.
-
-    - name: Preparar | Leer llave pública anterior de las renovaciones
-      ansible.builtin.set_fact:
-        _crear_llaves_anteriores: >-
-          {{ _crear_llaves_anteriores | combine({item: lookup('ansible.builtin.file', crear_llaves_dir ~ '/' ~ item ~ '.pub')}) }}
-      loop: "{{ _crear_llaves_renovadas }}"
-
-    - name: Preparar | Archivar llaves anteriores
-      when: _crear_llaves_renovadas | length > 0
-      block:
-        - name: Preparar | Sello de fecha para el archivo
-          ansible.builtin.set_fact:
-            _crear_sello: "{{ now(fmt='%Y%m%d_%H%M%S') }}"
-
-        - name: Preparar | Carpeta keys/_anteriores
-          ansible.builtin.file:
-            path: "{{ crear_llaves_dir }}/_anteriores"
-            state: directory
-            mode: "0700"
-
-        - name: Preparar | Mover llave anterior a keys/_anteriores/<usuario>_<fecha>
-          ansible.builtin.command:
-            argv: [mv, "{{ crear_llaves_dir }}/{{ item.0 }}{{ item.1 }}", "{{ crear_llaves_dir }}/_anteriores/{{ item.0 }}_{{ _crear_sello }}{{ item.1 }}"]
-            removes: "{{ crear_llaves_dir }}/{{ item.0 }}{{ item.1 }}"
-          loop: "{{ _crear_llaves_renovadas | product(['', '.pub', '.ppk']) | list }}"
-          loop_control:
-            label: "{{ item.0 }}{{ item.1 }}"
-
-    - name: Preparar | Generar llaves nuevas (mismo formato que las existentes)
-      community.crypto.openssh_keypair:
-        path: "{{ crear_llaves_dir }}/{{ item }}"
-        type: "{{ crear_llave_tipo }}"
-        size: "{{ (crear_llave_bits | int) if crear_llave_tipo == 'rsa' else omit }}"
-        comment: "{{ item }}@ansible"
-        private_key_format: ssh
-        mode: "0600"
-      loop: "{{ _crear_llaves_generar }}"
-
-    - name: Preparar | Buscar puttygen para formato PPK
-      ansible.builtin.command: which puttygen
-      register: _crear_puttygen
-      changed_when: false
-      failed_when: false
-      when:
-        - _crear_llaves_generar | length > 0
-        - (crear_llaves_generar_ppk | string | lower) in valores_si
-
-    - name: Preparar | Crear .ppk (PuTTY) de las llaves nuevas
-      ansible.builtin.command:
-        argv: [puttygen, "{{ crear_llaves_dir }}/{{ item }}", -o, "{{ crear_llaves_dir }}/{{ item }}.ppk"]
-        creates: "{{ crear_llaves_dir }}/{{ item }}.ppk"
-      loop: "{{ _crear_llaves_generar }}"
-      when: _crear_puttygen.rc | default(1) == 0
-
-    - name: Preparar | Aviso si no hay puttygen
-      ansible.builtin.debug:
-        msg: >-
-          puttygen no está disponible en el controlador: las llaves nuevas quedan en formato OpenSSH
-          sin .ppk. Para PuTTY: abrir PuTTYgen -> Load (llave privada) -> Save private key.
-      when:
-        - _crear_llaves_generar | length > 0
-        - (crear_llaves_generar_ppk | string | lower) in valores_si
-        - _crear_puttygen.rc | default(1) != 0
-
-    # Se guardan ANTES de tocar servidores: si no se pueden guardar, el job se
-    # detiene y ninguna llave queda instalada sin respaldo.
-    - name: Preparar | Guardar llaves nuevas (Git / custodio)
-      ansible.builtin.include_tasks: persistir_llaves.yml
-      when: _crear_llaves_generar | length > 0
-
 # ---------------------------------------------------------------------------
-# Normalización final: un diccionario homogéneo por usuario
+# Normalización: un diccionario homogéneo por usuario
 # Precedencia: campo del usuario en catálogo > catalogo_defaults > encuesta > defaults del rol
 # ---------------------------------------------------------------------------
 - name: Preparar | Normalizar definición de cada usuario
@@ -269,15 +129,11 @@
     label: "{{ item.usuario }}"
   vars:
     _sudo: "{{ item.sudo | default(_crear_sudo_global, true) | string | lower | trim }}"
-    _ruta_pub: "{{ crear_llaves_dir }}/{{ item.usuario }}.pub"
     _llave: >-
       {%- if item.llave_publica | default('') | length > 0 -%}
       {{ item.llave_publica }}
-      {%- elif _crear_metodo != 'llave' -%}
-      {%- elif _crear_llave_origen == 'encuesta' -%}
+      {%- elif _crear_metodo == 'llave' and _crear_llave_origen == 'encuesta' -%}
       {{ _crear_llaves_mapa[item.usuario] | default('') }}
-      {%- elif _crear_llave_origen == 'keys' and _ruta_pub is file -%}
-      {{ lookup('ansible.builtin.file', _ruta_pub) }}
       {%- endif -%}
     _nopasswd_pedido: "{{ (item.sudo_nopasswd | default(crear_sudo_nopasswd)) | string | lower | trim in valores_si }}"
     _u:
@@ -290,8 +146,8 @@
       shell_solaris: "{{ item.shell_solaris | default(crear_shell_solaris, true) }}"
       home: "{{ item.home | default(crear_home_base ~ '/' ~ item.usuario, true) }}"
       llave_publica: "{{ _llave | trim }}"
-      # Llave que se retira de los servidores cuando hubo renovación ('' si no aplica).
-      llave_anterior: "{{ _crear_llaves_anteriores[item.usuario] | default('') | trim }}"
+      # Llave que se retira de los servidores cuando hay renovación (la completa llaves.yml).
+      llave_anterior: ""
       sudo: "{{ _sudo }}"
       # Con método llave la cuenta no tiene contraseña: sudo con clave sería inutilizable.
       sudo_nopasswd: "{{ (_nopasswd_pedido | bool) or (_crear_metodo == 'llave' and _sudo != 'ninguno') }}"
@@ -307,17 +163,22 @@
     that:
       - item.usuario is match(regex_nombre_usuario)
       - item.usuario not in usuarios_protegidos
+      - item.nombre is not search('[:\n]')
       - item.grupo is match(regex_nombre_usuario)
+      - item.grupo not in grupos_prohibidos
+      - item.grupos | reject('match', regex_nombre_usuario) | list | length == 0
+      - item.grupos | select('in', grupos_prohibidos) | list | length == 0
       - item.uid == '' or (item.uid is match('^[0-9]+$') and (item.uid | int) >= (uid_minimo_humano | int))
       - item.sudo in ['ninguno', 'completo', 'limitado']
       - item.sudo != 'limitado' or (item.sudo_comandos | length > 0)
       - item.sudo_comandos | reject('match', '^(/|sudoedit )') | list | length == 0
-      - _crear_metodo != 'llave' or (item.llave_publica is match(regex_llave_publica))
+      - item.llave_publica == '' or (item.llave_publica is match(regex_llave_publica))
+      - _crear_metodo != 'llave' or _crear_llave_origen == 'keys' or item.llave_publica != ''
     fail_msg: >-
       Usuario '{{ item.usuario }}' inválido. Verifique: nombre en minúsculas (máx. 32), que no sea
-      una cuenta protegida ({{ usuarios_protegidos | join(', ') }}), grupo válido, UID >= {{ uid_minimo_humano }},
-      sudo limitado con al menos un comando, comandos sudo con ruta absoluta
-      {%- if _crear_metodo == 'llave' %} y una llave pública válida (origen: {{ _crear_llave_origen }}){% endif %}.
+      una cuenta protegida ({{ usuarios_protegidos | join(', ') }}), nombre completo sin ':', grupo válido y
+      no privilegiado ({{ grupos_prohibidos | join(', ') }}), UID >= {{ uid_minimo_humano }},
+      sudo limitado con al menos un comando, comandos sudo con ruta absoluta y llave pública válida.
   loop: "{{ crear_usuarios_normalizados }}"
   loop_control:
     label: "{{ item.usuario }}"
@@ -341,6 +202,28 @@
       (mínimo {{ contrasena_longitud_minima }} caracteres, sin saltos de línea).
   no_log: true
   when: _crear_metodo == 'contrasena'
+
+- name: Preparar | Consultar almacén de llaves
+  ansible.builtin.stat:
+    path: "{{ crear_llaves_dir }}"
+  register: _crear_almacen
+  when:
+    - _crear_metodo == 'llave'
+    - _crear_llave_origen == 'keys'
+
+- name: Preparar | Exigir almacén de llaves disponible
+  ansible.builtin.assert:
+    quiet: true
+    that:
+      - _crear_almacen.stat.isdir | default(false)
+      - _crear_almacen.stat.writeable | default(false)
+    fail_msg: >-
+      No se puede escribir en {{ crear_llaves_dir }}: las llaves nuevas se perderían. Verifique que la carpeta
+      exista, que el job tenga permiso de escritura y que la plantilla tenga el grupo de instancias
+      Container_Group_Corbeta. No se modificó ningún servidor.
+  when:
+    - _crear_metodo == 'llave'
+    - _crear_llave_origen == 'keys'
 
 - name: Preparar | Resumen de lo que se va a crear
   ansible.builtin.debug:

@@ -58,7 +58,7 @@
     },
     {
       "question_name": "Catálogo (si origen = catalogo)",
-      "question_description": "Archivo de vars/catalogos/. Para agregar opciones, cree el archivo y añádalo a esta lista.",
+      "question_description": "Archivo de vars/catalogos/. El catálogo manda sobre esta encuesta: usuarios_llave_admin_linux otorga sudo COMPLETO sin contraseña.",
       "required": false,
       "type": "multiplechoice",
       "variable": "crear_catalogo",
@@ -75,20 +75,8 @@
       "new_question": true
     },
     {
-      "question_name": "Grupo primario",
-      "question_description": "Vacío = un grupo con el mismo nombre de cada usuario. Se crea si no existe. El catálogo puede definirlo por usuario.",
-      "required": false,
-      "type": "text",
-      "variable": "crear_grupo_primario",
-      "min": 0,
-      "max": 1024,
-      "default": "",
-      "choices": [],
-      "new_question": true
-    },
-    {
       "question_name": "Grupos secundarios",
-      "question_description": "Separados por coma. Solo se agregan los que ya existen en el servidor (los demás se informan).",
+      "question_description": "Separados por coma. Solo se agregan los que ya existen en el servidor. No se permiten grupos privilegiados (wheel, sudo, root, docker...).",
       "required": false,
       "type": "text",
       "variable": "crear_grupos_secundarios",
@@ -127,7 +115,7 @@
     },
     {
       "question_name": "Origen de la llave (método llave)",
-      "question_description": "keys: usa la llave del usuario guardada en keys/ del proyecto; si no tiene, genera una nueva y la guarda ahí. encuesta: usa la llave pública pegada abajo.",
+      "question_description": "keys: usa la llave guardada del usuario; si no tiene, genera una nueva y la guarda. encuesta: usa la llave pública pegada abajo.",
       "required": false,
       "type": "multiplechoice",
       "variable": "crear_llave_origen",
@@ -154,7 +142,7 @@
     },
     {
       "question_name": "⚠ RENOVAR LLAVE (opción crítica)",
-      "question_description": "SI genera una llave NUEVA aunque el usuario ya tenga una en keys/. La anterior se archiva y se retira de los servidores del objetivo. En servidores NO incluidos en el objetivo el usuario seguirá entrando solo con la llave anterior. Deje NO salvo pérdida o compromiso de la llave.",
+      "question_description": "SI genera una llave NUEVA aunque el usuario ya tenga una. La anterior se archiva y se retira de los servidores del objetivo. En servidores NO incluidos en el objetivo el usuario seguirá entrando solo con la llave anterior. Deje NO salvo pérdida o compromiso de la llave.",
       "required": true,
       "type": "multiplechoice",
       "variable": "crear_renovar_llave",
@@ -165,18 +153,6 @@
         "SI",
         "NO"
       ],
-      "new_question": true
-    },
-    {
-      "question_name": "Servidor custodio de llaves (opcional)",
-      "question_description": "Servidor del inventario donde además se copian las llaves nuevas (/root/llaves_generadas). En AWX es obligatorio solo si la plantilla no tiene la credencial \"Git - publicar llaves\".",
-      "required": false,
-      "type": "text",
-      "variable": "crear_llaves_custodio_host",
-      "min": 0,
-      "max": 1024,
-      "default": "",
-      "choices": [],
       "new_question": true
     },
     {

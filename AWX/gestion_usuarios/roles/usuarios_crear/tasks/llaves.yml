@@ -1,0 +1,131 @@
+---
+# =============================================================================
+# Llaves del almacén (crear_llaves_dir). Se ejecuta en localhost después de
+# validar la encuesta y los servidores, y antes de crear cuentas.
+#   - Si el usuario ya tiene llave se REUTILIZA.
+#   - Solo se genera si no tiene, o si se marcó "Renovar llave".
+#   - Cada usuario queda con 3 archivos: <usuario>, <usuario>.pub, <usuario>.ppk.
+# Las llaves nuevas se crean primero en una carpeta temporal: si algo falla, la
+# llave anterior sigue intacta.
+# =============================================================================
+
+- name: Llaves | Reutilizar, generar o renovar
+  when:
+    - _crear_metodo == 'llave'
+    - _crear_llave_origen == 'keys'
+  block:
+    - name: Llaves | Buscar llave existente de cada usuario
+      ansible.builtin.stat:
+        path: "{{ crear_llaves_dir }}/{{ item }}.pub"
+      loop: "{{ crear_usuarios_normalizados | selectattr('llave_publica', 'equalto', '') | map(attribute='usuario') | list }}"
+      register: _crear_stat_llaves
+
+    - name: Llaves | Clasificar usuarios
+      ansible.builtin.set_fact:
+        _crear_con_llave: "{{ _crear_stat_llaves.results | selectattr('stat.exists') | map(attribute='item') | list }}"
+        _crear_sin_llave: "{{ _crear_stat_llaves.results | rejectattr('stat.exists') | map(attribute='item') | list }}"
+        _crear_sello: "{{ now(fmt='%Y%m%d_%H%M%S') }}"
+
+    - name: Llaves | Definir llaves a generar
+      ansible.builtin.set_fact:
+        _crear_llaves_renovadas: "{{ _crear_con_llave if (_crear_renovar | bool) else [] }}"
+        _crear_llaves_generar: "{{ _crear_sin_llave + (_crear_con_llave if (_crear_renovar | bool) else []) }}"
+        _crear_llaves_anteriores: {}
+
+    - name: Llaves | Resumen
+      ansible.builtin.debug:
+        msg:
+          - "Reutilizan su llave: {{ (_crear_con_llave | reject('in', _crear_llaves_renovadas) | join(', ')) or '-' }}"
+          - "Llave nueva (no tenían): {{ _crear_sin_llave | join(', ') or '-' }}"
+          - "RENOVACIÓN (opción crítica): {{ _crear_llaves_renovadas | join(', ') or '-' }}"
+
+    - name: Llaves | Leer llave pública anterior de las renovaciones
+      ansible.builtin.set_fact:
+        _crear_llaves_anteriores: >-
+          {{ _crear_llaves_anteriores | combine({item: lookup('ansible.builtin.file', crear_llaves_dir ~ '/' ~ item ~ '.pub')}) }}
+      loop: "{{ _crear_llaves_renovadas }}"
+
+    - name: Llaves | Generar llaves nuevas
+      when: _crear_llaves_generar | length > 0
+      vars:
+        _crear_tmp: "{{ crear_llaves_dir }}/.tmp_{{ _crear_sello }}"
+      block:
+        - name: Llaves | Carpeta temporal
+          ansible.builtin.file:
+            path: "{{ _crear_tmp }}"
+            state: directory
+            mode: "0700"
+
+        - name: Llaves | Crear par RSA
+          ansible.builtin.command:
+            argv: [ssh-keygen, -q, -t, rsa, -b, "{{ crear_llave_bits }}", -N, "", -C, "{{ item }}@ansible", -f, "{{ _crear_tmp }}/{{ item }}"]
+            creates: "{{ _crear_tmp }}/{{ item }}"
+          loop: "{{ _crear_llaves_generar }}"
+
+        - name: Llaves | Crear .ppk
+          generar_ppk:
+            path: "{{ _crear_tmp }}/{{ item }}"
+            dest: "{{ _crear_tmp }}/{{ item }}.ppk"
+          loop: "{{ _crear_llaves_generar }}"
+
+        - name: Llaves | Carpeta de llaves anteriores
+          ansible.builtin.file:
+            path: "{{ crear_llaves_dir }}/_anteriores"
+            state: directory
+            mode: "0700"
+          when: _crear_llaves_renovadas | length > 0
+
+        - name: Llaves | Archivar llave anterior
+          ansible.builtin.command:
+            argv: [mv, "{{ crear_llaves_dir }}/{{ item.0 }}{{ item.1 }}", "{{ crear_llaves_dir }}/_anteriores/{{ item.0 }}_{{ _crear_sello }}{{ item.1 }}"]
+            removes: "{{ crear_llaves_dir }}/{{ item.0 }}{{ item.1 }}"
+          loop: "{{ _crear_llaves_renovadas | product(['', '.pub', '.ppk']) | list }}"
+          loop_control:
+            label: "{{ item.0 }}{{ item.1 }}"
+
+        - name: Llaves | Guardar llaves nuevas en el almacén
+          ansible.builtin.command:
+            argv: [mv, "{{ _crear_tmp }}/{{ item.0 }}{{ item.1 }}", "{{ crear_llaves_dir }}/{{ item.0 }}{{ item.1 }}"]
+            removes: "{{ _crear_tmp }}/{{ item.0 }}{{ item.1 }}"
+          loop: "{{ _crear_llaves_generar | product(['', '.pub', '.ppk']) | list }}"
+          loop_control:
+            label: "{{ item.0 }}{{ item.1 }}"
+      always:
+        - name: Llaves | Borrar carpeta temporal
+          ansible.builtin.file:
+            path: "{{ _crear_tmp }}"
+            state: absent
+
+    # Completa el tercer archivo sin cambiar la llave del usuario.
+    - name: Llaves | Crear .ppk faltante de llaves existentes
+      generar_ppk:
+        path: "{{ crear_llaves_dir }}/{{ item }}"
+        dest: "{{ crear_llaves_dir }}/{{ item }}.ppk"
+      loop: "{{ _crear_con_llave | reject('in', _crear_llaves_renovadas) | list }}"
+      when: (crear_llaves_dir ~ '/' ~ item) is file
+
+    - name: Llaves | Iniciar lista final
+      ansible.builtin.set_fact:
+        _crear_finales: []
+
+    - name: Llaves | Completar llave de cada usuario
+      ansible.builtin.set_fact:
+        _crear_finales: "{{ _crear_finales + [item | combine({'llave_publica': _pub | trim, 'llave_anterior': _crear_llaves_anteriores[item.usuario] | default('') | trim})] }}"
+      loop: "{{ crear_usuarios_normalizados }}"
+      loop_control:
+        label: "{{ item.usuario }}"
+      vars:
+        _pub: "{{ item.llave_publica if item.llave_publica | length > 0 else lookup('ansible.builtin.file', crear_llaves_dir ~ '/' ~ item.usuario ~ '.pub') }}"
+
+    - name: Llaves | Validar llaves finales
+      ansible.builtin.assert:
+        quiet: true
+        that: item.llave_publica is match(regex_llave_publica)
+        fail_msg: "La llave pública de '{{ item.usuario }}' no es válida. No se modificó ningún servidor."
+      loop: "{{ _crear_finales }}"
+      loop_control:
+        label: "{{ item.usuario }}"
+
+    - name: Llaves | Publicar lista final
+      ansible.builtin.set_fact:
+        crear_usuarios_normalizados: "{{ _crear_finales }}"

@@ -3,53 +3,72 @@
 # OPCIÓN 2 - Cambiar contraseña en cada servidor.
 # =============================================================================
 
-- name: Contraseña | Validar sistema operativo soportado
-  ansible.builtin.assert:
-    quiet: true
-    that: ansible_system in ['Linux', 'SunOS']
-    fail_msg: "Sistema operativo no soportado: {{ ansible_system }}"
+# Comprobaciones (solo lectura): si fallan en un servidor, se detienen todos antes de cambiar nada.
+- name: Contraseña | Comprobaciones previas en los servidores
+  any_errors_fatal: true
+  block:
+    - name: Contraseña | Validar sistema operativo soportado
+      ansible.builtin.assert:
+        quiet: true
+        that: ansible_system in ['Linux', 'SunOS']
+        fail_msg: "Sistema operativo no soportado: {{ ansible_system }}"
 
-- name: Contraseña | Consultar cuentas del servidor
-  ansible.builtin.getent:
-    database: passwd
+    - name: Contraseña | Consultar cuentas del servidor
+      ansible.builtin.getent:
+        database: passwd
 
-# getent passwd -> {usuario: [x, uid, gid, gecos, home, shell]}
-- name: Contraseña | Clasificar usuarios
-  ansible.builtin.set_fact:
-    _cp_lista: "{{ hostvars['localhost']['contrasena_lista'] }}"
-    _cp_inexistentes: "{{ hostvars['localhost']['contrasena_lista'] | reject('in', ansible_facts.getent_passwd.keys() | list) | list }}"
-    _cp_servicio: []
+    # getent passwd -> {usuario: [x, uid, gid, gecos, home, shell]}
+    - name: Contraseña | Clasificar usuarios
+      ansible.builtin.set_fact:
+        _cp_lista: "{{ hostvars['localhost']['contrasena_lista'] }}"
+        _cp_inexistentes: "{{ hostvars['localhost']['contrasena_lista'] | reject('in', ansible_facts.getent_passwd.keys() | list) | list }}"
+        _cp_servicio: []
+        _cp_uid0: []
 
-- name: Contraseña | Detectar cuentas de servicio (UID entre 1 y uid_minimo_humano - 1)
-  ansible.builtin.set_fact:
-    _cp_servicio: "{{ _cp_servicio + [item] }}"
-  loop: "{{ _cp_lista | select('in', ansible_facts.getent_passwd.keys() | list) | list }}"
-  when:
-    - (ansible_facts.getent_passwd[item][1] | int) > 0
-    - (ansible_facts.getent_passwd[item][1] | int) < (uid_minimo_humano | int)
-    - not ((contrasena_permitir_cuentas_servicio | string | lower | trim) in valores_si)
+    - name: Contraseña | Detectar cuentas de servicio (UID entre 1 y uid_minimo_humano - 1)
+      ansible.builtin.set_fact:
+        _cp_servicio: "{{ _cp_servicio + [item] }}"
+      loop: "{{ _cp_lista | select('in', ansible_facts.getent_passwd.keys() | list) | list }}"
+      when:
+        - (ansible_facts.getent_passwd[item][1] | int) > 0
+        - (ansible_facts.getent_passwd[item][1] | int) < (uid_minimo_humano | int)
+        - not ((contrasena_permitir_cuentas_servicio | string | lower | trim) in valores_si)
 
-- name: Contraseña | Definir usuarios a modificar
-  ansible.builtin.set_fact:
-    _cp_aplicar: "{{ _cp_lista | reject('in', _cp_inexistentes) | reject('in', _cp_servicio) | list }}"
+    - name: Contraseña | Detectar cuentas con UID 0
+      ansible.builtin.set_fact:
+        _cp_uid0: "{{ _cp_uid0 + [item] }}"
+      loop: "{{ _cp_lista | select('in', ansible_facts.getent_passwd.keys() | list) | list }}"
+      when: (ansible_facts.getent_passwd[item][1] | int) == 0
+
+    - name: Contraseña | Una cuenta con UID 0 es crítica aunque no esté en la lista
+      ansible.builtin.assert:
+        quiet: true
+        that: >-
+          _cp_uid0 | length == 0
+          or ((hostvars['localhost']['_cp_confirmada'] | bool) and not (hostvars['localhost']['objetivo_amplio'] | bool))
+        fail_msg: >-
+          En {{ inventory_hostname }} estas cuentas tienen UID 0: {{ _cp_uid0 | join(', ') }}. Escriba CONFIRMAR e
+          indique un objetivo concreto. No se modificó ningún servidor.
+
+    - name: Contraseña | Definir usuarios a modificar
+      ansible.builtin.set_fact:
+        _cp_aplicar: "{{ _cp_lista | reject('in', _cp_inexistentes) | reject('in', _cp_servicio) | list }}"
+
+    - name: Contraseña | Fallar si se exige que existan todos
+      ansible.builtin.fail:
+        msg: "Usuarios inexistentes en {{ inventory_hostname }}: {{ _cp_inexistentes | join(', ') }}"
+      when:
+        - _cp_inexistentes | length > 0
+        - not ((contrasena_omitir_inexistentes | string | lower | trim) in valores_si)
 
 - name: Contraseña | Usuarios que no existen en este servidor
   ansible.builtin.debug:
     msg: "No existen en {{ inventory_hostname }}: {{ _cp_inexistentes | join(', ') }}"
   when: _cp_inexistentes | length > 0
 
-- name: Contraseña | Fallar si se exige que existan todos
-  ansible.builtin.fail:
-    msg: "Usuarios inexistentes en {{ inventory_hostname }}: {{ _cp_inexistentes | join(', ') }}"
-  when:
-    - _cp_inexistentes | length > 0
-    - not ((contrasena_omitir_inexistentes | string | lower | trim) in valores_si)
-
 - name: Contraseña | Cuentas de servicio omitidas
   ansible.builtin.debug:
-    msg: >-
-      Omitidas por ser cuentas de servicio (UID < {{ uid_minimo_humano }}): {{ _cp_servicio | join(', ') }}.
-      Para incluirlas responda SI a "Permitir cuentas de servicio".
+    msg: "Omitidas por ser cuentas de servicio (UID < {{ uid_minimo_humano }}): {{ _cp_servicio | join(', ') }}."
   when: _cp_servicio | length > 0
 
 - name: Contraseña | Advertir si se cambia la clave de la cuenta de conexión de Ansible
@@ -118,6 +137,7 @@
 - name: Contraseña | Verificar que /etc/shadow registre el cambio (Linux)
   ansible.builtin.getent:
     database: shadow
+  no_log: true  # el resultado incluye los hashes de todas las cuentas
   when:
     - ansible_system == 'Linux'
     - _cp_aplicar | length > 0

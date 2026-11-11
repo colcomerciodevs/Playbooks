@@ -9,7 +9,8 @@ valores_si: ['si', 'sí', 's', 'yes', 'y', 'true', '1', 'on']
 # UID desde el cual una cuenta se considera de persona (no de servicio).
 uid_minimo_humano: 1000
 
-# Cuentas que NUNCA se crean, modifican ni eliminan con las opciones 1 y 4.
+# Cuentas críticas: NUNCA se crean, modifican ni eliminan con las opciones 1 y 4.
+# En la opción 2 cambiar su clave exige confirmación y no se permite con objetivo all.
 # Incluye las cuentas con las que Ansible/AWX se conecta: si se tocan,
 # se pierde el acceso a los servidores.
 usuarios_protegidos:
@@ -35,6 +36,16 @@ usuarios_protegidos:
   - tux
   - azureuser
   - awx
+  - opc
+  - ec2-user
+  - cloud-user
+  - ubuntu
+
+# Grupos que dan privilegios: no se pueden asignar desde la opción 1.
+grupos_prohibidos: [root, wheel, sudo, admin, adm, shadow, disk, kmem, docker, lxd, libvirt]
+
+# Carpeta persistente (volumen del grupo de instancias Container_Group_Corbeta).
+gestion_dir_persistente: /data/work/gestion_usuarios
 
 # Formato aceptado para nombres de usuario y grupo.
 regex_nombre_usuario: '^[a-z_][a-z0-9_.-]{0,31}$'

@@ -1,8 +1,6 @@
 ---
-# AWX instala automáticamente estas colecciones al sincronizar el proyecto
-# (ruta reconocida: collections/requirements.yml).
-# Desde la línea de comandos:  ansible-galaxy collection install -r collections/requirements.yml
+# Dependencia del proyecto (authorized_key). Se entrega ya instalada en
+# collections/ansible_collections porque AWX no instala colecciones en proyectos Manual.
 collections:
-  - name: ansible.posix        # authorized_key
-  - name: community.crypto     # openssh_keypair (solo si se generan llaves)
-  - name: community.general    # mail (envío opcional del reporte de auditoría)
+  - name: ansible.posix
+    version: 1.5.4

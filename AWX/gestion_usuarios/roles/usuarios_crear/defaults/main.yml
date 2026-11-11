@@ -26,40 +26,26 @@ crear_contrasena_inicial: ""
 crear_forzar_cambio: "SI"         # obliga a cambiarla en el primer inicio de sesión
 
 # ---- Método llave -----------------------------------------------------------
-# keys     : almacén keys/ del proyecto (una llave por usuario: keys/<usuario>, .pub, .ppk).
+# keys     : almacén de llaves (una por usuario: <usuario>, <usuario>.pub, <usuario>.ppk).
 #            Si el usuario YA tiene llave se reutiliza, en cualquier servidor.
-#            Si no tiene, se genera una nueva y se guarda en keys/.
-# encuesta : se usa la llave pública pegada en la encuesta (no se guarda en keys/).
+#            Si no tiene, se genera una nueva y se guarda en el almacén.
+# encuesta : se usa la llave pública pegada en la encuesta (no se guarda en el almacén).
 crear_llave_origen: keys
 # Una línea por usuario:  usuario;ssh-rsa AAAA... comentario   (solo origen encuesta)
 crear_llaves_texto: ""
-crear_llaves_dir: "{{ playbook_dir }}/keys"
+# Almacén persistente: requiere el grupo de instancias Container_Group_Corbeta en la plantilla.
+crear_llaves_dir: "{{ gestion_dir_persistente }}/keys"
 crear_llaves_exclusivas: "NO"     # SI = borra cualquier otra llave del authorized_keys
 
-# OPCIÓN CRÍTICA. SI = genera una llave NUEVA aunque ya exista en keys/:
-#   - la llave anterior se archiva en keys/_anteriores/<usuario>_<fecha>.*
+# OPCIÓN CRÍTICA. SI = genera una llave NUEVA aunque ya exista en el almacén:
+#   - la llave anterior se archiva en <almacén>/_anteriores/<usuario>_<fecha>.*
 #   - en los servidores del objetivo se quita la llave anterior y se instala la nueva
 #     (también en cuentas que ya existían)
 #   - en servidores NO incluidos en el objetivo seguirá funcionando solo la llave anterior
 crear_renovar_llave: "NO"
 
-# Llaves nuevas: mismo formato que las existentes en keys/ (RSA 4096 bits, sin frase de paso)
-crear_llave_tipo: rsa             # rsa | ed25519
-crear_llave_bits: 4096            # solo aplica a rsa
-crear_llaves_generar_ppk: "SI"    # .ppk para PuTTY; requiere puttygen en el controlador (si falta, se avisa)
-
-# Persistencia de llaves nuevas cuando se ejecuta en AWX (el contenedor se borra al terminar):
-# 1) Publicarlas en el repositorio Git (recomendado). Lo inyecta la credencial
-#    "Git - publicar llaves" (ver manual); también se puede pasar como extra vars.
-llaves_git_url: ""                # https://git.empresa.local/infra/gestion_usuarios.git
-llaves_git_rama: main
-llaves_git_usuario: ""
-llaves_git_token: ""
-llaves_git_autor_nombre: AWX gestion_usuarios
-llaves_git_autor_correo: awx@empresa.local
-# 2) Además o en su lugar, depositarlas en un servidor custodio del inventario.
-crear_llaves_custodio_host: ""
-crear_llaves_custodio_ruta: /root/llaves_generadas
+# Llaves nuevas: mismo formato que las existentes (RSA 4096 bits, sin frase de paso)
+crear_llave_bits: 4096
 
 # ---- sudo -------------------------------------------------------------------
 crear_sudo_nivel: ninguno         # ninguno | completo | limitado

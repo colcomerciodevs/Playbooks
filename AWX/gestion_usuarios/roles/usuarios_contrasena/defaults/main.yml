@@ -4,16 +4,19 @@
 # =============================================================================
 
 # Uno o varios usuarios, separados por coma, espacio o salto de línea.
-contrasena_usuarios: root
+contrasena_usuarios: ""
+
+# Para cuentas críticas (vars/comunes.yml -> usuarios_protegidos, o UID 0) hay que escribir CONFIRMAR.
+contrasena_confirmar_critica: ""
 
 # Llegan desde la encuesta (campos tipo contraseña: AWX los cifra y no los muestra).
 contrasena_nueva: ""
 contrasena_confirmacion: ""
 
 # SI = la contraseña queda sin caducidad (chage -m 0 -M 99999 -I -1).
-#      Necesario en cuentas críticas como root cuando el hardening fuerza caducidad.
+#      Se usa en cuentas críticas cuando el hardening fuerza caducidad; no se recomienda en cuentas personales.
 # NO = se conserva la política de caducidad que ya tenga la cuenta.
-contrasena_nunca_caduca: "SI"
+contrasena_nunca_caduca: "NO"
 
 # SI = además elimina la fecha de expiración de la CUENTA (chage -E -1).
 #      Úselo si la cuenta tiene fecha de vencimiento y debe quedar permanente.
@@ -21,10 +24,10 @@ contrasena_quitar_expiracion_cuenta: "NO"
 
 # SI = obliga al usuario a cambiar la clave en su próximo inicio de sesión.
 #      Incompatible con "nunca caduca" y prohibido para root y cuentas protegidas.
-contrasena_forzar_cambio: "NO"
+contrasena_forzar_cambio: "SI"
 
 # SI = reinicia intentos fallidos (faillock / pam_tally2) y quita expiración vencida.
-contrasena_desbloquear: "SI"
+contrasena_desbloquear: "NO"
 
 # Las cuentas con UID entre 1 y 999 son de servicio. Por seguridad no se les
 # cambia la clave salvo que se habilite explícitamente. root (UID 0) sí se permite.
