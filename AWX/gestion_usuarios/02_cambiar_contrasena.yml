@@ -1,15 +1,18 @@
 ---
 # =============================================================================
-# OPCIÓN 2 - CAMBIAR CONTRASEÑA (con política "nunca caduca" opcional)
+# OPCIÓN 2 - CAMBIAR CONTRASEÑA O FORZAR SU CAMBIO
 #
-# AWX: plantilla "USUARIOS | 2 - Cambiar contraseña" con la encuesta
-#      awx/encuestas/02_cambiar_contrasena.json
+# AWX: dos plantillas usan este playbook; cada una fija la acción en sus variables:
+#   "USUARIOS | 2a - Cambiar contraseña"            contrasena_accion=cambiar
+#                                                    (awx/encuestas/02a_cambiar_contrasena.json)
+#   "USUARIOS | 2b - Forzar cambio de contraseña"   contrasena_accion=solo_forzar_cambio
+#                                                    (awx/encuestas/02b_forzar_cambio.json; admite catálogo
+#                                                    o todas las cuentas UID >= 1000)
 #
-# CLI (la clave se pide de forma interactiva para que no quede en el historial):
+# CLI (la clave va en un archivo cifrado con ansible-vault, no en el historial):
 #   ansible-playbook -i inventario/hosts.ini 02_cambiar_contrasena.yml \
-#     -e objetivo=PPU_GEOPOS -e contrasena_usuarios=root -e contrasena_nunca_caduca=SI \
-#     -e @/ruta/segura/clave.yml          # archivo cifrado con ansible-vault que define
-#                                         # contrasena_nueva y contrasena_confirmacion
+#     -e objetivo=PPU_GEOPOS -e contrasena_usuarios=jperez \
+#     -e @/ruta/segura/clave.yml          # define contrasena_nueva y contrasena_confirmacion
 # =============================================================================
 
 - name: "Opción 2 | Validar encuesta"

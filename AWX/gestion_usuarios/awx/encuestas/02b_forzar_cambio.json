@@ -52,7 +52,6 @@
       "max": 1024,
       "default": "",
       "choices": [
-        "usuarios_generales",
         "admins_linux",
         "cuentas_de_servicio",
         "soporte_zona_norte",

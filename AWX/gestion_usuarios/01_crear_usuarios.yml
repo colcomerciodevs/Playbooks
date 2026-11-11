@@ -2,13 +2,14 @@
 # =============================================================================
 # OPCIÓN 1 - CREAR USUARIOS (con contraseña o con llave SSH)
 #
-# AWX: plantilla "USUARIOS | 1 - Crear usuarios" con la encuesta
-#      awx/encuestas/01_crear_usuarios.json
+# AWX: dos plantillas usan este playbook; cada una fija el método en sus variables:
+#   "USUARIOS | 1a - Crear con contraseña"  crear_metodo_acceso=contrasena  (awx/encuestas/01a_crear_con_contrasena.json)
+#   "USUARIOS | 1b - Crear con llave"       crear_metodo_acceso=llave       (awx/encuestas/01b_crear_con_llave.json)
 #
 # Orden: validar encuesta -> verificar servidores (solo lectura) -> llaves ->
 # crear cuentas. Si una validación falla no se modifica nada.
 #
-# LLAVES (método llave, origen keys): viven en /data/work/gestion_usuarios/keys.
+# LLAVES (método llave): viven en /data/work/gestion_usuarios/keys.
 # Si el usuario ya tiene llave se REUTILIZA en cualquier servidor. Solo se genera
 # una nueva si no tiene, o si se marca la opción crítica crear_renovar_llave=SI.
 # =============================================================================

@@ -290,6 +290,22 @@ BLOQUEAR = [
 ]
 
 
+# IDs en AWX (awxtest.coldecom.com). Si se recrea un objeto en AWX, actualice este dato.
+AWX_ID = {
+    'USUARIOS | 0 - Relación de confianza': 60,
+    'USUARIOS | 1a - Crear con contraseña': 47,
+    'USUARIOS | 1b - Crear con llave': 58,
+    'USUARIOS | 2a - Cambiar contraseña': 48,
+    'USUARIOS | 2b - Forzar cambio de contraseña': 59,
+    'USUARIOS | 3 - Auditoría': 49,
+    'USUARIOS | 4 - Bloquear o eliminar': 50,
+    'USUARIOS | WF - Crear con contraseña': 54,
+    'USUARIOS | WF - Crear con llave': 61,
+    'USUARIOS | WF - Cambiar contraseña': 52,
+    'USUARIOS | WF - Forzar cambio de contraseña': 63,
+    'USUARIOS | WF - Bloquear o eliminar': 56,
+}
+
 QUE_HACE_WF = {
     'wf_crear_con_contrasena': 'Pide aprobación, crea cuentas con contraseña inicial y audita.',
     'wf_crear_con_llave': 'Pide aprobación, crea cuentas con llave SSH del almacén y audita.',
@@ -310,22 +326,25 @@ def portada():
                 ('Plantilla', 'une playbook,\ninventario y llave'), ('Playbook y rol', 'validan\ny ejecutan'), ('Servidores', 'se aplica\nel cambio')]),
          P('Workflows: lo que normalmente se lanza', 'h1'),
          P('Cada workflow tiene tres nodos y su encuesta es la de la plantilla que protege, más el ticket. La plantilla 3 (auditoría) no tiene workflow porque no modifica nada, y la 0 (relación de confianza) tampoco.'),
-         tabla(['Workflow', 'Qué hace', 'Plantilla del nodo 2', 'Preguntas'],
-               [[w['name'], QUE_HACE_WF[k], enc.ENCUESTAS[w['base']]['name'].split('| ')[1], str(len(enc.ENCUESTAS[w['base']]['spec']) + 1)]
-                for k, w in enc.WORKFLOWS.items()], [0.30, 0.35, 0.22, 0.13]),
+         tabla(['ID', 'Workflow', 'Qué hace', 'Plantilla del nodo 2', 'Preguntas'],
+               [[str(AWX_ID[w['name']]), w['name'], QUE_HACE_WF[k],
+                 '%s (ID %d)' % (enc.ENCUESTAS[w['base']]['name'].split('| ')[1], AWX_ID[enc.ENCUESTAS[w['base']]['name']]),
+                 str(len(enc.ENCUESTAS[w['base']]['spec']) + 1)]
+                for k, w in enc.WORKFLOWS.items()], [0.06, 0.28, 0.31, 0.22, 0.13]),
          Spacer(1, 7),
          Flujo([('1. Aprobación', 'revisa ticket, objetivo\ny usuarios'), ('2. Plantilla', 'aplica el cambio\nsolicitado'), ('3. Auditoría', 'verifica cómo\nquedaron las cuentas')],
                pies={0: 'Rechazada o vencida:\ntermina sin cambios', 1: 'Si falla, no\ncorre la auditoría'}),
          P('El ticket y las demás respuestas se pasan a los nodos. La auditoría usa el mismo objetivo y sus valores por defecto.'),
          P('Plantillas', 'h1'),
-         tabla(['Plantilla', 'Playbook', 'Valores fijos', 'Preguntas'],
-               [[e['name'], 'AWX/gestion_usuarios/' + enc.PLANTILLAS[k]['playbook'],
+         tabla(['ID', 'Plantilla', 'Playbook', 'Valores fijos', 'Preguntas'],
+               [[str(AWX_ID[e['name']]), e['name'], 'AWX/gestion_usuarios/' + enc.PLANTILLAS[k]['playbook'],
                  ', '.join('%s=%s' % x for x in enc.PLANTILLAS[k]['fijas'].items()) or '-', str(len(e['spec']))]
-                for k, e in enc.ENCUESTAS.items()], [0.26, 0.35, 0.26, 0.13], ['c', 'c', 'm', 'c']),
+                for k, e in enc.ENCUESTAS.items()], [0.06, 0.24, 0.32, 0.25, 0.13], ['c', 'c', 'c', 'm', 'c']),
          P('Los valores fijos van en las variables de la plantilla: la encuesta no los pregunta y quien lanza no los puede cambiar.', 'c'),
          Spacer(1, 4),
-         P('Todas usan: proyecto <b>Playbooks-Corbeta</b>, inventario <b>Inventario 2026 - Gestion Usuarios</b>, credencial '
-           '<b>SSH Private Key - ECDSA</b>, entorno <b>Corbeta AWX-EE</b> y grupo de instancias <b>Container_Group_Corbeta</b>.'),
+         P('Todas usan: proyecto <b>Playbooks-Corbeta</b>, inventario <b>Inventario 2026 - Gestion Usuarios</b>, entorno '
+           '<b>Corbeta AWX-EE</b> y grupo de instancias <b>Container_Group_Corbeta</b>. Todas salvo la 0 usan la credencial '
+           '<b>SSH Private Key - ECDSA</b>; la 0 se conecta con el usuario y la contraseña de su encuesta.'),
          PageBreak(),
          P('Qué pasa dentro de cada ejecución', 'h1'),
          P('Las plantillas que modifican siguen tres etapas. Si la etapa 1 o 2 falla, no se cambia ningún servidor.'),
@@ -372,31 +391,31 @@ def main():
     historia += seccion(
         'Opción 0 · Relación de confianza', 'Crea o completa las cuentas de automatización iacolcoauto y ansible_test: llaves, sudo sin '
         'contraseña, sin caducidad y acceso SSH. Es el prerrequisito de las demás opciones.',
-        '00_relacion_confianza.yml', 'usuarios_automatizacion', 'Plantilla 0 (sin workflow)', '00_relacion_confianza', RELACION,
+        '00_relacion_confianza.yml', 'usuarios_automatizacion', 'Plantilla 0 (ID 60), sin workflow', '00_relacion_confianza', RELACION,
         'el objetivo no existe, falta el usuario o la contraseña de conexión, el servidor no es Linux, o sshd_config tiene errores.',
         nota('<b>Conexión.</b> Usa el usuario y la contraseña de la encuesta, no la credencial de AWX, para poder entrar donde ansible_test '
              'aún no existe. No elimina ni recrea cuentas: si ya existen, solo completa lo que falte. Las llaves públicas están en '
              'roles/usuarios_automatizacion/files/.'))
     historia += seccion(
         'Opción 1a · Crear con contraseña', 'Crea cuentas con contraseña inicial, sus grupos y su nivel de sudo.',
-        '01_crear_usuarios.yml', 'usuarios_crear', 'Plantilla 1a y WF - Crear con contraseña', '01a_crear_con_contrasena', CREAR_CLAVE,
+        '01_crear_usuarios.yml', 'usuarios_crear', 'Plantilla 1a (ID 47) y WF - Crear con contraseña (ID 54)', '01a_crear_con_contrasena', CREAR_CLAVE,
         'el objetivo no existe, un usuario es crítico o inválido, un grupo es privilegiado, la contraseña es corta, '
         'se quiere actualizar una cuenta de servicio, o sshd_config tiene errores (cuando hay que tocar AllowUsers).')
     historia += seccion(
         'Opción 1b · Crear con llave', 'Crea cuentas que entran solo con llave SSH, con sus grupos y su nivel de sudo.',
-        '01_crear_usuarios.yml', 'usuarios_crear', 'Plantilla 1b y WF - Crear con llave', '01b_crear_con_llave', CREAR_LLAVE,
+        '01_crear_usuarios.yml', 'usuarios_crear', 'Plantilla 1b (ID 58) y WF - Crear con llave (ID 61)', '01b_crear_con_llave', CREAR_LLAVE,
         'el objetivo no existe, un usuario es crítico o inválido, un grupo es privilegiado, no se puede escribir en la '
         'carpeta de llaves, se quiere actualizar una cuenta de servicio, o sshd_config tiene errores (cuando hay que tocar AllowUsers).',
         nota('<b>Llaves.</b> Todas viven en /data/work/gestion_usuarios/keys. Si el usuario ya tiene llave se reutiliza en cualquier servidor; '
              'solo se genera otra si no tiene o si se marca Renovar. Con sudo, la regla queda sin contraseña porque la cuenta no tiene clave.'))
     historia += seccion(
         'Opción 2a · Cambiar contraseña', 'Asigna una contraseña nueva a una o varias cuentas, con caducidad y desbloqueo opcionales.',
-        '02_cambiar_contrasena.yml', 'usuarios_contrasena', 'Plantilla 2a y WF - Cambiar contraseña', '02a_cambiar_contrasena', CAMBIAR,
+        '02_cambiar_contrasena.yml', 'usuarios_contrasena', 'Plantilla 2a (ID 48) y WF - Cambiar contraseña (ID 52)', '02a_cambiar_contrasena', CAMBIAR,
         'las claves no coinciden o son cortas, se pide "nunca caduca" y "forzar cambio" a la vez, o se intenta cambiar una cuenta crítica '
         'sin CONFIRMAR o con all.')
     historia += seccion(
         'Opción 2b · Forzar cambio de contraseña', 'Conserva la contraseña actual y obliga a cambiarla en el próximo ingreso. Se puede aplicar a una lista, a un catálogo o a todas las cuentas UID ≥ 1000.',
-        '02_cambiar_contrasena.yml', 'usuarios_contrasena', 'Plantilla 2b y WF - Forzar cambio de contraseña', '02b_forzar_cambio', FORZAR,
+        '02_cambiar_contrasena.yml', 'usuarios_contrasena', 'Plantilla 2b (ID 59) y WF - Forzar cambio de contraseña (ID 63)', '02b_forzar_cambio', FORZAR,
         'la lista incluye una cuenta crítica, o una cuenta de la lista no tiene contraseña (solo llave o bloqueada): '
         'si se le forzara el cambio no podría entrar.',
         nota('<b>En bloque</b> (catálogo o todos UID ≥ 1000) se omiten, sin detener el job: cuentas críticas, cuentas de servicio '
@@ -404,11 +423,11 @@ def main():
              'ejecute la auditoría: la columna "Se le forzaría el cambio" muestra exactamente a quiénes se aplicaría.'))
     historia += seccion(
         'Opción 3 · Auditoría', 'Revisa cuentas, contraseñas, llaves, último acceso y sudo. No modifica los servidores.',
-        '03_auditoria_usuarios.yml', 'usuarios_auditoria', 'Plantilla 3 y último nodo de los 5 workflows', '03_auditoria_usuarios', AUDITORIA,
+        '03_auditoria_usuarios.yml', 'usuarios_auditoria', 'Plantilla 3 (ID 49) y último nodo de los 5 workflows', '03_auditoria_usuarios', AUDITORIA,
         'el objetivo no existe o no se puede crear la carpeta de reportes.')
     historia += seccion(
         'Opción 4 · Bloquear, reactivar o eliminar', 'Bloquea una cuenta de forma reversible, la reactiva o la elimina con respaldo.',
-        '04_bloquear_eliminar_usuarios.yml', 'usuarios_eliminar', 'Plantilla 4 y WF - Bloquear o eliminar', '04_bloquear_eliminar_usuarios', BLOQUEAR,
+        '04_bloquear_eliminar_usuarios.yml', 'usuarios_eliminar', 'Plantilla 4 (ID 50) y WF - Bloquear o eliminar (ID 56)', '04_bloquear_eliminar_usuarios', BLOQUEAR,
         'un usuario es crítico, falta CONFIRMAR para eliminar, o el home está fuera de /home o /export/home.',
         nota('<b>Reactivar no restaura sudo.</b> Si la cuenta lo tenía, use la opción 1a o 1b con "Actualizar usuarios que ya existen".'))
     historia.pop()

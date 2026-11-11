@@ -40,8 +40,7 @@ def q(var, nombre, desc, tipo='text', req=False, default='', choices=None, mn=0,
     return d
 
 
-CATALOGOS = ['usuarios_generales', 'admins_linux', 'cuentas_de_servicio',
-             'soporte_zona_norte', 'soporte_zona_centro']
+CATALOGOS = ['admins_linux', 'cuentas_de_servicio', 'soporte_zona_norte', 'soporte_zona_centro']
 
 # ---------------------------------------------------------------------------
 # Preguntas (cada una se define una vez y se reutiliza en las encuestas)
