@@ -108,13 +108,15 @@ P_NUEVA = q('contrasena_nueva', 'Nueva contraseña',
 P_CONFIRMACION = q('contrasena_confirmacion', 'Confirmar contraseña',
                    'Repita la contraseña nueva.',
                    'password', True, mn=8, mx=128)
-P_NUNCA = q('contrasena_nunca_caduca', 'Contraseña sin caducidad (nunca expira)',
-            '• SI → la contraseña no expira (para cuentas críticas). Requiere Forzar cambio = NO.\n'
-            '• NO → conserva la política actual.',
+P_NUNCA = q('contrasena_nunca_caduca', 'Contraseña sin caducidad (no se aplica a cuentas críticas)',
+            '• SI → la contraseña no expira. Requiere Forzar cambio = NO.\n'
+            '• NO → conserva la política actual.\n'
+            'No se aplica a cuentas críticas (root, tux, adminso…): conservan su configuración actual.',
             'multiplechoice', True, 'NO', SINO)
-P_FORZAR = q('contrasena_forzar_cambio', 'Forzar cambio en el próximo inicio de sesión',
+P_FORZAR = q('contrasena_forzar_cambio', 'Forzar cambio en el próximo inicio de sesión (no se aplica a cuentas críticas)',
              '• SI → debe cambiarla en el próximo ingreso (recomendado en cuentas personales).\n'
-             '• Debe ser NO en cuentas críticas o con «sin caducidad».',
+             '• Debe ser NO si marcó «sin caducidad».\n'
+             'No se aplica a cuentas críticas (root, tux, adminso…): conservan su configuración actual.',
              'multiplechoice', True, 'SI', SINO)
 P_DESBLOQUEAR = q('contrasena_desbloquear', 'Desbloquear la cuenta',
                   'SI → reinicia intentos fallidos y quita una expiración vencida.\n'

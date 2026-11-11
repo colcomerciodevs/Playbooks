@@ -67,12 +67,18 @@
     - _cp_aplicar | length > 0
     - hostvars['localhost']['_cp_accion'] == 'cambiar'
 
+# Las cuentas críticas (lista usuarios_protegidos o UID 0) conservan su caducidad actual:
+# a ellas no se les aplica "sin caducidad" ni "forzar cambio", diga lo que diga la encuesta.
+- name: Contraseña | Cuentas que conservan su caducidad (críticas)
+  ansible.builtin.set_fact:
+    _cp_conservan: "{{ _cp_aplicar | select('in', usuarios_protegidos + _cp_uid0) | list }}"
+
 - name: Contraseña | Aplicar política de caducidad
   ansible.builtin.include_role:
     name: usuarios_comun
     tasks_from: politica_caducidad.yml
   vars:
-    comun_usuarios: "{{ _cp_aplicar }}"
+    comun_usuarios: "{{ _cp_aplicar | reject('in', _cp_conservan) | list }}"
     comun_politica: >-
       {{ 'nunca' if hostvars['localhost']['_cp_nunca'] | bool
          else ('forzar_cambio' if hostvars['localhost']['_cp_forzar'] | bool else 'mantener') }}
@@ -152,6 +158,7 @@
     msg:
       - "Servidor: {{ inventory_hostname }}"
       - "Actualizados: {{ _cp_aplicar | join(', ') or '-' }}"
+      - "Caducidad sin cambios (cuentas críticas): {{ _cp_conservan | default([]) | join(', ') or '-' }}"
       - "Inexistentes: {{ _cp_inexistentes | join(', ') or '-' }}"
       - "Omitidos (servicio): {{ _cp_servicio | join(', ') or '-' }}"
       - "Excluidos (en bloque): {{ _cp_excluidas.keys() | list | join(', ') or '-' }}"

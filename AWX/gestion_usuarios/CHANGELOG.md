@@ -21,7 +21,7 @@ con encuestas, aprobación previa y auditoría de verificación. La descripción
 ### Cambios respecto a la versión anterior
 
 - **Validación antes de tocar servidores.** Cada playbook valida la encuesta y verifica los servidores (solo lectura) antes de cambiar nada. Si algo falla, se detienen todos los servidores.
-- **Cuentas críticas protegidas** (`root`, `tux`, `adminso`, `ansible_test`, `iacolcoauto`, entre otras): no se crean, bloquean ni eliminan. Cambiar su contraseña exige escribir CONFIRMAR y no se permite con objetivo `all` ni comodines. Una cuenta con UID 0 también cuenta como crítica.
+- **Cuentas críticas protegidas** (`root`, `tux`, `adminso`, `ansible_test`, `iacolcoauto`, entre otras): no se crean, bloquean ni eliminan. Cambiar su contraseña exige escribir CONFIRMAR y no se permite con objetivo `all` ni comodines; su caducidad no se modifica (se ignoran «sin caducidad» y «forzar cambio»). Una cuenta con UID 0 también cuenta como crítica.
 - **Llaves en un almacén persistente** (`/data/work/gestion_usuarios/keys`, grupo de instancias `Container_Group_Corbeta`). Cada usuario tiene su llave privada, `.pub` y `.ppk` (PuTTY v3, generado sin `puttygen`).
 - **Plantillas separadas** (1a/1b y 2a/2b) para que cada encuesta muestre solo los campos que aplican. Los valores que distinguen cada plantilla van fijos en sus variables.
 - **Acceso SSH al crear usuarios:** agrega al grupo `ssh_access` si existe, y a la línea `AllowUsers` de `sshd_config` si existe (validado con `sshd -t`).

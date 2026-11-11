@@ -107,13 +107,8 @@
 - name: Preparar | Validar combinación de políticas
   ansible.builtin.assert:
     quiet: true
-    that:
-      - not ((_cp_nunca | bool) and (_cp_forzar | bool))
-      - not (_cp_forzar | bool) or (_cp_criticas | length == 0)
-    fail_msg: >-
-      'Nunca caduca' y 'Forzar cambio en el próximo inicio' son excluyentes: deje uno en NO. Además, no se
-      puede forzar el cambio a cuentas críticas ({{ _cp_criticas | join(', ') }}): la automatización que las
-      usa dejaría de funcionar.
+    that: not ((_cp_nunca | bool) and (_cp_forzar | bool))
+    fail_msg: "'Nunca caduca' y 'Forzar cambio en el próximo inicio' son excluyentes: deje uno en NO."
 
 - name: Preparar | Resumen
   ansible.builtin.debug:
@@ -121,5 +116,5 @@
       - "Acción: {{ 'SOLO FORZAR CAMBIO (se conserva la contraseña actual)' if _cp_accion == 'solo_forzar_cambio' else 'cambiar contraseña' }}"
       - "Usuarios: {{ {'lista': contrasena_lista | join(', '), 'catalogo': 'catálogo ' ~ contrasena_catalogo ~ ' -> ' ~ (contrasena_lista | join(', ')), 'todos_uid_1000': 'TODAS las cuentas con UID >= ' ~ uid_minimo_humano ~ ' de cada servidor, menos las excluidas'}[_cp_origen] }}"
       - "Servidores: {{ objetivo }}"
-      - "Política: {{ 'NUNCA CADUCA' if (_cp_nunca | bool) else ('FORZAR CAMBIO en próximo inicio' if (_cp_forzar | bool) else 'se conserva la existente') }}"
+      - "Política: {{ 'NUNCA CADUCA' if (_cp_nunca | bool) else ('FORZAR CAMBIO en próximo inicio' if (_cp_forzar | bool) else 'se conserva la existente') }}{{ (' (no se aplica a ' ~ (_cp_criticas | join(', ')) ~ ': cuentas críticas, se conserva su configuración actual)') if _cp_criticas | length > 0 else '' }}"
       - "Desbloquear: {{ contrasena_desbloquear }}"

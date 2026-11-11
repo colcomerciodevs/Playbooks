@@ -164,8 +164,8 @@ EFECTO = {
     'contrasena_confirmar_critica': 'Escribir CONFIRMAR para root, tux, adminso y similares. No se admite con all ni comodines.',
     'contrasena_nueva': 'Nueva clave, mínimo 8 caracteres. AWX la guarda cifrada.',
     'contrasena_confirmacion': 'Debe ser igual a la anterior.',
-    'contrasena_nunca_caduca': 'SI: la clave no expira. Exige "Forzar cambio" en NO.',
-    'contrasena_forzar_cambio': 'SI: debe cambiarla en el próximo ingreso. En cuentas críticas debe ser NO.',
+    'contrasena_nunca_caduca': 'SI: la clave no expira. Exige "Forzar cambio" en NO. No se aplica a cuentas críticas: conservan su configuración actual.',
+    'contrasena_forzar_cambio': 'SI: debe cambiarla en el próximo ingreso. No se aplica a cuentas críticas: conservan su configuración actual.',
     'contrasena_desbloquear': 'SI: reinicia intentos fallidos y quita una expiración vencida.',
     'auditoria_uid_minimo': 'Audita las cuentas desde este UID.',
     'auditoria_dias_inactividad': 'Solo informa: las cuentas sin ingreso en más de estos días aparecen como inactivas en el reporte. No bloquea ni modifica nada.',
@@ -247,8 +247,8 @@ DESBLOQUEO = [
 ]
 CAMBIAR = VERIFICAR + [
     ('Servidor', 'chpasswd   (recibe U:clave por entrada estándar)', 'Siempre.'),
-    ('Servidor', 'chage -m 0 -M 99999 -I -1 U', 'Nunca caduca = SI.'),
-    ('Servidor', 'chage -d 0 U', 'Forzar cambio = SI.'),
+    ('Servidor', 'chage -m 0 -M 99999 -I -1 U', 'Nunca caduca = SI (excepto cuentas críticas).'),
+    ('Servidor', 'chage -d 0 U', 'Forzar cambio = SI (excepto cuentas críticas).'),
 ] + DESBLOQUEO + [
     ('Servidor', 'getent shadow ; chage -l U', 'Siempre, para comprobar el cambio. Resultado de shadow oculto.'),
 ]
