@@ -1,6 +1,6 @@
 ---
 - name: Crear usuarios con llave SSH
-  hosts: AZURE
+  hosts: despachosdbqa 
   gather_facts: true
   become: true
 
