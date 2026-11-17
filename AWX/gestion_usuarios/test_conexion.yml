@@ -1,4 +1,10 @@
-- hosts: all
+---
+# Plantilla "USUARIOS | Test - Conexión legacy SSH" (id 65).
+# Prueba la conexión (ping) a los servidores del grupo legacy_ssh. Existe porque los
+# comandos ad hoc del inventario solo aceptan credenciales de tipo Machine y estos
+# servidores necesitan la credencial "SSH RSA Legacy". No cambia nada en los servidores.
+- name: Probar conexión
+  hosts: all
   gather_facts: false
   tasks:
     - name: Probar conexión

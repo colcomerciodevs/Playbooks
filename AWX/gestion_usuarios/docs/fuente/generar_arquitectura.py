@@ -346,8 +346,9 @@ def portada():
          P('Los valores fijos van en las variables de la plantilla: la encuesta no los pregunta y quien lanza no los puede cambiar.', 'c'),
          Spacer(1, 4),
          P('Todas usan: proyecto <b>Playbooks-Corbeta</b>, inventario <b>Inventario 2026 - Gestion Usuarios</b>, entorno '
-           '<b>Corbeta AWX-EE</b> y grupo de instancias <b>Container_Group_Corbeta</b>. Todas salvo la 0 usan la credencial '
-           '<b>SSH Private Key - ECDSA</b>; la 0 se conecta con el usuario y la contraseña de su encuesta.'),
+           '<b>Corbeta AWX-EE-Legacy</b> (Ansible 2.9) y grupo de instancias <b>Container_Group_Corbeta</b>. Todas salvo la 0 usan las credenciales '
+           '<b>SSH Private Key - ECDSA</b> y <b>SSH RSA Legacy</b>; la 0 se conecta con el usuario y la contraseña de su encuesta. '
+           'Ver la última sección: servidores con S.O. obsoleto.'),
          PageBreak(),
          P('Qué pasa dentro de cada ejecución', 'h1'),
          P('Las plantillas que modifican siguen tres etapas. Si la etapa 1 o 2 falla, no se cambia ningún servidor.'),
@@ -378,6 +379,49 @@ def portada():
            'En las encuestas, <font color="#B3261E">*</font> marca los campos obligatorios.'),
          PageBreak()]
     return s
+
+
+def legacy():
+    """Sección final: servidores con S.O. obsoleto (Python 2.6 / OpenSSH antiguo)."""
+    return [
+        P('Servidores con S.O. obsoleto (Python 2.6)', 'h1'),
+        P('Algunos servidores antiguos tienen Python 2.6 y un OpenSSH que solo acepta llaves RSA con firma ssh-rsa. '
+          'Las versiones actuales de Ansible ya no se conectan a ellos, así que se ajustó AWX para atenderlos con las mismas '
+          'plantillas, encuestas y workflows. Para el operador no cambia nada.'),
+        P('Qué se configuró en AWX', 'h2'),
+        tabla(['Objeto', 'Nombre (ID)', 'Para qué'], [
+            ['Entorno de ejecución', 'Corbeta AWX-EE-Legacy (7)', 'Imagen colcomercioansible/awx:legacy con Ansible 2.9.27, la última versión que '
+             'soporta Python 2.6 en el servidor. La usan todas las plantillas USUARIOS.'],
+            ['Tipo de credencial', 'SSH Key - Legacy RSA (34)', 'Guarda una llave privada RSA y la entrega al job como archivo, en la variable '
+             'legacy_ssh_key_file. Hace falta porque una credencial Machine no puede tener dos llaves.'],
+            ['Credencial', 'SSH RSA Legacy (16)', 'Llave RSA de ansible_test para los servidores legacy. Va junto a SSH Private Key - ECDSA '
+             'en las plantillas 1a, 1b, 2a, 2b, 3 y 4.'],
+            ['Plantilla', 'USUARIOS | Test - Conexión legacy SSH (65)', 'Hace ping a los servidores legacy. Reemplaza los comandos ad hoc '
+             'del inventario, que solo aceptan credenciales Machine.'],
+        ], [0.2, 0.3, 0.5], ['cb', 'c', 'c']),
+        P('Qué se configuró en el proyecto', 'h2'),
+        tabla(['Archivo', 'Qué hace'], [
+            ['inventario/hosts.ini, grupo [legacy_ssh]', 'Lista los servidores legacy. El grupo forma parte de normalizados.'],
+            ['inventario/group_vars/legacy_ssh.yml', 'Conecta con ansible_test, usa la llave de legacy_ssh_key_file y habilita ssh-rsa '
+             '(HostKeyAlgorithms y PubkeyAcceptedAlgorithms).'],
+            ['test_conexion.yml', 'Playbook de la plantilla 65: solo ping.'],
+            ['ansible_python_interpreter en hosts.ini', 'Servidores con Python 3.4 o anterior (por ejemplo SLES 12) usan /usr/bin/python2.7.'],
+        ], [0.38, 0.62], ['m', 'c']),
+        P('Agregar un servidor legacy', 'h2'),
+        tabla(['Paso', 'Qué hacer'], [
+            ['1', 'Instalar en el servidor la llave pública RSA de ansible_test (la pareja de la credencial SSH RSA Legacy), con sudo sin contraseña. '
+                  'Si ansible_test no existe, puede usar la plantilla 0 (aún no probada en servidores legacy) o crearla a mano.'],
+            ['2', 'Mover la línea del servidor a [legacy_ssh] en inventario/hosts.ini y comentarla en su grupo anterior.'],
+            ['3', 'Copiar el proyecto al servidor de Ansible, sincronizar Git, el proyecto Playbooks-Corbeta y la fuente del inventario '
+                  '(no se actualiza sola).'],
+            ['4', 'Lanzar USUARIOS | Test - Conexión legacy SSH (ID 65). Debe responder pong.'],
+            ['5', 'Lanzar la auditoría (ID 49) con el servidor como objetivo para confirmar que todo funciona.'],
+        ], [0.08, 0.92]),
+        Spacer(1, 4),
+        nota('<b>Por qué funciona igual.</b> Los playbooks usan módulos que existen en Ansible 2.9 y el módulo de auditoría es compatible con '
+             'Python 2.6. La colección ansible.posix viene dentro del proyecto. Se verificó con Ansible 2.9.27: sintaxis de los playbooks, '
+             'auditoría completa, verificación del cambio y generación de llaves y .ppk.'),
+    ]
 
 
 def pie(canvas, doc):
@@ -434,7 +478,7 @@ def main():
         '04_bloquear_eliminar_usuarios.yml', 'usuarios_eliminar', 'Plantilla 4 (ID 50) y WF - Bloquear o eliminar (ID 56)', '04_bloquear_eliminar_usuarios', BLOQUEAR,
         'un usuario es crítico, falta CONFIRMAR para eliminar, o el home está fuera de /home o /export/home.',
         nota('<b>Reactivar no restaura sudo.</b> Si la cuenta lo tenía, use la opción 1a o 1b con "Actualizar usuarios que ya existen".'))
-    historia.pop()
+    historia += legacy()
 
     doc = SimpleDocTemplate(SALIDA, pagesize=A4, leftMargin=16 * mm, rightMargin=16 * mm, topMargin=15 * mm, bottomMargin=16 * mm,
                             title='Arquitectura de gestion_usuarios', author='gestion_usuarios', subject='Workflows, plantillas, encuestas y comandos')

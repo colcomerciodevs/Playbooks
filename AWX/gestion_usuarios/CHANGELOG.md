@@ -27,6 +27,7 @@ con encuestas, aprobación previa y auditoría de verificación. La descripción
 - **Acceso SSH al crear usuarios:** agrega al grupo `ssh_access` si existe, y a la línea `AllowUsers` de `sshd_config` si existe (validado con `sshd -t`).
 - **Forzar cambio en bloque** (2b), con exclusión automática de cuentas críticas, cuentas de servicio (`cuentas_servicio` en `vars/comunes.yml`), shells no interactivos y cuentas sin contraseña.
 - **Verificación del cambio en los workflows:** la auditoría del último nodo revisa solo las cuentas que modificó el paso anterior (también en operaciones en bloque) y genera `verificacion_cambio_<fecha>.html/.csv` con la operación, el ticket y las cuentas no encontradas. La plantilla 3 sola sigue siendo la auditoría general.
+- **Servidores con S.O. obsoleto (Python 2.6):** todas las plantillas USUARIOS usan el EE `Corbeta AWX-EE-Legacy` (Ansible 2.9.27). Los servidores del grupo `legacy_ssh` (parte de `normalizados`) conectan con `ansible_test` y la llave RSA de la credencial `SSH RSA Legacy` (tipo `SSH Key - Legacy RSA`, variable `legacy_ssh_key_file`), con ssh-rsa habilitado en `group_vars/legacy_ssh.yml`. Nueva plantilla `USUARIOS | Test - Conexión legacy SSH` (ID 65, `test_conexion.yml`) para probar la conexión, porque los comandos ad hoc solo aceptan credenciales Machine. Verificado con Ansible 2.9.27: sintaxis, auditoría completa y de verificación, y generación de llaves y .ppk.
 - **Servidores con Python 3.4 (SLES 12):** `MONGO-PRD-N1/N2/N3` usan `ansible_python_interpreter=/usr/bin/python2.7` en el inventario, porque ansible-core no soporta Python 3.4.
 - **Auditoría:** avisa de contraseñas por vencer (cuentas de solo llave), separa el sudo real del sudo con clave de root (SUSE) y muestra a quién se le forzaría el cambio en bloque.
 - **Grupos privilegiados prohibidos** al crear (`wheel`, `sudo`, `root`, `docker`…), y protección de cuentas de servicio (UID < 1000).
@@ -47,7 +48,8 @@ con encuestas, aprobación previa y auditoría de verificación. La descripción
 ### Pendiente para 1.1
 
 - **Pruebas reales** de cada plantilla en un servidor de prueba. Esta versión se validó de forma estática y con pruebas locales, sin ejecutarse contra servidores.
-- **Plantilla 0:** confirmar que el entorno `Corbeta AWX-EE` incluye `sshpass` (necesario para conectarse con contraseña).
+- **Plantilla 0:** confirmar que el entorno `Corbeta AWX-EE-Legacy` incluye `sshpass` (necesario para conectarse con contraseña) y probarla en un servidor legacy.
+- **Servidores legacy:** probar en uno de ellos las plantillas que modifican (1a, 1b, 2a, 2b, 4); hasta ahora solo se probó la conexión (job 9798).
 - **Permisos en AWX:** que solo `admin` apruebe, que los operadores tengan Execute en los workflows y no en las plantillas 1a, 1b, 2a, 2b y 4, y retirar a `srvinnops` los permisos temporales.
 - **Normalizar** los servidores de `pendientes_normalizar` para que entren con `ansible_test`.
 - `AllowUsers` definido en `/etc/ssh/sshd_config.d/` no se detecta; solo se edita el archivo principal.
