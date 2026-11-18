@@ -1,29 +1,24 @@
 ---
-# Catálogo: administradores Linux. Otorga sudo COMPLETO sin contraseña.
+# Catálogo: administradores Linux. Perfil perfil_admin_linux: sudo completo (vars/perfiles.yml).
 # Uso recomendado: Método = llave, Origen de la llave = keys
 #   (se reutiliza la llave guardada del usuario; si no tiene, se genera una nueva).
 usuarios:
   - usuario: jcantor
     nombre: "Usuario administrador de Linux - Amaris"
-    sudo: completo
-    sudo_nopasswd: true
+    perfil: perfil_admin_linux
 
   - usuario: cchaves
     nombre: "Usuario administrador de Linux - Amaris"
-    sudo: completo
-    sudo_nopasswd: true
+    perfil: perfil_admin_linux
 
   - usuario: jcastano
     nombre: "Usuario administrador de Linux - Corbeta"
-    sudo: completo
-    sudo_nopasswd: true
+    perfil: perfil_admin_linux
 
   - usuario: aromero
     nombre: "Usuario administrador de Linux - Corbeta"
-    sudo: completo
-    sudo_nopasswd: true
+    perfil: perfil_admin_linux
 
   - usuario: csotomonte
     nombre: "Usuario administrador de Linux - Corbeta"
-    sudo: completo
-    sudo_nopasswd: true
+    perfil: perfil_admin_linux

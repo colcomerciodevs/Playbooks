@@ -58,8 +58,8 @@ C_USUARIOS = q('crear_usuarios_texto', 'Usuarios (si origen = encuesta)',
                'Una línea por usuario: usuario;Nombre completo;grupo (grupo opcional).\n'
                '• Ejemplo: jperez;Juan Pérez;soporte',
                'textarea', mx=20000)
-C_CATALOGO = q('crear_catalogo', 'Catálogo (si origen = catalogo) · el catálogo define sudo y grupos',
-               '⚠ El catálogo manda sobre esta encuesta: admins_linux da sudo COMPLETO sin contraseña.',
+C_CATALOGO = q('crear_catalogo', 'Catálogo (si origen = catalogo) · el catálogo define perfil y grupos',
+               '⚠ El catálogo manda sobre esta encuesta: admins_linux da perfil_admin_linux (sudo completo).',
                'multiplechoice', False, '', CATALOGOS)
 C_GRUPOS = q('crear_grupos_secundarios', 'Grupos secundarios',
              'Separados por coma. Solo se agregan si ya existen en el servidor.\n'
@@ -78,21 +78,18 @@ C_RENOVAR = q('crear_renovar_llave', '⚠ RENOVAR LLAVE (opción crítica)',
               'Deje NO salvo pérdida o robo de la llave. Si el usuario ya tiene llave, se reutiliza.\n'
               '• SI → crea una llave nueva, archiva la anterior y la reemplaza solo en los servidores de este objetivo.',
               'multiplechoice', True, 'NO', SINO)
-C_SUDO = q('crear_sudo_nivel', 'Nivel de sudo',
-           '• ninguno → sin sudo.\n'
-           '• completo → puede ejecutar todo como root.\n'
-           '• limitado → solo los comandos indicados abajo.',
-           'multiplechoice', True, 'ninguno', ['ninguno', 'completo', 'limitado'])
-C_SUDO_COMANDOS = q('crear_sudo_comandos', 'Comandos sudo permitidos (si nivel = limitado)',
-                    'Un comando por línea, con ruta completa.\n'
-                    '• Ejemplo: /usr/bin/systemctl restart httpd',
-                    'textarea', mx=20000)
-C_NOPASSWD = q('crear_sudo_nopasswd', 'sudo sin contraseña (NOPASSWD)',
-               'SI → sudo no pide contraseña.',
-               'multiplechoice', True, 'NO', SINO)
+PERFILES = ['perfil_estandar', 'perfil_admin_linux', 'perfil_auditor_linux', 'perfil_soporte_geopos']
+C_PERFIL = q('crear_perfil', 'Perfil de la cuenta',
+             'Define el sudo de la cuenta (vars/perfiles.yml).\n'
+             '• perfil_estandar → sin sudo.\n'
+             '• perfil_admin_linux → administrador global Linux: sudo completo.\n'
+             '• perfil_auditor_linux → auditor: solo comandos de consulta (last, ps, ss, journalctl…).\n'
+             '• perfil_soporte_geopos → soporte Geopos: status, start, stop y restart de los servicios Geopos.\n'
+             'sudo pide la contraseña del usuario; en 1b (llave) no la pide porque la cuenta no tiene contraseña.',
+             'multiplechoice', True, 'perfil_estandar', PERFILES)
 C_ACTUALIZAR = q('crear_actualizar_existentes', 'Actualizar usuarios que ya existen',
                  '• NO → las cuentas que ya existen se omiten.\n'
-                 '• SI → se les agregan grupos, llave y sudo (no cambia su contraseña).',
+                 '• SI → se les aplican grupos, llave y perfil (no cambia su contraseña).',
                  'multiplechoice', True, 'NO', SINO)
 
 P_USUARIOS = q('contrasena_usuarios', 'Usuario(s)',
@@ -157,15 +154,15 @@ ENCUESTAS = {
     },
     '01a_crear_con_contrasena': {
         'name': 'USUARIOS | 1a - Crear con contraseña',
-        'description': 'Alta de usuarios con contraseña inicial, grupos y sudo.',
+        'description': 'Alta de usuarios con contraseña inicial, grupos y perfil.',
         'spec': [OBJETIVO, C_ORIGEN, C_USUARIOS, C_CATALOGO, C_GRUPOS, C_SSH, C_CLAVE, C_FORZAR,
-                 C_SUDO, C_SUDO_COMANDOS, C_NOPASSWD, C_ACTUALIZAR],
+                 C_PERFIL, C_ACTUALIZAR],
     },
     '01b_crear_con_llave': {
         'name': 'USUARIOS | 1b - Crear con llave',
-        'description': 'Alta de usuarios con llave SSH del almacén (se reutiliza o se crea), grupos y sudo.',
+        'description': 'Alta de usuarios con llave SSH del almacén (se reutiliza o se crea), grupos y perfil.',
         'spec': [OBJETIVO, C_ORIGEN, C_USUARIOS, C_CATALOGO, C_GRUPOS, C_SSH, C_RENOVAR,
-                 C_SUDO, C_SUDO_COMANDOS, C_ACTUALIZAR],
+                 C_PERFIL, C_ACTUALIZAR],
     },
     '02a_cambiar_contrasena': {
         'name': 'USUARIOS | 2a - Cambiar contraseña',

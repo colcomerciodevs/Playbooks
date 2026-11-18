@@ -1,0 +1,64 @@
+---
+# =============================================================================
+# PERFILES DE CUENTA (opciones 1a y 1b)
+# Cada usuario recibe un perfil: en la encuesta ("Perfil de la cuenta") o en el
+# catálogo (campo 'perfil', que manda sobre la encuesta).
+# El perfil se aplica como /etc/sudoers.d/<usuario>, validado con visudo.
+#
+# Campos:
+#   descripcion    texto que se muestra en el job y en el encabezado de la regla
+#   sudo           ninguno | completo | limitado
+#   sudo_nopasswd  true = sudo no pide contraseña. Con el método llave siempre es true
+#                  (la cuenta no tiene contraseña y sudo sería inutilizable).
+#   comandos       (limitado) un comando por línea. La primera palabra es el programa,
+#                  sin ruta: se busca en cada servidor en crear_sudo_rutas_busqueda.
+#                  Si no existe en un servidor, se omite con aviso. Un comando sin
+#                  argumentos no admite argumentos (la regla lleva "").
+#   servicios      (opcional) programas que se combinan con 'acciones':
+#   acciones         servicio + acción  ->  "geopos status", "geopos restart"...
+#
+# NO agregue editores, paginadores ni shells (vi, less, more, man, bash, su...) ni
+# comodines (*): permiten llegar a root o tocar archivos no previstos.
+# Para cambiar un perfil: edite este archivo y ejecute la opción 1 con
+# "Actualizar usuarios que ya existen = SI" sobre las cuentas que lo tienen.
+# =============================================================================
+perfil_por_defecto: perfil_estandar
+
+perfiles:
+  perfil_admin_linux:
+    descripcion: "Administrador global Linux: sudo completo"
+    sudo: completo
+    sudo_nopasswd: false
+
+  perfil_auditor_linux:
+    descripcion: "Auditor Linux: solo comandos de consulta"
+    sudo: limitado
+    sudo_nopasswd: false
+    comandos:
+      - last
+      - lastb
+      - lastlog
+      - journalctl --no-pager -n 500
+      - systemctl --no-pager status
+      - ss -tulpn
+      - ps aux
+      - cat /etc/sudoers
+      - ls -l /etc/sudoers.d
+
+  perfil_soporte_geopos:
+    descripcion: "Soporte Geopos: consultar, iniciar, detener y reiniciar servicios Geopos"
+    sudo: limitado
+    sudo_nopasswd: false
+    servicios:
+      - geopos
+      - geopromotion
+      - tomcat6-consola
+      - tomcat6-conciliacion
+      - tomcat6-turnos
+      - tomcat6-salida
+      - tomcat6-geogames
+    acciones: [status, start, stop, restart]
+
+  perfil_estandar:
+    descripcion: "Cuenta estándar: sin sudo"
+    sudo: ninguno

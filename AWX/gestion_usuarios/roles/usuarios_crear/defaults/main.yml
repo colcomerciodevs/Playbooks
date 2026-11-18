@@ -11,7 +11,7 @@ crear_origen: encuesta            # encuesta | catalogo
 crear_catalogo: ""                # archivo de vars/catalogos/ sin ".yml"
 # Una línea por usuario:  usuario;Nombre completo;grupo(opcional)
 crear_usuarios_texto: ""
-crear_actualizar_existentes: "NO" # SI = aplica grupos/llave/sudo también a cuentas que ya existen
+crear_actualizar_existentes: "NO" # SI = aplica grupos/llave/perfil también a cuentas que ya existen
 
 # ---- Atributos por defecto (el catálogo puede sobrescribirlos por usuario) --
 crear_grupo_primario: ""          # vacío = grupo con el mismo nombre del usuario
@@ -43,12 +43,12 @@ crear_renovar_llave: "NO"
 # Llaves nuevas: mismo formato que las existentes (RSA 4096 bits, sin frase de paso)
 crear_llave_bits: 4096
 
-# ---- sudo -------------------------------------------------------------------
-crear_sudo_nivel: ninguno         # ninguno | completo | limitado
-crear_sudo_nopasswd: "NO"         # con método llave se fuerza a SI (la cuenta no tiene clave)
-# Un comando por línea, con ruta absoluta (para nivel limitado).
-crear_sudo_comandos: ""
+# ---- Perfil y sudo ------------------------------------------------------------
+# Los perfiles se definen en vars/perfiles.yml. El campo 'perfil' del catálogo manda.
+crear_perfil: "{{ perfil_por_defecto }}"
 crear_sudo_runas: ALL
+# Carpetas donde se busca, en cada servidor, el programa de cada comando de un perfil.
+crear_sudo_rutas_busqueda: [/usr/sbin, /usr/bin, /sbin, /bin, /usr/local/sbin, /usr/local/bin]
 
 # ---- Acceso SSH ----------------------------------------------------------------
 # SI = permite el ingreso por SSH en servidores que lo restringen:

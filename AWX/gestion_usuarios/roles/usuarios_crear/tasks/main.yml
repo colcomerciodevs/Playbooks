@@ -35,8 +35,8 @@
   ansible.builtin.debug:
     msg: >-
       Ya existían en {{ inventory_hostname }}: {{ _cu_existian | join(', ') }}.
-      {{ 'Se actualizan grupos, llave y sudo (no se cambia su contraseña).' if (_cu_actualizar | bool)
-         else 'Se omiten (active "Actualizar existentes" para aplicarles grupos, llave y sudo).' }}
+      {{ 'Se actualizan grupos, llave y perfil (no se cambia su contraseña).' if (_cu_actualizar | bool)
+         else 'Se omiten (active "Actualizar existentes" para aplicarles grupos, llave y perfil).' }}
   when: _cu_existian | length > 0
 
 # ---------------------------------------------------------------------------
@@ -187,8 +187,69 @@
   when: item.llave_publica | length > 0
 
 # ---------------------------------------------------------------------------
-# sudo: un archivo por usuario en /etc/sudoers.d, validado con visudo
+# Perfil (sudo): un archivo por usuario en /etc/sudoers.d, validado con visudo.
+# Los programas de los perfiles limitados se buscan en ESTE servidor; los que no
+# existen se omiten con aviso. Un perfil limitado sin ningún programa disponible
+# queda sin sudo en este servidor.
 # ---------------------------------------------------------------------------
+- name: Crear | Programas que usan los perfiles limitados
+  ansible.builtin.set_fact:
+    _cu_sudo: []
+    _cu_programas: >-
+      {{ _cu_procesar | selectattr('sudo', 'eq', 'limitado') | map(attribute='sudo_comandos') | flatten
+         | map('regex_replace', ' .*$', '') | unique | list }}
+
+- name: Crear | Buscar los programas en el servidor
+  ansible.builtin.shell: |
+    for n in {{ _cu_programas | map('quote') | join(' ') }}; do
+      case "$n" in
+        /*) if [ -f "$n" ] && [ -x "$n" ]; then echo "$n $n"; fi ;;
+        *)  for d in {{ crear_sudo_rutas_busqueda | map('quote') | join(' ') }}; do
+              if [ -f "$d/$n" ] && [ -x "$d/$n" ]; then echo "$n $d/$n"; break; fi
+            done ;;
+      esac
+    done
+  register: _cu_busqueda
+  changed_when: false
+  check_mode: false
+  when: _cu_programas | length > 0
+
+- name: Crear | Rutas encontradas
+  ansible.builtin.set_fact:
+    _cu_rutas: >-
+      {% set r = {} %}{% for l in _cu_busqueda.stdout_lines | default([]) %}
+      {%- set _ = r.update({l.split(' ', 1)[0]: l.split(' ', 1)[1]}) %}{% endfor %}{{ r }}
+
+# Cada comando queda como "<ruta> <argumentos>". Sin argumentos se agrega "" (no admite ninguno).
+# En sudoers los caracteres \ , : = de los argumentos deben escaparse.
+- name: Crear | Regla sudo de cada usuario en este servidor
+  ansible.builtin.set_fact:
+    _cu_sudo: "{{ _cu_sudo + [item | combine({'sudo_resueltos': _res, 'sudo_omitidos': _omit, 'sudo_efectivo': _ef})] }}"
+  loop: "{{ _cu_procesar }}"
+  loop_control:
+    label: "{{ item.usuario }} -> {{ item.perfil }}"
+  vars:
+    _res: >-
+      {% set out = [] %}{% for c in item.sudo_comandos if item.sudo == 'limitado' %}{% set p = c.split(' ', 1) %}
+      {%- if p[0] in _cu_rutas %}{% set a = p[1] | trim if p | length > 1 else '' %}
+      {%- set a = a | replace('\\', '\\\\') | replace(',', '\\,') | replace(':', '\\:') | replace('=', '\\=') %}
+      {%- set _ = out.append(_cu_rutas[p[0]] ~ ' ' ~ (a if a | length > 0 else '""')) %}
+      {%- endif %}{% endfor %}{{ out }}
+    _omit: >-
+      {% set out = [] %}{% for c in item.sudo_comandos if item.sudo == 'limitado' and c.split(' ', 1)[0] not in _cu_rutas %}
+      {%- set _ = out.append(c) %}{% endfor %}{{ out }}
+    _ef: "{{ 'ninguno' if (item.sudo == 'limitado' and _res | length == 0) else item.sudo }}"
+
+- name: Crear | Avisar comandos del perfil que no existen en este servidor
+  ansible.builtin.debug:
+    msg: >-
+      {{ item.usuario }} ({{ item.perfil }}): en {{ inventory_hostname }} no existen y se omiten:
+      {{ item.sudo_omitidos | join(', ') }}.
+      {{ 'Ningún comando del perfil existe aquí: la cuenta queda SIN sudo en este servidor.' if item.sudo_efectivo == 'ninguno' else '' }}
+  loop: "{{ _cu_sudo | selectattr('sudo_omitidos', 'ne', []) | list }}"
+  loop_control:
+    label: "{{ item.usuario }}"
+
 - name: Crear | Verificar que /etc/sudoers incluya /etc/sudoers.d
   ansible.builtin.command:
     argv: [grep, -Eq, '^[#@]includedir[[:space:]]+/etc/sudoers\.d', /etc/sudoers]
@@ -196,7 +257,7 @@
   changed_when: false
   failed_when: false
   check_mode: false
-  when: _cu_procesar | selectattr('sudo', 'ne', 'ninguno') | list | length > 0
+  when: _cu_sudo | selectattr('sudo_efectivo', 'ne', 'ninguno') | list | length > 0
 
 - name: Crear | Aviso si sudoers no lee /etc/sudoers.d
   ansible.builtin.debug:
@@ -205,7 +266,7 @@
       Las reglas se escriben pero sudo NO las aplicará hasta agregar esa línea.
   when: _cu_includedir.rc | default(0) != 0
 
-- name: Crear | Escribir regla sudo del usuario
+- name: Crear | Escribir regla sudo del perfil
   ansible.builtin.template:
     src: sudoers_usuario.j2
     dest: "/etc/sudoers.d/{{ item.sudo_archivo }}"
@@ -213,9 +274,9 @@
     group: root
     mode: "0440"
     validate: "{{ crear_visudo[ansible_system] }} -cf %s"
-  loop: "{{ _cu_procesar | selectattr('sudo', 'ne', 'ninguno') | list }}"
+  loop: "{{ _cu_sudo | selectattr('sudo_efectivo', 'ne', 'ninguno') | list }}"
   loop_control:
-    label: "{{ item.usuario }} -> {{ item.sudo }}"
+    label: "{{ item.usuario }} -> {{ item.perfil }}"
 
 - name: Crear | Revisar reglas sudo previas gestionadas por este proyecto
   ansible.builtin.command:
@@ -224,11 +285,11 @@
   changed_when: false
   failed_when: false
   check_mode: false
-  loop: "{{ _cu_procesar | selectattr('sudo', 'eq', 'ninguno') | list }}"
+  loop: "{{ _cu_sudo | selectattr('sudo_efectivo', 'eq', 'ninguno') | list }}"
   loop_control:
     label: "{{ item.usuario }}"
 
-- name: Crear | Retirar regla sudo gestionada cuando el nivel es 'ninguno'
+- name: Crear | Retirar regla sudo gestionada cuando el perfil no da sudo
   ansible.builtin.file:
     path: "/etc/sudoers.d/{{ item.item.sudo_archivo }}"
     state: absent
@@ -260,7 +321,8 @@
       - "Ya existían: {{ _cu_existian | join(', ') or '-' }} ({{ 'actualizados' if (_cu_actualizar | bool) else 'sin cambios' }})"
       - "Grupo {{ crear_grupo_acceso_ssh }}: {{ 'agregado' if (_cu_agregar_ssh | bool) else 'no existe en el servidor / no aplica' }}"
       - "AllowUsers: {{ (comun_allowusers_agregados | default([]) | join(', ')) or 'sin cambios (no existe la línea o ya estaban)' }}"
-      - "Con sudo: {{ _cu_procesar | selectattr('sudo', 'ne', 'ninguno') | map(attribute='usuario') | join(', ') or '-' }}"
+      - "Perfiles: {{ _cu_sudo | map(attribute='usuario') | zip(_cu_sudo | map(attribute='perfil')) | map('join', '=') | join(', ') or '-' }}"
+      - "Con sudo: {{ _cu_sudo | selectattr('sudo_efectivo', 'ne', 'ninguno') | map(attribute='usuario') | join(', ') or '-' }}"
       - "Llave renovada: {{ _cu_llave_destino | default([]) | selectattr('llave_anterior', 'ne', '') | map(attribute='usuario') | join(', ') or '-' }}"
 
 # En un workflow, la auditoría siguiente recibe estos datos (artefactos de AWX) y revisa

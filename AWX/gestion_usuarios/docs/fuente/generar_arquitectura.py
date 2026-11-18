@@ -8,9 +8,12 @@ Si se agrega una pregunta sin explicarla en EFECTO, el script falla.
 Uso:  python3 -B docs/fuente/generar_arquitectura.py   (requiere reportlab)
 """
 import html
+
 import importlib.util
 import os
 import sys
+
+import yaml
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
@@ -148,16 +151,14 @@ EFECTO = {
     'ticket_cambio': 'Número de ticket y motivo. Lo revisa quien aprueba.',
     'crear_origen': '<b>encuesta</b>: usuarios escritos abajo. <b>catalogo</b>: usuarios de un archivo de vars/catalogos/.',
     'crear_usuarios_texto': 'Una línea por usuario: <font name="Mono" size="7.6">usuario;Nombre completo;grupo</font>.',
-    'crear_catalogo': 'Archivo a usar. El catálogo manda sobre la encuesta: admins_linux da sudo completo sin contraseña.',
+    'crear_catalogo': 'Archivo a usar. El catálogo manda sobre la encuesta: admins_linux da perfil_admin_linux.',
     'crear_permitir_ssh': 'SI: agrega al grupo ssh_access (si existe) y al final de la línea AllowUsers de sshd_config (si existe). NO: no toca SSH.',
     'crear_grupos_secundarios': 'Se agregan si ya existen en el servidor. No se aceptan grupos privilegiados.',
     'crear_contrasena_inicial': 'Clave de las cuentas nuevas, mínimo 8 caracteres. AWX la guarda cifrada.',
     'crear_forzar_cambio': 'SI: el usuario debe cambiar la clave en su primer ingreso.',
     'crear_renovar_llave': 'NO: reutiliza la llave guardada (o crea una si no tiene). SI: crea llave nueva, archiva la anterior y la reemplaza solo en los servidores del objetivo.',
-    'crear_sudo_nivel': '<b>ninguno</b>, <b>completo</b> (ALL) o <b>limitado</b> (solo los comandos indicados).',
-    'crear_sudo_nopasswd': 'SI: sudo sin pedir clave. (En 1b se aplica siempre que haya sudo, porque la cuenta no tiene clave.)',
-    'crear_sudo_comandos': 'Un comando por línea con ruta absoluta (nivel limitado).',
-    'crear_actualizar_existentes': 'NO: las cuentas existentes se omiten. SI: se les aplica grupos, llave y sudo; su clave no cambia.',
+    'crear_perfil': 'Define el sudo de la cuenta (ver la tabla de perfiles). El campo perfil del catálogo manda sobre esta respuesta.',
+    'crear_actualizar_existentes': 'NO: las cuentas existentes se omiten. SI: se les aplica grupos, llave y perfil; su clave no cambia.',
     'contrasena_origen': '<b>lista</b>: los escritos. <b>catalogo</b>: los de un catálogo. <b>todos_uid_1000</b>: todas las cuentas UID ≥ 1000 de cada servidor. En bloque se omiten cuentas críticas, de servicio y sin clave.',
     'contrasena_usuarios': 'Cuentas, separadas por coma. En 2b solo si usuarios a incluir = lista.',
     'contrasena_catalogo': 'Archivo de vars/catalogos/ (si usuarios a incluir = catalogo).',
@@ -222,9 +223,10 @@ CUENTA = [
     ('Servidor', 'systemctl reload sshd', 'Si se modificó AllowUsers.'),
 ]
 SUDO = [
-    ('Servidor', "grep -Eq '^[#@]includedir[[:space:]]+/etc/sudoers\\.d' /etc/sudoers", 'Sudo distinto de ninguno.'),
-    ('Servidor', '≈ escribe /etc/sudoers.d/U (0440), validado con: visudo -cf <archivo>', 'Sudo distinto de ninguno.'),
-    ('Servidor', '≈ rm -f /etc/sudoers.d/U', 'Sudo = ninguno y el archivo lo creó este proyecto.'),
+    ('Servidor', '[ -x /usr/sbin/P ] ... (busca cada programa P del perfil en /usr/sbin, /usr/bin, /sbin, /bin, /usr/local/sbin, /usr/local/bin)', 'Perfil auditor o soporte Geopos.'),
+    ('Servidor', "grep -Eq '^[#@]includedir[[:space:]]+/etc/sudoers\\.d' /etc/sudoers", 'El perfil da sudo.'),
+    ('Servidor', '≈ escribe /etc/sudoers.d/U (0440), validado con: visudo -cf <archivo>', 'El perfil da sudo.'),
+    ('Servidor', '≈ rm -f /etc/sudoers.d/U', 'perfil_estandar (o ningún programa del perfil existe) y el archivo lo creó este proyecto.'),
 ]
 CREAR_CLAVE = VERIFICAR + VERIFICAR_SSH + CUENTA + [
     ('Servidor', 'chpasswd   (recibe U:clave por entrada estándar)', 'Cuenta nueva.'),
@@ -371,7 +373,7 @@ def portada():
              ['Cuentas de servicio', 'Las cuentas con UID menor a 1000 no se modifican.'],
              ['Grupos privilegiados', 'wheel, sudo, root, docker y similares no se pueden asignar.'],
              ['Secretos', 'Las claves no aparecen en la salida del job.'],
-             ['Sudo', 'Cada regla se valida con visudo antes de instalarse.'],
+             ['Sudo', 'Solo por perfiles fijos (vars/perfiles.yml), sin comodines. Cada regla se valida con visudo antes de instalarse.'],
          ], [0.25, 0.75]),
          P('Cómo leer los comandos', 'h1'),
          P('<b>U</b> es el usuario y <b>GRUPO</b> su grupo. El signo <b>≈</b> indica que Ansible hace esa acción con un módulo y se muestra el comando equivalente. '
@@ -379,6 +381,27 @@ def portada():
            'En las encuestas, <font color="#B3261E">*</font> marca los campos obligatorios.'),
          PageBreak()]
     return s
+
+
+def perfiles_tabla():
+    """Tabla de perfiles, leída de vars/perfiles.yml."""
+    datos = yaml.safe_load(open(os.path.join(RAIZ, 'vars', 'perfiles.yml'), encoding='utf-8'))
+    filas = []
+    for nombre, p in datos['perfiles'].items():
+        cmds = list(p.get('comandos', []))
+        if p.get('servicios'):
+            cmds.append('%s: %s' % (' | '.join(p['acciones']), ', '.join(p['servicios'])))
+        sudo = {'ninguno': 'Sin sudo', 'completo': 'Todo (ALL)', 'limitado': '<br/>'.join(html.escape(c) for c in cmds)}[p['sudo']]
+        filas.append([nombre, html.escape(p['descripcion'].split(':')[0]), sudo])
+    return KeepTogether([
+        P('Perfiles de cuenta', 'h2'),
+        tabla(['Perfil', 'Para quién', 'Qué puede ejecutar con sudo'], filas, [0.27, 0.23, 0.50], ['m', 'c', 'm']),
+        Spacer(1, 3),
+        nota('<b>Contraseña de sudo.</b> Con contraseña (1a), sudo pide la del propio usuario, también en SUSE. Con llave (1b) no la pide, '
+             'porque la cuenta no tiene. Cada programa se busca en el servidor; si no existe, ese comando se omite con aviso, y si no existe '
+             'ninguno, la cuenta queda sin sudo en ese servidor. Un comando sin argumentos no admite ninguno. Los perfiles se cambian en '
+             'vars/perfiles.yml.'),
+    ])
 
 
 def legacy():
@@ -444,17 +467,18 @@ def main():
              'aún no existe. No elimina ni recrea cuentas: si ya existen, solo completa lo que falte. Las llaves públicas están en '
              'roles/usuarios_automatizacion/files/.'))
     historia += seccion(
-        'Opción 1a · Crear con contraseña', 'Crea cuentas con contraseña inicial, sus grupos y su nivel de sudo.',
+        'Opción 1a · Crear con contraseña', 'Crea cuentas con contraseña inicial, sus grupos y su perfil.',
         '01_crear_usuarios.yml', 'usuarios_crear', 'Plantilla 1a (ID 47) y WF - Crear con contraseña (ID 54)', '01a_crear_con_contrasena', CREAR_CLAVE,
         'el objetivo no existe, un usuario es crítico o inválido, un grupo es privilegiado, la contraseña es corta, '
-        'se quiere actualizar una cuenta de servicio, o sshd_config tiene errores (cuando hay que tocar AllowUsers).')
+        'el perfil no existe, se quiere actualizar una cuenta de servicio, o sshd_config tiene errores (cuando hay que tocar AllowUsers).',
+        perfiles_tabla())
     historia += seccion(
-        'Opción 1b · Crear con llave', 'Crea cuentas que entran solo con llave SSH, con sus grupos y su nivel de sudo.',
+        'Opción 1b · Crear con llave', 'Crea cuentas que entran solo con llave SSH, con sus grupos y su perfil.',
         '01_crear_usuarios.yml', 'usuarios_crear', 'Plantilla 1b (ID 58) y WF - Crear con llave (ID 61)', '01b_crear_con_llave', CREAR_LLAVE,
-        'el objetivo no existe, un usuario es crítico o inválido, un grupo es privilegiado, no se puede escribir en la '
+        'el objetivo no existe, un usuario es crítico o inválido, un grupo es privilegiado, el perfil no existe, no se puede escribir en la '
         'carpeta de llaves, se quiere actualizar una cuenta de servicio, o sshd_config tiene errores (cuando hay que tocar AllowUsers).',
         nota('<b>Llaves.</b> Todas viven en /data/work/gestion_usuarios/keys. Si el usuario ya tiene llave se reutiliza en cualquier servidor; '
-             'solo se genera otra si no tiene o si se marca Renovar. Con sudo, la regla queda sin contraseña porque la cuenta no tiene clave.'))
+             'solo se genera otra si no tiene o si se marca Renovar. Si el perfil da sudo, la regla queda sin contraseña (NOPASSWD) porque la cuenta no tiene clave.'))
     historia += seccion(
         'Opción 2a · Cambiar contraseña', 'Asigna una contraseña nueva a una o varias cuentas, con caducidad y desbloqueo opcionales.',
         '02_cambiar_contrasena.yml', 'usuarios_contrasena', 'Plantilla 2a (ID 48) y WF - Cambiar contraseña (ID 52)', '02a_cambiar_contrasena', CAMBIAR,

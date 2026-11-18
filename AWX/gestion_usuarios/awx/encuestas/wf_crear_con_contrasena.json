@@ -54,8 +54,8 @@
       "new_question": true
     },
     {
-      "question_name": "Catálogo (si origen = catalogo) · el catálogo define sudo y grupos",
-      "question_description": "⚠ El catálogo manda sobre esta encuesta: admins_linux da sudo COMPLETO sin contraseña.",
+      "question_name": "Catálogo (si origen = catalogo) · el catálogo define perfil y grupos",
+      "question_description": "⚠ El catálogo manda sobre esta encuesta: admins_linux da perfil_admin_linux (sudo completo).",
       "required": false,
       "type": "multiplechoice",
       "variable": "crear_catalogo",
@@ -125,51 +125,25 @@
       "new_question": true
     },
     {
-      "question_name": "Nivel de sudo",
-      "question_description": "[ninguno] Sin sudo. [completo] Puede ejecutar todo como root. [limitado] Solo los comandos indicados abajo.",
+      "question_name": "Perfil de la cuenta",
+      "question_description": "Define el sudo de la cuenta (vars/perfiles.yml). [perfil_estandar] Sin sudo. [perfil_admin_linux] Administrador global Linux: sudo completo. [perfil_auditor_linux] Auditor: solo comandos de consulta (last, ps, ss, journalctl…). [perfil_soporte_geopos] Soporte Geopos: status, start, stop y restart de los servicios Geopos. sudo pide la contraseña del usuario; en 1b (llave) no la pide porque la cuenta no tiene contraseña.",
       "required": true,
       "type": "multiplechoice",
-      "variable": "crear_sudo_nivel",
+      "variable": "crear_perfil",
       "min": 0,
       "max": 1024,
-      "default": "ninguno",
+      "default": "perfil_estandar",
       "choices": [
-        "ninguno",
-        "completo",
-        "limitado"
-      ],
-      "new_question": true
-    },
-    {
-      "question_name": "Comandos sudo permitidos (si nivel = limitado)",
-      "question_description": "Un comando por línea, con ruta completa. Ejemplo: /usr/bin/systemctl restart httpd",
-      "required": false,
-      "type": "textarea",
-      "variable": "crear_sudo_comandos",
-      "min": 0,
-      "max": 20000,
-      "default": "",
-      "choices": [],
-      "new_question": true
-    },
-    {
-      "question_name": "sudo sin contraseña (NOPASSWD)",
-      "question_description": "[SI] Sudo no pide contraseña.",
-      "required": true,
-      "type": "multiplechoice",
-      "variable": "crear_sudo_nopasswd",
-      "min": 0,
-      "max": 1024,
-      "default": "NO",
-      "choices": [
-        "SI",
-        "NO"
+        "perfil_estandar",
+        "perfil_admin_linux",
+        "perfil_auditor_linux",
+        "perfil_soporte_geopos"
       ],
       "new_question": true
     },
     {
       "question_name": "Actualizar usuarios que ya existen",
-      "question_description": "[NO] Las cuentas que ya existen se omiten. [SI] Se les agregan grupos, llave y sudo (no cambia su contraseña).",
+      "question_description": "[NO] Las cuentas que ya existen se omiten. [SI] Se les aplican grupos, llave y perfil (no cambia su contraseña).",
       "required": true,
       "type": "multiplechoice",
       "variable": "crear_actualizar_existentes",

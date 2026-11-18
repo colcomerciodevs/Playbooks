@@ -361,10 +361,21 @@ def nombre_comando(cmd):
     return os.path.basename(primero)
 
 
+def default_activo(defaults, nombre):
+    """Valor efectivo de un Defaults booleano: gana la última entrada (p. ej. targetpw y luego !targetpw)."""
+    valor = False
+    for d in defaults:
+        if d == nombre:
+            valor = True
+        elif d == '!' + nombre:
+            valor = False
+    return valor
+
+
 def clasificar_sudo(datos):
     defaults = datos['defaults']
     auth_global = '!authenticate' not in defaults
-    clave_destino = [d for d in ('targetpw', 'rootpw', 'runaspw') if d in defaults]
+    clave_destino = [d for d in ('targetpw', 'rootpw', 'runaspw') if default_activo(defaults, d)]
     r = {'nivel': 'NINGUNO', 'nopasswd': False, 'requiere_clave': '', 'comandos': [],
          'comandos_riesgo': [], 'comodines': False, 'reglas': [], 'origenes': []}
     if not datos['permitido']:
@@ -757,7 +768,7 @@ def main():
     servidor = {
         'sistema': info_so(module), 'sudo_version': version_sudo,
         'sudo_defaults': defaults_globales,
-        'sudo_clave_destino': [d for d in ('targetpw', 'rootpw', 'runaspw') if d in defaults_globales],
+        'sudo_clave_destino': [d for d in ('targetpw', 'rootpw', 'runaspw') if default_activo(defaults_globales, d)],
         'sshd': sshd, 'root': root, 'cuentas_uid0': cuentas_uid0,
         'fecha_auditoria': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
     }

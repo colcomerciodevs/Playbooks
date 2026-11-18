@@ -1,14 +1,14 @@
 ---
 # Catálogo: cuentas de servicio (aplicaciones, integraciones, plataformas).
-# El método de acceso (llave o contraseña) se elige en la encuesta. El sudo se define
-# por cuenta con los campos de abajo: ninguno, limitado (con sus comandos) o completo.
+# El método de acceso (llave o contraseña) se elige en la encuesta. El sudo lo da el
+# perfil de cada cuenta (campo 'perfil', perfiles en vars/perfiles.yml).
 # Agregue también estas cuentas a 'cuentas_servicio' en vars/comunes.yml para que
 # queden fuera del forzado de contraseña en bloque de la opción 2.
 usuarios:
   - usuario: srvinnops
     nombre: "Plataforma de IA Infraestructura Corbeta"
     shell_solaris: /usr/bin/bash
-    sudo: ninguno
+    perfil: perfil_estandar
 
 # -----------------------------------------------------------------------------
 # REFERENCIA DE CAMPOS (todos opcionales salvo 'usuario'):
@@ -21,16 +21,6 @@ usuarios:
 #   shell_solaris  shell en Solaris 11       (por defecto /usr/bin/bash)
 #   home           directorio home           (por defecto /home/<usuario>)
 #   llave_publica  llave pública SSH en línea (tiene prioridad sobre el almacén de llaves)
-#   sudo           ninguno | completo | limitado
-#   sudo_nopasswd  true | false
-#   sudo_comandos  lista de comandos con ruta absoluta (para sudo: limitado)
-#
-# Ejemplo de sudo limitado:
-#  - usuario: jmonitor
-#    nombre: "Usuario de monitoreo"
-#    sudo: limitado
-#    sudo_nopasswd: true
-#    sudo_comandos:
-#      - /usr/bin/systemctl status *
-#      - /usr/bin/journalctl -u nginx
+#   perfil         perfil_admin_linux | perfil_auditor_linux | perfil_soporte_geopos | perfil_estandar
+#                  (vars/perfiles.yml). Si se omite, se usa el perfil elegido en la encuesta.
 # -----------------------------------------------------------------------------
