@@ -16,7 +16,7 @@
     },
     {
       "question_name": "Servidores o grupo del inventario",
-      "question_description": "Grupo, servidor o patrón del inventario. No se permite localhost. Ejemplos: GEOPOS · PPU · srv1,srv2 · GEOPOS:!srv1",
+      "question_description": "Grupo, servidor o patrón del inventario. No se permite localhost. [GEOPOS] Un grupo. [GEOPOS,PPU] Varios grupos, separados por coma. [srv1,srv2] Servidores puntuales. [GEOPOS:!srv1] Un grupo sin un servidor.",
       "required": true,
       "type": "text",
       "variable": "objetivo",

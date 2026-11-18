@@ -47,7 +47,10 @@ CATALOGOS = ['admins_linux', 'cuentas_de_servicio', 'soporte_zona_norte', 'sopor
 # ---------------------------------------------------------------------------
 OBJETIVO = q('objetivo', 'Servidores o grupo del inventario',
              'Grupo, servidor o patrón del inventario. No se permite localhost.\n'
-             '• Ejemplos: GEOPOS · PPU · srv1,srv2 · GEOPOS:!srv1',
+             '• GEOPOS → un grupo.\n'
+             '• GEOPOS,PPU → varios grupos, separados por coma.\n'
+             '• srv1,srv2 → servidores puntuales.\n'
+             '• GEOPOS:!srv1 → un grupo sin un servidor.',
              req=True, mn=1)
 
 C_ORIGEN = q('crear_origen', 'Origen de la lista de usuarios',

@@ -144,7 +144,7 @@ class Flujo(Flowable):
 # Qué provoca cada pregunta. La clave es la variable de la encuesta.
 # ---------------------------------------------------------------------------
 EFECTO = {
-    'objetivo': 'En qué servidores se aplica: grupo, servidor o patrón. Debe existir en el inventario y no puede ser localhost.',
+    'objetivo': 'En qué servidores se aplica: grupos o servidores separados por coma (GEOPOS,PPU), o un patrón (GEOPOS:!srv1). Debe existir en el inventario y no puede ser localhost.',
     'relacion_usuario': 'Usuario con el que se entra hoy al servidor (tux, adminso…). Debe poder usar sudo.',
     'relacion_clave': 'Contraseña SSH de ese usuario. AWX la guarda cifrada.',
     'relacion_clave_sudo': 'Solo si sudo pide una contraseña distinta a la de conexión.',

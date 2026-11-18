@@ -76,8 +76,8 @@ def encuesta():
           '<b>[valor] efecto</b>. Estos campos aparecen en casi todos los workflows:'),
         tabla(['Campo', 'Qué escribir', 'Ejemplo'], [
             ['Ticket o justificación', 'Número de ticket y una frase de por qué. Es lo primero que lee el aprobador.', 'REQ-1234 alta de soporte zona norte'],
-            ['Servidores o grupo del inventario', 'Un grupo, uno o varios servidores separados por coma, o un patrón. '
-             '<b>:!</b> excluye un servidor. No se acepta localhost.', 'GEOPOS<br/>srv1,srv2<br/>GEOPOS:!srv1'],
+            ['Servidores o grupo del inventario', 'Uno o varios grupos o servidores, <b>separados por coma</b> (sin "·" ni espacios). '
+             '<b>:!</b> excluye un servidor. No se acepta localhost.', 'GEOPOS<br/>GEOPOS,PPU<br/>srv1,srv2<br/>GEOPOS:!srv1'],
             ['Usuario(s)', 'Nombres de cuenta en minúscula, separados por coma.', 'jperez,mgomez'],
             ['Origen / Usuarios a incluir', '<b>encuesta</b> o <b>lista</b>: los que usted escribe. <b>catalogo</b>: una lista ya guardada en el proyecto '
              '(por ejemplo admins_linux o soporte_zona_norte).', 'catalogo → soporte_zona_norte'],
