@@ -86,34 +86,34 @@ details .wrap{border:0;border-top:1px solid var(--bd);border-radius:0 0 10px 10p
 {%- if aud_cambio | bool %}
 <h2>Cuentas no encontradas ({{ noenc | length }})</h2>
 <p class="meta">Cuentas que el cambio indicó pero ya no existen en el servidor (lo esperado tras una eliminación).</p>
-{%- if noenc %}<div class="wrap"><table><thead><tr><th>Servidor</th><th>Cuenta</th></tr></thead><tbody>
-{%- for x in noenc %}<tr><td>{{ x.host | e }}</td><td>{{ x.u | e }}</td></tr>{% endfor %}
+{%- if noenc %}<div class="wrap"><table><thead><tr><th>Servidor</th><th>Hostname</th><th>IP</th><th>Cuenta</th></tr></thead><tbody>
+{%- for x in noenc %}<tr><td>{{ x.host | e }}</td><td>{{ hostvars[x.host]['auditoria_resultado'].servidor.hostname | default('') | e }}</td><td>{{ aud_ip[x.host] | default('') | e }}</td><td>{{ x.u | e }}</td></tr>{% endfor %}
 </tbody></table></div>{% endif %}
 {%- endif %}
 <h2>Hallazgos ({{ hall | length }})</h2>
 <div class="tool"><input type="search" placeholder="Filtrar hallazgos por servidor, usuario o texto…" data-tabla="t-hall"></div>
 <div class="wrap"><table id="t-hall">
-<thead><tr><th>Severidad</th><th>Servidor</th><th>Usuario</th><th>Código</th><th>Detalle</th></tr></thead>
+<thead><tr><th>Severidad</th><th>Servidor</th><th>Hostname</th><th>IP</th><th>Usuario</th><th>Código</th><th>Detalle</th></tr></thead>
 <tbody>
 {%- for x in hall | sort(attribute='r') %}
-<tr><td><span class="sev {{ x.sev }}">{{ x.sev }}</span></td><td>{{ x.host | e }}</td><td>{{ x.usuario | e }}</td><td><code class="cod">{{ x.codigo }}</code></td><td>{{ x.detalle | e }}</td></tr>
+<tr><td><span class="sev {{ x.sev }}">{{ x.sev }}</span></td><td>{{ x.host | e }}</td><td>{{ hostvars[x.host]['auditoria_resultado'].servidor.hostname | default('') | e }}</td><td>{{ aud_ip[x.host] | default('') | e }}</td><td>{{ x.usuario | e }}</td><td><code class="cod">{{ x.codigo }}</code></td><td>{{ x.detalle | e }}</td></tr>
 {%- else %}
-<tr><td colspan="5">Sin hallazgos.</td></tr>
+<tr><td colspan="7">Sin hallazgos.</td></tr>
 {%- endfor %}
 </tbody></table></div>
 
 <h2>Cuentas con privilegios sudo ({{ sudos | length }})</h2>
 <div class="tool"><input type="search" placeholder="Filtrar por servidor, usuario o comando…" data-tabla="t-sudo"></div>
 <div class="wrap"><table id="t-sudo">
-<thead><tr><th>Servidor</th><th>Usuario</th><th>Nombre</th><th>Nivel</th><th>Sin clave</th><th>Clave exigida</th><th>Comandos permitidos</th><th>Origen de la regla</th></tr></thead>
+<thead><tr><th>Servidor</th><th>Hostname</th><th>IP</th><th>Usuario</th><th>Nombre</th><th>Nivel</th><th>Sin clave</th><th>Clave exigida</th><th>Comandos permitidos</th><th>Origen de la regla</th></tr></thead>
 <tbody>
 {%- for s in sudos %}{% set u = s.u %}
-<tr><td>{{ s.host | e }}</td><td><b>{{ u.usuario | e }}</b></td><td>{{ u.nombre | e }}</td>
+<tr><td>{{ s.host | e }}</td><td>{{ hostvars[s.host]['auditoria_resultado'].servidor.hostname | default('') | e }}</td><td>{{ aud_ip[s.host] | default('') | e }}</td><td><b>{{ u.usuario | e }}</b></td><td>{{ u.nombre | e }}</td>
 <td class="{{ u.sudo.nivel }}">{{ u.sudo.nivel }}</td><td>{{ 'SÍ' if u.sudo.nopasswd else 'no' }}</td><td>{{ u.sudo.requiere_clave | default('', true) | e }}</td>
 <td>{% for cmd in u.sudo.comandos %}<code class="{{ 'riesgo' if cmd in u.sudo.comandos_riesgo else '' }}">{{ cmd | e }}</code>{{ '' if loop.last else ', ' }}{% endfor %}</td>
 <td>{% for o in (u.sudo.origenes + (u.sudo.fuentes_locales | default([]))) | unique %}<code>{{ o | e }}</code><br>{% endfor %}</td></tr>
 {%- else %}
-<tr><td colspan="8">Ninguna cuenta con UID ≥ {{ auditoria_uid_minimo }} tiene sudo.</td></tr>
+<tr><td colspan="10">Ninguna cuenta con UID ≥ {{ auditoria_uid_minimo }} tiene sudo.</td></tr>
 {%- endfor %}
 </tbody></table></div>
 <p class="nota">En rojo: comandos que permiten obtener una shell de root (shells, editores, paginadores como less/journalctl/systemctl status, intérpretes; ver GTFOBins). "Clave exigida = root (targetpw)" indica que sudo pide la contraseña de root, típico de SUSE.</p>
@@ -122,7 +122,7 @@ details .wrap{border:0;border-top:1px solid var(--bd);border-radius:0 0 10px 10p
 <div class="tool"><input type="search" placeholder="Filtrar en todas las tablas de servidores…" data-grupo="srv"></div>
 {%- for h in ok %}{% set r = hostvars[h]['auditoria_resultado'] %}
 <details data-srv>
-<summary>{{ h | e }}<small>{{ r.servidor.sistema | e }} · {{ r.resumen.usuarios }} cuentas · sudo completo {{ r.resumen.sudo_completo }} · con clave de root {{ r.resumen.sudo_clave_root | default(0) }} · limitado {{ r.resumen.sudo_limitado }}{% if r.resumen.hallazgos_critico %} · <span class="sev CRITICO">{{ r.resumen.hallazgos_critico }} crítico(s)</span>{% endif %}{% if r.resumen.hallazgos_alto %} · <span class="sev ALTO">{{ r.resumen.hallazgos_alto }} alto(s)</span>{% endif %}</small></summary>
+<summary>{{ h | e }}<small>hostname {{ r.servidor.hostname | default('?') | e }} · IP {{ aud_ip[h] | default('') | e }} · {{ r.servidor.sistema | e }} · {{ r.resumen.usuarios }} cuentas · sudo completo {{ r.resumen.sudo_completo }} · con clave de root {{ r.resumen.sudo_clave_root | default(0) }} · limitado {{ r.resumen.sudo_limitado }}{% if r.resumen.hallazgos_critico %} · <span class="sev CRITICO">{{ r.resumen.hallazgos_critico }} crítico(s)</span>{% endif %}{% if r.resumen.hallazgos_alto %} · <span class="sev ALTO">{{ r.resumen.hallazgos_alto }} alto(s)</span>{% endif %}</small></summary>
 <div class="box">root: contraseña {{ r.servidor.root.estado_contrasena | default('?') }}, último cambio {{ r.servidor.root.ultimo_cambio | default('?') }}, caduca <b>{{ r.servidor.root.contrasena_caduca | default('?') }}</b>
 {%- if r.servidor.cuentas_uid0 | length > 1 %} · <span class="sev CRITICO">UID 0: {{ r.servidor.cuentas_uid0 | map(attribute='usuario') | join(', ') }}</span>{% endif %}
  · {{ r.servidor.sudo_version | default('sudo no instalado', true) | e }}{% if r.servidor.sudo_clave_destino %} · Defaults {{ r.servidor.sudo_clave_destino | join(', ') }}{% endif %}
@@ -152,8 +152,8 @@ details .wrap{border:0;border-top:1px solid var(--bd);border-radius:0 0 10px 10p
 
 {%- if ko %}
 <h2>Servidores no alcanzados o con error ({{ ko | length }})</h2>
-<div class="wrap"><table><thead><tr><th>Servidor</th><th>Motivo</th></tr></thead><tbody>
-{%- for h in ko %}<tr><td>{{ h | e }}</td><td>{{ (hostvars[h]['auditoria_resultado'] | default({})).msg | default('No respondió (inalcanzable o fallo de autenticación/become antes de auditar).') | e }}</td></tr>{% endfor %}
+<div class="wrap"><table><thead><tr><th>Servidor</th><th>IP</th><th>Motivo</th></tr></thead><tbody>
+{%- for h in ko %}<tr><td>{{ h | e }}</td><td>{{ aud_ip[h] | default('') | e }}</td><td>{{ (hostvars[h]['auditoria_resultado'] | default({})).msg | default('No respondió (inalcanzable o fallo de autenticación/become antes de auditar).') | e }}</td></tr>{% endfor %}
 </tbody></table></div>
 {%- endif %}
 </main>

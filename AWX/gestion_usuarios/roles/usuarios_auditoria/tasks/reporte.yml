@@ -9,6 +9,10 @@
     aud_hosts: "{{ hostvars['localhost']['auditoria_hosts_objetivo'] | default([]) }}"
     aud_fecha: "{{ now(fmt='%Y-%m-%d %H:%M:%S') }}"
     aud_sello: "{{ now(fmt='%Y%m%d_%H%M%S') }}"
+    # IP de cada servidor (ansible_host del inventario; si no tiene, el mismo nombre).
+    aud_ip: >-
+      {% set r = {} %}{% for h in hostvars['localhost']['auditoria_hosts_objetivo'] | default([]) %}
+      {%- set _ = r.update({h: hostvars[h]['ansible_host'] | default(h)}) %}{% endfor %}{{ r }}
 
 # En un workflow (llega cambio_cuentas) el informe es la verificación del cambio realizado.
 - name: Reporte | Rutas de salida

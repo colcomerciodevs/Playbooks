@@ -226,7 +226,8 @@ def llaves_y_resultados():
         P('El informe de verificación', 'h2'),
         P('El último nodo revisa <b>solo las cuentas que se cambiaron</b> y deja dos archivos en /data/work/gestion_usuarios/reportes/: '
           '<font name="Mono" size="7.6">verificacion_cambio_&lt;fecha&gt;.html</font> (para leer) y <font name="Mono" size="7.6">.csv</font> (para Excel). '
-          'Muestran la operación, el ticket y, por cada cuenta y servidor, su estado: contraseña, caducidad, bloqueo, sudo y acceso SSH. '
+          'Muestran la operación, el ticket y, por cada servidor (nombre en el inventario, hostname real e IP) y cada cuenta, su estado: '
+          'contraseña, caducidad, bloqueo, sudo y acceso SSH. A root y a las cuentas con UID 0 no se les marca su sudo como hallazgo, porque ya son administradoras. '
           'La sección "Cuentas no encontradas" confirma, por ejemplo, que una cuenta eliminada ya no existe. El resumen también sale al final '
           'de la salida del job.'),
         P('La plantilla 3 sola hace la <b>auditoría general</b> (todas las cuentas) y genera auditoria_usuarios_&lt;fecha&gt;.'),

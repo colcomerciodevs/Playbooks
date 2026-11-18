@@ -678,24 +678,26 @@ def main():
         # hallazgos
         if est == 'VACIA':
             hallazgo(h, 'CRITICO', 'CONTRASENA_VACIA', 'La cuenta no tiene contraseña: puede entrar sin clave.')
-        if sudo['nivel'] == 'COMPLETO':
-            if sudo['nopasswd']:
-                hallazgo(h, 'ALTO', 'SUDO_COMPLETO_SIN_CLAVE', 'sudo ALL sin contraseña (NOPASSWD).')
-            elif sudo['requiere_clave'].startswith('root'):
-                hallazgo(h, 'MEDIO', 'SUDO_COMPLETO_CLAVE_ROOT', 'sudo ALL pero exige la contraseña de root (%s).' % sudo['requiere_clave'])
-            else:
-                hallazgo(h, 'ALTO', 'SUDO_COMPLETO', 'sudo ALL con su propia contraseña.')
-            if any(x.startswith('!') for x in sudo['comandos']):
-                hallazgo(h, 'INFO', 'SUDO_NEGACIONES', 'Las negaciones en una regla ALL (%s) se pueden evadir.'
-                         % ', '.join(x for x in sudo['comandos'] if x.startswith('!')))
-        elif sudo['nivel'] == 'LIMITADO':
-            if sudo['comandos_riesgo']:
-                hallazgo(h, 'ALTO', 'SUDO_ESCALAMIENTO', 'Comandos que permiten obtener root: ' + ', '.join(sudo['comandos_riesgo']))
-            if sudo['comodines']:
-                hallazgo(h, 'MEDIO', 'SUDO_COMODINES', 'Reglas con comodines (*) en los argumentos.')
-        for g in todos_grupos:
-            if g in GRUPOS_EQUIVALENTES_ROOT:
-                hallazgo(h, 'ALTO', 'GRUPO_EQUIVALENTE_ROOT', 'Pertenece al grupo "%s" (equivale a root).' % g)
+        # root y las cuentas UID 0 ya son administradoras: sus reglas sudo y grupos no son un hallazgo.
+        if c['uid'] != 0:
+            if sudo['nivel'] == 'COMPLETO':
+                if sudo['nopasswd']:
+                    hallazgo(h, 'ALTO', 'SUDO_COMPLETO_SIN_CLAVE', 'sudo ALL sin contraseña (NOPASSWD).')
+                elif sudo['requiere_clave'].startswith('root'):
+                    hallazgo(h, 'MEDIO', 'SUDO_COMPLETO_CLAVE_ROOT', 'sudo ALL pero exige la contraseña de root (%s).' % sudo['requiere_clave'])
+                else:
+                    hallazgo(h, 'ALTO', 'SUDO_COMPLETO', 'sudo ALL con su propia contraseña.')
+                if any(x.startswith('!') for x in sudo['comandos']):
+                    hallazgo(h, 'INFO', 'SUDO_NEGACIONES', 'Las negaciones en una regla ALL (%s) se pueden evadir.'
+                             % ', '.join(x for x in sudo['comandos'] if x.startswith('!')))
+            elif sudo['nivel'] == 'LIMITADO':
+                if sudo['comandos_riesgo']:
+                    hallazgo(h, 'ALTO', 'SUDO_ESCALAMIENTO', 'Comandos que permiten obtener root: ' + ', '.join(sudo['comandos_riesgo']))
+                if sudo['comodines']:
+                    hallazgo(h, 'MEDIO', 'SUDO_COMODINES', 'Reglas con comodines (*) en los argumentos.')
+            for g in todos_grupos:
+                if g in GRUPOS_EQUIVALENTES_ROOT:
+                    hallazgo(h, 'ALTO', 'GRUPO_EQUIVALENTE_ROOT', 'Pertenece al grupo "%s" (equivale a root).' % g)
         if alg in ('md5', 'des', 'md5-sun', 'sha1') and est == 'ACTIVA':
             hallazgo(h, 'ALTO', 'HASH_DEBIL', 'Contraseña almacenada con algoritmo débil (%s).' % alg)
         # Con PAM, una contraseña vencida también impide entrar con llave.
@@ -766,7 +768,7 @@ def main():
         resumen['hallazgos_' + s.lower()] = len([x for x in todos_h if x['severidad'] == s])
 
     servidor = {
-        'sistema': info_so(module), 'sudo_version': version_sudo,
+        'hostname': os.uname()[1], 'sistema': info_so(module), 'sudo_version': version_sudo,
         'sudo_defaults': defaults_globales,
         'sudo_clave_destino': [d for d in ('targetpw', 'rootpw', 'runaspw') if default_activo(defaults_globales, d)],
         'sshd': sshd, 'root': root, 'cuentas_uid0': cuentas_uid0,

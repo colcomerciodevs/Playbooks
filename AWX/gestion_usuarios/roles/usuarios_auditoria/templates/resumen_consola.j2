@@ -10,19 +10,19 @@ Servidores auditados: {{ ok | length }} | No alcanzados/fallidos: {{ ko | length
 Cuentas: {{ t.u }} | sudo COMPLETO: {{ t.c }} | solo con clave de root: {{ t.rq }} | sudo LIMITADO: {{ t.l }} | con NOPASSWD: {{ t.n }}
 Hallazgos CRÍTICOS: {{ t.cr }} | ALTOS: {{ t.al }}
 {% if ko %}
-No alcanzados: {{ ko | join(', ') }}
+No alcanzados: {% for h in ko %}{{ h }} ({{ aud_ip[h] | default('') }}){{ '' if loop.last else ', ' }}{% endfor %}
 {% endif %}
 -----------------------------------------------------------------------------
-Cuentas con sudo (servidor / usuario / nivel / comandos):
+Cuentas con sudo (servidor (hostname, IP) / usuario / nivel / comandos):
 {% for h in ok %}{% for u in hostvars[h]['auditoria_resultado']['usuarios'] if u.sudo.nivel in ['COMPLETO', 'LIMITADO'] %}
-{{ h }} / {{ u.usuario }} / {{ u.sudo.nivel }}{{ ' NOPASSWD' if u.sudo.nopasswd else '' }} / {{ u.sudo.comandos | join(', ') | truncate(150) }}
+{{ h }} ({{ hostvars[h]['auditoria_resultado'].servidor.hostname | default('?') }}, {{ aud_ip[h] | default('') }}) / {{ u.usuario }} / {{ u.sudo.nivel }}{{ ' NOPASSWD' if u.sudo.nopasswd else '' }} / {{ u.sudo.comandos | join(', ') | truncate(150) }}
 {% endfor %}{% endfor %}
 -----------------------------------------------------------------------------
 Hallazgos críticos y altos:
 {% for h in ok %}{% for x in hostvars[h]['auditoria_resultado']['hallazgos_servidor'] if x.severidad in ['CRITICO', 'ALTO'] %}
-[{{ x.severidad }}] {{ h }}: {{ x.detalle }}
+[{{ x.severidad }}] {{ h }} ({{ hostvars[h]['auditoria_resultado'].servidor.hostname | default('?') }}, {{ aud_ip[h] | default('') }}): {{ x.detalle }}
 {% endfor %}{% for u in hostvars[h]['auditoria_resultado']['usuarios'] %}{% for x in u.hallazgos if x.severidad in ['CRITICO', 'ALTO'] %}
-[{{ x.severidad }}] {{ h }} / {{ u.usuario }}: {{ x.detalle }}
+[{{ x.severidad }}] {{ h }} ({{ hostvars[h]['auditoria_resultado'].servidor.hostname | default('?') }}, {{ aud_ip[h] | default('') }}) / {{ u.usuario }}: {{ x.detalle }}
 {% endfor %}{% endfor %}{% endfor %}
 -----------------------------------------------------------------------------
 Reporte HTML: {{ aud_html | default('') }}
