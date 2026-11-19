@@ -11,7 +11,7 @@ contrasena_usuarios: ""
 #   catalogo       = los usuarios de vars/catalogos/<contrasena_catalogo>.yml
 #   todos_uid_1000 = en cada servidor, todas las cuentas con UID >= uid_minimo_humano
 # Los dos últimos solo admiten la acción solo_forzar_cambio y excluyen automáticamente
-# cuentas críticas, cuentas_servicio, shells no interactivos y cuentas sin contraseña utilizable.
+# cuentas críticas, cuentas_servicio, shells no interactivos, cuentas expiradas y cuentas sin contraseña utilizable.
 contrasena_origen: lista
 contrasena_catalogo: ""
 

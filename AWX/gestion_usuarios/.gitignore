@@ -1,0 +1,7 @@
+# Archivos locales que no deben subirse a Git
+CLAUDE.local.md
+.claude/
+pruebas/
+informes/
+__pycache__/
+*.pyc

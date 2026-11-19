@@ -7,7 +7,7 @@
 {{ '================== VERIFICACIÓN DEL CAMBIO: ' ~ (cambio_operacion | default('-')) ~ ' ==================' if aud_cambio | bool else '==================== AUDITORÍA DE USUARIOS - CONSOLIDADO ====================' }}
 Fecha: {{ aud_fecha }} | Objetivo: {{ objetivo | default('-') }} | {{ ('Ticket: ' ~ (ticket_cambio | default('-')) ~ ' | Solo cuentas modificadas') if aud_cambio | bool else ('UID >= ' ~ auditoria_uid_minimo) }}
 Servidores auditados: {{ ok | length }} | No alcanzados/fallidos: {{ ko | length }}
-Cuentas: {{ t.u }} | sudo COMPLETO: {{ t.c }} | solo con clave de root: {{ t.rq }} | sudo LIMITADO: {{ t.l }} | con NOPASSWD: {{ t.n }}
+Cuentas: {{ t.u }} | sudo total (ALL): {{ t.c + t.rq }} (de ellos con la clave de root: {{ t.rq }}) | sudo limitado: {{ t.l }} | sudo sin contraseña (NOPASSWD): {{ t.n }}
 Hallazgos CRÍTICOS: {{ t.cr }} | ALTOS: {{ t.al }}
 {% if ko %}
 No alcanzados: {% for h in ko %}{{ h }} ({{ aud_ip[h] | default('') }}){{ '' if loop.last else ', ' }}{% endfor %}
@@ -15,14 +15,14 @@ No alcanzados: {% for h in ko %}{{ h }} ({{ aud_ip[h] | default('') }}){{ '' if 
 -----------------------------------------------------------------------------
 Cuentas con sudo (servidor (hostname, IP) / usuario / nivel / comandos):
 {% for h in ok %}{% for u in hostvars[h]['auditoria_resultado']['usuarios'] if u.sudo.nivel in ['COMPLETO', 'LIMITADO'] %}
-{{ h }} ({{ hostvars[h]['auditoria_resultado'].servidor.hostname | default('?') }}, {{ aud_ip[h] | default('') }}) / {{ u.usuario }} / {{ u.sudo.nivel }}{{ ' NOPASSWD' if u.sudo.nopasswd else '' }} / {{ u.sudo.comandos | join(', ') | truncate(150) }}
+{{ h }} ({{ hostvars[h]['auditoria_resultado'].servidor.hostname | default('?') }}, {{ aud_ip[h] | default('') }}) / {{ u.usuario }} / {{ {'COMPLETO': 'TOTAL', 'LIMITADO': 'LIMITADO'}[u.sudo.nivel] }}{{ ' NOPASSWD' if u.sudo.nopasswd else '' }} / {{ u.sudo.comandos | join(', ') | truncate(150) }}
 {% endfor %}{% endfor %}
 -----------------------------------------------------------------------------
 Hallazgos críticos y altos:
 {% for h in ok %}{% for x in hostvars[h]['auditoria_resultado']['hallazgos_servidor'] if x.severidad in ['CRITICO', 'ALTO'] %}
-[{{ x.severidad }}] {{ h }} ({{ hostvars[h]['auditoria_resultado'].servidor.hostname | default('?') }}, {{ aud_ip[h] | default('') }}): {{ x.detalle }}
+[{{ x.severidad | replace('CRITICO', 'CRÍTICO') }}] {{ h }} ({{ hostvars[h]['auditoria_resultado'].servidor.hostname | default('?') }}, {{ aud_ip[h] | default('') }}): {{ x.detalle }}
 {% endfor %}{% for u in hostvars[h]['auditoria_resultado']['usuarios'] %}{% for x in u.hallazgos if x.severidad in ['CRITICO', 'ALTO'] %}
-[{{ x.severidad }}] {{ h }} ({{ hostvars[h]['auditoria_resultado'].servidor.hostname | default('?') }}, {{ aud_ip[h] | default('') }}) / {{ u.usuario }}: {{ x.detalle }}
+[{{ x.severidad | replace('CRITICO', 'CRÍTICO') }}] {{ h }} ({{ hostvars[h]['auditoria_resultado'].servidor.hostname | default('?') }}, {{ aud_ip[h] | default('') }}) / {{ u.usuario }}: {{ x.detalle }}
 {% endfor %}{% endfor %}{% endfor %}
 -----------------------------------------------------------------------------
 Reporte Excel: {{ aud_xlsx | default('') }}

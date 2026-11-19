@@ -1,0 +1,74 @@
+# Explicación de cada tipo de hallazgo para la hoja "Tipos de hallazgo" del Excel.
+# que: qué significa, en lenguaje sencillo.   accion: qué se recomienda hacer.
+auditoria_tipos_hallazgo:
+  CONTRASENA_VACIA:
+    que: La cuenta no tiene contraseña; cualquiera puede entrar sin escribir clave.
+    accion: Asignarle contraseña o bloquearla de inmediato (opción 2).
+  UID0_NO_ROOT:
+    que: Una cuenta distinta de root tiene UID 0, así que es root con otro nombre.
+    accion: Confirmar si es legítima; si no lo es, eliminarla.
+  ROOT_CLAVE_EXPIRADA:
+    que: La contraseña de root está vencida.
+    accion: Renovarla según el procedimiento de cuentas administradoras.
+  SUDO_COMPLETO_SIN_CLAVE:
+    que: Puede ejecutar cualquier comando como root sin escribir contraseña (NOPASSWD). Quien entre a la cuenta es root.
+    accion: Confirmar que lo necesita. Preferir el perfil que pide contraseña o uno con comandos limitados.
+  SUDO_COMPLETO:
+    que: Puede ejecutar cualquier comando como root escribiendo su propia contraseña.
+    accion: Confirmar que sea un administrador vigente.
+  SUDO_ESCALAMIENTO:
+    que: Su sudo es limitado, pero alguno de los comandos permite obtener root (editor, shell, intérprete...).
+    accion: Quitar ese comando o reemplazarlo por uno que no permita escapar.
+  GRUPO_EQUIVALENTE_ROOT:
+    que: Pertenece a un grupo que da privilegios de root (wheel, sudo, docker...).
+    accion: Confirmar que sea necesario; si no, sacarla del grupo.
+  HASH_DEBIL:
+    que: La contraseña está guardada con un algoritmo antiguo (MD5/DES) que se puede descifrar.
+    accion: Cambiar la contraseña; la nueva se guarda con un algoritmo seguro.
+  CONTRASENA_EXPIRADA:
+    que: La contraseña venció. Si la cuenta entra solo con llave (ALTO), ya perdió el acceso.
+    accion: Cambiarla, o eliminar la cuenta si ya no se usa.
+  CONTRASENA_POR_VENCER:
+    que: La contraseña vence en pocos días.
+    accion: Cambiarla antes de la fecha para no perder el acceso.
+  SUDO_COMPLETO_CLAVE_ROOT:
+    que: Tiene sudo total, pero debe escribir la contraseña de root (regla por defecto de SUSE con targetpw).
+    accion: Riesgo moderado, porque solo quien ya conoce la clave de root lo puede usar. Evaluar quitar la regla por defecto.
+  SSH_ROOT_PERMITIDO:
+    que: SSH acepta que root entre directamente con contraseña.
+    accion: Configurar PermitRootLogin no o prohibit-password, tras confirmar que hay otro acceso administrativo.
+  SUDO_COMODINES:
+    que: Hay reglas sudo con * en los argumentos, que suelen permitir más de lo previsto.
+    accion: Reemplazarlas por argumentos exactos.
+  CUENTA_INACTIVA:
+    que: Puede entrar, pero no ha ingresado en más del tiempo de inactividad configurado.
+    accion: Confirmar con el responsable; bloquearla o eliminarla si ya no se usa.
+  NUNCA_INGRESO:
+    que: La cuenta está habilitada en ese servidor, pero nunca ha iniciado sesión allí.
+    accion: Si no la necesita en ese servidor, eliminarla (menos cuentas, menos riesgo).
+  CONTRASENA_SIN_CADUCIDAD:
+    que: La contraseña nunca vence.
+    accion: Aplicar la política de caducidad a las cuentas personales si la norma lo exige.
+  SUDO_NEGACIONES:
+    que: La regla sudo da ALL y prohíbe algunos comandos con "!". Esas prohibiciones se evaden con facilidad (copiando el programa o usando otro shell).
+    accion: No tomarlas como control. Si se requiere restringir, usar una lista de comandos permitidos.
+  ROOT_CLAVE_CADUCA:
+    que: La contraseña de root tiene fecha de vencimiento.
+    accion: Informativo; renovarla antes de esa fecha.
+  CUENTA_EXPIRADA:
+    que: La cuenta está deshabilitada por fecha de expiración y no puede entrar.
+    accion: Si ya no se usa, eliminarla.
+  LLAVE_CON_OPCIONES:
+    que: Alguna llave SSH tiene restricciones (command=, from=...).
+    accion: Informativo; revisar que sean las esperadas.
+  SUDOERS_SIN_INCLUDEDIR:
+    que: /etc/sudoers no incluye /etc/sudoers.d, así que las reglas por archivo no aplican.
+    accion: Agregar la directiva includedir si se gestionan perfiles en ese servidor.
+
+# Qué significa cada severidad (hoja Resumen y Tipos de hallazgo).
+auditoria_severidades:
+  CRITICO: Atender de inmediato.
+  ALTO: Corregir en el corto plazo.
+  MEDIO: Planificar la corrección.
+  BAJO: Buenas prácticas y limpieza.
+  INFO: Para conocimiento; no exige acción.

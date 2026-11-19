@@ -159,7 +159,7 @@ def ejemplos():
         ('Forzar el cambio de contraseña a todo el personal de GEOPOS',
          'Workflow Forzar cambio · Usuarios a incluir: todos_uid_1000 · Servidores: GEOPOS',
          'Se aplica a las cuentas de persona. Se <b>omiten solas</b>: root y demás críticas, pos y postgres, cuentas que solo entran con llave '
-         'y cuentas sin shell. El informe final lista a quién se le aplicó. <b>Consejo:</b> lance antes la auditoría y, en la hoja '
+         'cuentas sin shell y cuentas expiradas (deshabilitadas por fecha). El informe final lista a quién se le aplicó. <b>Consejo:</b> lance antes la auditoría y, en la hoja '
          '<b>Usuarios</b> del Excel, filtre "Se le forzaría el cambio" (ver "El informe de auditoría").'),
         ('Bloquear a dos personas, pero se coló root en la lista',
          'Workflow Bloquear o eliminar · Usuarios: jperez,root · Acción: bloquear',
@@ -228,16 +228,20 @@ def llaves_y_resultados():
         P('Cada auditoría deja <b>un archivo Excel</b> en /data/work/gestion_usuarios/reportes/. La plantilla 3 sola genera '
           '<font name="Mono" size="7.6">auditoria_usuarios_&lt;fecha&gt;.xlsx</font> (todas las cuentas); el último nodo de un workflow genera '
           '<font name="Mono" size="7.6">verificacion_cambio_&lt;fecha&gt;.xlsx</font> (solo las cuentas que se cambiaron). Todas las hojas tienen '
-          'filtros y la primera fila fija. El resumen también sale al final de la salida del job.'),
+          'filtros y la fila de títulos fija; las severidades van en color (CRÍTICO rojo, ALTO naranja, MEDIO amarillo). '
+          'El resumen también sale al final de la salida del job.'),
         tabla(['Hoja', 'Qué tiene'], [
-            ['<b>Resumen</b>', 'Tipo de informe, fecha, objetivo, ticket, totales y conteo de hallazgos.'],
-            ['<b>Usuarios</b>', 'Una fila por cuenta, sumando todos los servidores: en cuántos servidores está, si <b>se le forzaría el cambio</b> '
-             '(SI, PARCIAL o NO), por qué no y el estado de su contraseña. Es la hoja para revisar antes de forzar en bloque.'],
-            ['<b>Hallazgos</b>', 'Riesgos encontrados, de CRÍTICO a INFO, con servidor, hostname, IP y cuenta.'],
-            ['<b>Sudo</b>', 'Cuentas con sudo: nivel, si pide clave, comandos permitidos y de dónde sale la regla.'],
-            ['<b>Detalle</b>', 'Cada cuenta en cada servidor, con todos sus datos.'],
+            ['<b>Resumen</b>', 'Una página para leer de arriba abajo, con cada cifra explicada: cobertura, sudo (total, sin contraseña, '
+             'con la propia, con la de root, limitado), hallazgos por severidad y cuántas cuentas se forzarían en bloque, con los motivos.'],
+            ['<b>Tipos de hallazgo</b>', '<b>Empiece aquí.</b> Una fila por tipo de problema: qué significa, qué se recomienda y en cuántos '
+             'servidores y cuentas aparece.'],
+            ['<b>Usuarios</b>', 'Una fila por cuenta, sumando todos los servidores: severidad más alta, sudo, si <b>se le forzaría el cambio</b> '
+             '(SÍ, PARCIAL o NO), por qué no y el estado de su contraseña. Es la hoja para revisar antes de forzar en bloque.'],
             ['<b>Servidores</b>', 'Cada servidor: hostname real, IP, sistema, totales, estado de root, versión de sudo, AllowUsers/AllowGroups. '
-             'Los que no respondieron aparecen con el motivo.'],
+             'Los que no respondieron aparecen con Estado SIN RESPUESTA.'],
+            ['<b>Sudo</b>', 'Cuentas con sudo: total o limitado, qué contraseña pide, comandos permitidos y de qué regla sale.'],
+            ['<b>Hallazgos</b>', 'Todos los hallazgos, uno por fila, de CRÍTICO a INFO.'],
+            ['<b>Detalle</b>', 'Cada cuenta en cada servidor, con todos sus datos (lo más importante en las primeras columnas).'],
             ['<b>No encontradas</b>', 'Solo en la verificación de un workflow: cuentas que el cambio indicó y ya no existen (lo esperado tras eliminar).'],
         ], [0.18, 0.82]),
         P('Estado de la contraseña', 'h2'),
@@ -254,10 +258,10 @@ def llaves_y_resultados():
         ], [0.40, 0.60]),
         P('Se le forzaría el cambio: por qué no', 'h2'),
         P('Mismas reglas que la opción 2b en bloque. La columna dice el primer motivo que aplica: <b>Cuenta crítica</b>, <b>Cuenta de sistema '
-          '(UID &lt; 1000)</b>, <b>Cuenta de servicio (lista cuentas_servicio)</b>, <b>Shell no interactivo</b>, <b>Contraseña bloqueada</b>, '
+          '(UID &lt; 1000)</b>, <b>Cuenta de servicio (lista cuentas_servicio)</b>, <b>Shell no interactivo</b>, <b>Cuenta expirada</b>, <b>Contraseña bloqueada</b>, '
           '<b>Sin contraseña: solo llave</b>, <b>Sin contraseña</b> o <b>Contraseña vacía</b>. En la hoja Usuarios, <b>PARCIAL</b> significa que en '
           'unos servidores sí y en otros no (por ejemplo, bloqueada solo en algunos).'),
-        nota('<b>Cómo revisar antes de un forzado en bloque:</b> abra la hoja Usuarios, filtre "Se le forzaría el cambio" = SI o PARCIAL y '
+        nota('<b>Cómo revisar antes de un forzado en bloque:</b> abra la hoja Usuarios, filtre "Se le forzaría el cambio" = SÍ o PARCIAL y '
              'revise la lista. Si aparece una cuenta de aplicación (no de una persona), pida que la agreguen a cuentas_servicio en '
              'vars/comunes.yml y vuelva a auditar.'),
         PageBreak(),

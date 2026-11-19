@@ -16,7 +16,8 @@ options:
     required: true
     description: >-
       Lista de hojas. Cada una: nombre (máx. 31 caracteres), encabezados (lista) y filas (lista de listas).
-      Opcional: anchos (lista de números) y filtro (true por defecto).
+      Opcional: anchos (lista de números), filtro (true por defecto), vacia, colores, estilos_fila,
+      ajustar y fijar_columnas (ver hoja_xml).
 '''
 
 import os
@@ -46,7 +47,7 @@ def texto(v):
     if v is None:
         return u''
     if isinstance(v, bool):
-        return u'SI' if v else u'NO'
+        return u'SÍ' if v else u'NO'
     try:
         t = u'%s' % v
     except UnicodeDecodeError:
@@ -64,8 +65,20 @@ def celda(ref, v, estilo=0):
     return u'<c r="%s"%s t="inlineStr"><is><t xml:space="preserve">%s</t></is></c>' % (ref, s, escape(t))
 
 
+# Índices de cellXfs (ver ESTILOS).
+E_NORMAL, E_ENCABEZADO, E_CELDA, E_TITULO, E_SECCION, E_AJUSTADO = 0, 1, 2, 3, 4, 5
+COLORES = {'rojo': 6, 'naranja': 7, 'amarillo': 8, 'azul': 9, 'gris': 10, 'verde': 11}
+ESTILOS_FILA = {'titulo': E_TITULO, 'seccion': E_SECCION}
+
+
 def hoja_xml(h):
-    """Devuelve (xml de la hoja, rango del filtro o None)."""
+    """Devuelve (xml de la hoja, rango del filtro o None).
+    Opciones de la hoja además de encabezados/filas/anchos/filtro/vacia:
+      colores:        {encabezado o n.º de columna: {valor: color}} colorea esas celdas
+                      (rojo, naranja, amarillo, azul, gris, verde).
+      estilos_fila:   {"<n.º de fila desde 0>": "titulo" | "seccion"} para hojas tipo informe.
+      ajustar:        índices de columna (desde 0) con texto ajustado en varias líneas.
+      fijar_columnas: columnas fijas a la izquierda (además de la fila de encabezado)."""
     enc = h.get('encabezados') or []
     filas = h.get('filas') or []
     if enc and not filas:
@@ -77,45 +90,85 @@ def hoja_xml(h):
         largo = max([len(texto(enc[i])) if i < len(enc) else 0]
                     + [len(texto(f[i])) for f in filas[:500] if i < len(f)])
         anchos.append(min(max(largo + 2, 8), 60))
+    # La columna se indica por su encabezado o por su número (desde 0, como texto en hojas sin encabezado).
+    colores = {}
+    for clave, valores in (h.get('colores') or {}).items():
+        i = enc.index(clave) if clave in enc else (int(clave) if texto(clave).isdigit() else None)
+        for valor, color in (valores or {}).items():
+            if i is not None and color in COLORES:
+                colores[(i, texto(valor))] = COLORES[color]
+    estilos_fila = dict((int(k), ESTILOS_FILA.get(v, E_CELDA)) for k, v in (h.get('estilos_fila') or {}).items())
+    ajustar = set(int(x) for x in h.get('ajustar') or [])
+    fijas = int(h.get('fijar_columnas') or 0)
+
     partes = [u'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
               u'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">']
-    if enc:
+    if enc and fijas:
+        celda_sup = u'%s2' % columna(fijas)
+        partes.append(u'<sheetViews><sheetView workbookViewId="0"><pane xSplit="%d" ySplit="1" topLeftCell="%s" '
+                      u'activePane="bottomRight" state="frozen"/><selection pane="bottomRight" activeCell="%s" sqref="%s"/>'
+                      u'</sheetView></sheetViews>' % (fijas, celda_sup, celda_sup, celda_sup))
+    elif enc:
         partes.append(u'<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" '
                       u'state="frozen"/></sheetView></sheetViews>')
+    else:
+        partes.append(u'<sheetViews><sheetView workbookViewId="0" showGridLines="0"/></sheetViews>')
     partes.append(u'<cols>%s</cols>' % u''.join(
         u'<col min="%d" max="%d" width="%s" customWidth="1"/>' % (i + 1, i + 1, a) for i, a in enumerate(anchos)))
     partes.append(u'<sheetData>')
     fila_n = 0
     if enc:
         fila_n = 1
-        partes.append(u'<row r="1">%s</row>' % u''.join(celda(columna(i) + u'1', v, 1) for i, v in enumerate(enc)))
-    for f in filas:
+        partes.append(u'<row r="1">%s</row>' % u''.join(celda(columna(i) + u'1', v, E_ENCABEZADO) for i, v in enumerate(enc)))
+    for n, f in enumerate(filas):
         fila_n += 1
-        partes.append(u'<row r="%d">%s</row>' % (fila_n, u''.join(
-            celda(u'%s%d' % (columna(i), fila_n), v, 2) for i, v in enumerate(f))))
+        base = estilos_fila.get(n)
+        celdas = []
+        for i, v in enumerate(f):
+            estilo = base or colores.get((i, texto(v))) or (E_AJUSTADO if i in ajustar else E_CELDA)
+            celdas.append(celda(u'%s%d' % (columna(i), fila_n), v, estilo))
+        partes.append(u'<row r="%d">%s</row>' % (fila_n, u''.join(celdas)))
     partes.append(u'</sheetData>')
     filtro = None
     if enc and h.get('filtro', True) and fila_n > 1:
         filtro = (columna(ncol - 1), fila_n)
         partes.append(u'<autoFilter ref="A1:%s%d"/>' % filtro)
+    partes.append(u'<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>')
     partes.append(u'</worksheet>')
     return u''.join(partes), filtro
 
 
+def _relleno(rgb):
+    return u'<fill><patternFill patternType="solid"><fgColor rgb="FF%s"/><bgColor indexed="64"/></patternFill></fill>' % rgb
+
+
+# Fuentes: 0 normal, 1 negrita blanca, 2 título, 3 negrita oscura.
+# Rellenos: 2 encabezado, 3 sección, 4-9 colores (rojo, naranja, amarillo, azul, gris, verde).
 ESTILOS = (u'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
            u'<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-           u'<fonts count="2"><font><sz val="10"/><name val="Calibri"/><family val="2"/></font>'
-           u'<font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Calibri"/><family val="2"/></font></fonts>'
-           u'<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>'
-           u'<fill><patternFill patternType="solid"><fgColor rgb="FF1F3A5F"/><bgColor indexed="64"/></patternFill></fill></fills>'
+           u'<fonts count="4"><font><sz val="10"/><name val="Calibri"/><family val="2"/></font>'
+           u'<font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Calibri"/><family val="2"/></font>'
+           u'<font><b/><sz val="16"/><color rgb="FF1F3A5F"/><name val="Calibri"/><family val="2"/></font>'
+           u'<font><b/><sz val="11"/><color rgb="FF1F3A5F"/><name val="Calibri"/><family val="2"/></font></fonts>'
+           u'<fills count="10"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>'
+           + _relleno(u'1F3A5F') + _relleno(u'DCE6F1')
+           + _relleno(u'F8CBAD') + _relleno(u'FCE4D6') + _relleno(u'FFF2CC') + _relleno(u'DDEBF7')
+           + _relleno(u'EDEDED') + _relleno(u'E2EFDA')
+           + u'</fills>'
            u'<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>'
            u'<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
-           u'<cellXfs count="3">'
+           u'<cellXfs count="12">'
            u'<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
            u'<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1">'
            u'<alignment vertical="top" wrapText="1"/></xf>'
            u'<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top"/></xf>'
-           u'</cellXfs>'
+           u'<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>'
+           u'<xf numFmtId="0" fontId="3" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1">'
+           u'<alignment vertical="top" wrapText="1"/></xf>'
+           u'<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf>'
+           + u''.join(u'<xf numFmtId="0" fontId="0" fillId="%d" borderId="0" xfId="0" applyFill="1" applyAlignment="1">'
+                      u'<alignment vertical="top"/></xf>' % f for f in range(4, 10))
+           + u'</cellXfs>'
            u'<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
            u'</styleSheet>')
 

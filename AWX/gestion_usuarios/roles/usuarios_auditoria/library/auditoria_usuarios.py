@@ -229,7 +229,7 @@ def detalle_contrasena(est, cad, llaves, interactivo):
     return t + (' · ' + ', '.join(extras) if extras else '')
 
 
-def motivo_no_forzar(u, uid, est, llaves, interactivo, shell, es_servicio, p):
+def motivo_no_forzar(u, uid, est, llaves, interactivo, shell, es_servicio, cuenta_expirada, p):
     """Por qué el forzado en bloque de la opción 2b omitiría la cuenta ('' = se le forzaría).
     Mismo orden de reglas que roles/usuarios_contrasena/tasks/seleccionar.yml."""
     if u in p['cuentas_criticas'] or uid == 0:
@@ -242,6 +242,8 @@ def motivo_no_forzar(u, uid, est, llaves, interactivo, shell, es_servicio, p):
         return 'Cuenta de servicio (lista cuentas_servicio)'
     if not interactivo:
         return 'Shell no interactivo (%s)' % shell
+    if cuenta_expirada:
+        return 'Cuenta expirada'
     if est == 'BLOQUEADA':
         return 'Contraseña bloqueada'
     if est == 'SIN_CLAVE':
@@ -777,7 +779,7 @@ def main():
 
         # Misma regla que el forzado en bloque de la opción 2 (todos UID >= 1000).
         es_servicio = u in p['cuentas_servicio']
-        motivo_forzar = motivo_no_forzar(u, c['uid'], est, llaves, interactivo, c['shell'], es_servicio, p)
+        motivo_forzar = motivo_no_forzar(u, c['uid'], est, llaves, interactivo, c['shell'], es_servicio, cad['cuenta_expirada'], p)
         forzaria = motivo_forzar == ''
 
         h.sort(key=lambda x: SEVERIDADES.index(x['severidad']))
