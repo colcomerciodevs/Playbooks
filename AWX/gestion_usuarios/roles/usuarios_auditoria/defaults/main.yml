@@ -10,6 +10,6 @@ auditoria_excluir_usuarios: [nobody, nfsnobody]
 auditoria_dias_inactividad: 90     # marca cuentas habilitadas sin ingresar hace más de N días
 
 
-# Reportes consolidados (HTML + CSV). Carpeta persistente: requiere el grupo de
+# Reporte consolidado (un Excel .xlsx). Carpeta persistente: requiere el grupo de
 # instancias Container_Group_Corbeta en la plantilla.
 auditoria_dir_salida: "{{ gestion_dir_persistente }}/reportes"

@@ -159,8 +159,8 @@ def ejemplos():
         ('Forzar el cambio de contraseña a todo el personal de GEOPOS',
          'Workflow Forzar cambio · Usuarios a incluir: todos_uid_1000 · Servidores: GEOPOS',
          'Se aplica a las cuentas de persona. Se <b>omiten solas</b>: root y demás críticas, pos y postgres, cuentas que solo entran con llave '
-         'y cuentas sin shell. El informe final lista a quién se le aplicó. <b>Consejo:</b> lance antes la auditoría y mire la columna '
-         '"Se le forzaría el cambio".'),
+         'y cuentas sin shell. El informe final lista a quién se le aplicó. <b>Consejo:</b> lance antes la auditoría y, en la hoja '
+         '<b>Usuarios</b> del Excel, filtre "Se le forzaría el cambio" (ver "El informe de auditoría").'),
         ('Bloquear a dos personas, pero se coló root en la lista',
          'Workflow Bloquear o eliminar · Usuarios: jperez,root · Acción: bloquear',
          '<b>Se detiene sin bloquear a nadie</b>, tampoco a jperez. El mensaje dice "No se permiten cuentas protegidas: root". Quite root y '
@@ -223,14 +223,43 @@ def llaves_y_resultados():
             ['Todo en verde', 'Revise el informe del nodo 3 (abajo).'],
         ], [0.38, 0.62]),
         Spacer(1, 5),
-        P('El informe de verificación', 'h2'),
-        P('El último nodo revisa <b>solo las cuentas que se cambiaron</b> y deja dos archivos en /data/work/gestion_usuarios/reportes/: '
-          '<font name="Mono" size="7.6">verificacion_cambio_&lt;fecha&gt;.html</font> (para leer) y <font name="Mono" size="7.6">.csv</font> (para Excel). '
-          'Muestran la operación, el ticket y, por cada servidor (nombre en el inventario, hostname real e IP) y cada cuenta, su estado: '
-          'contraseña, caducidad, bloqueo, sudo y acceso SSH. A root y a las cuentas con UID 0 no se les marca su sudo como hallazgo, porque ya son administradoras. '
-          'La sección "Cuentas no encontradas" confirma, por ejemplo, que una cuenta eliminada ya no existe. El resumen también sale al final '
-          'de la salida del job.'),
-        P('La plantilla 3 sola hace la <b>auditoría general</b> (todas las cuentas) y genera auditoria_usuarios_&lt;fecha&gt;.'),
+        PageBreak(),
+        P('El informe de auditoría (Excel)', 'h1'),
+        P('Cada auditoría deja <b>un archivo Excel</b> en /data/work/gestion_usuarios/reportes/. La plantilla 3 sola genera '
+          '<font name="Mono" size="7.6">auditoria_usuarios_&lt;fecha&gt;.xlsx</font> (todas las cuentas); el último nodo de un workflow genera '
+          '<font name="Mono" size="7.6">verificacion_cambio_&lt;fecha&gt;.xlsx</font> (solo las cuentas que se cambiaron). Todas las hojas tienen '
+          'filtros y la primera fila fija. El resumen también sale al final de la salida del job.'),
+        tabla(['Hoja', 'Qué tiene'], [
+            ['<b>Resumen</b>', 'Tipo de informe, fecha, objetivo, ticket, totales y conteo de hallazgos.'],
+            ['<b>Usuarios</b>', 'Una fila por cuenta, sumando todos los servidores: en cuántos servidores está, si <b>se le forzaría el cambio</b> '
+             '(SI, PARCIAL o NO), por qué no y el estado de su contraseña. Es la hoja para revisar antes de forzar en bloque.'],
+            ['<b>Hallazgos</b>', 'Riesgos encontrados, de CRÍTICO a INFO, con servidor, hostname, IP y cuenta.'],
+            ['<b>Sudo</b>', 'Cuentas con sudo: nivel, si pide clave, comandos permitidos y de dónde sale la regla.'],
+            ['<b>Detalle</b>', 'Cada cuenta en cada servidor, con todos sus datos.'],
+            ['<b>Servidores</b>', 'Cada servidor: hostname real, IP, sistema, totales, estado de root, versión de sudo, AllowUsers/AllowGroups. '
+             'Los que no respondieron aparecen con el motivo.'],
+            ['<b>No encontradas</b>', 'Solo en la verificación de un workflow: cuentas que el cambio indicó y ya no existen (lo esperado tras eliminar).'],
+        ], [0.18, 0.82]),
+        P('Estado de la contraseña', 'h2'),
+        tabla(['Lo que dice', 'Qué significa'], [
+            ['Activa', 'Tiene contraseña y la puede usar.'],
+            ['Bloqueada (tiene contraseña, no se puede usar)', 'Se bloqueó (opción 4 o passwd -l). Al reactivarla vuelve la misma contraseña.'],
+            ['Sin contraseña: entra solo con llave', 'Nunca tuvo contraseña; entra con su llave SSH (cuentas creadas con 1b).'],
+            ['Sin contraseña (cuenta sin inicio de sesión)', 'Cuenta de aplicación o del sistema, sin shell interactivo.'],
+            ['Sin contraseña ni llave: no puede entrar', 'No tiene forma de iniciar sesión.'],
+            ['Vacía: entra SIN contraseña', 'Riesgo crítico: cualquiera entra sin clave.'],
+            ['… · vencida desde FECHA', 'La contraseña caducó. Ojo: también impide entrar con llave.'],
+            ['… · debe cambiarla al ingresar', 'Tiene un cambio forzado pendiente.'],
+            ['… · cuenta expirada', 'La cuenta está deshabilitada por fecha.'],
+        ], [0.40, 0.60]),
+        P('Se le forzaría el cambio: por qué no', 'h2'),
+        P('Mismas reglas que la opción 2b en bloque. La columna dice el primer motivo que aplica: <b>Cuenta crítica</b>, <b>Cuenta de sistema '
+          '(UID &lt; 1000)</b>, <b>Cuenta de servicio (lista cuentas_servicio)</b>, <b>Shell no interactivo</b>, <b>Contraseña bloqueada</b>, '
+          '<b>Sin contraseña: solo llave</b>, <b>Sin contraseña</b> o <b>Contraseña vacía</b>. En la hoja Usuarios, <b>PARCIAL</b> significa que en '
+          'unos servidores sí y en otros no (por ejemplo, bloqueada solo en algunos).'),
+        nota('<b>Cómo revisar antes de un forzado en bloque:</b> abra la hoja Usuarios, filtre "Se le forzaría el cambio" = SI o PARCIAL y '
+             'revise la lista. Si aparece una cuenta de aplicación (no de una persona), pida que la agreguen a cuentas_servicio en '
+             'vars/comunes.yml y vuelva a auditar.'),
         PageBreak(),
     ]
 

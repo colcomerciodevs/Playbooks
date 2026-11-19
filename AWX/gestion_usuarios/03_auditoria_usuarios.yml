@@ -5,7 +5,7 @@
 # Por servidor: cuentas con UID >= 1000, estado/caducidad de contraseña, llaves
 # SSH, último acceso, grupos privilegiados y privilegios sudo efectivos
 # (NINGUNO / LIMITADO / COMPLETO, comandos permitidos, NOPASSWD, origen).
-# Consolidado: reporte HTML + CSV en /data/work/gestion_usuarios/reportes,
+# Consolidado: un Excel (.xlsx) en /data/work/gestion_usuarios/reportes,
 # resumen en el job y artefactos en AWX.
 #
 # AWX: plantilla "USUARIOS | 3 - Auditoría" con awx/encuestas/03_auditoria_usuarios.json

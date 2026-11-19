@@ -276,8 +276,8 @@ AUDITORIA = [
     ('Servidor', 'uname -srv ; sudo -V ; sshd -T', 'Por servidor.'),
     ('Servidor', 'sudo -n -ll -U U   (o sudo -n -l -U U)', 'Por cada cuenta.'),
     ('Servidor', 'lastlog2 -u U   (o lastlog -u U)', 'Por cada cuenta.'),
-    ('Contenedor', 'genera auditoria_usuarios_<fecha>.html y .csv en /data/work/gestion_usuarios/reportes/', 'Al final (plantilla 3 sola).'),
-    ('Contenedor', 'genera verificacion_cambio_<fecha>.html y .csv en la misma carpeta', 'Al final, dentro de un workflow: solo las cuentas modificadas.'),
+    ('Contenedor', 'genera auditoria_usuarios_<fecha>.xlsx en /data/work/gestion_usuarios/reportes/', 'Al final (plantilla 3 sola).'),
+    ('Contenedor', 'genera verificacion_cambio_<fecha>.xlsx en la misma carpeta', 'Al final, dentro de un workflow: solo las cuentas modificadas.'),
 ]
 BLOQUEAR = [
     ('Servidor', 'getent passwd', 'Verificación, solo lectura.'),
@@ -338,7 +338,7 @@ def portada():
          Flujo([('1. Aprobación', 'revisa ticket, objetivo\ny usuarios'), ('2. Plantilla', 'aplica el cambio\nsolicitado'), ('3. Auditoría', 'verifica cómo\nquedaron las cuentas')],
                pies={0: 'Rechazada o vencida:\ntermina sin cambios', 1: 'Si falla, no\ncorre la auditoría'}),
          P('El ticket y las demás respuestas se pasan a los nodos. La auditoría del nodo 3 revisa solo las cuentas que modificó el nodo 2, '
-           'en cada servidor, y genera el informe <b>verificacion_cambio_&lt;fecha&gt;</b> (HTML y CSV) con la operación y el ticket. '
+           'en cada servidor, y genera el informe <b>verificacion_cambio_&lt;fecha&gt;</b> (un Excel) con la operación y el ticket. '
            'La plantilla 3 lanzada sola sigue siendo la auditoría general.'),
          P('Plantillas', 'h1'),
          tabla(['ID', 'Plantilla', 'Playbook', 'Valores fijos', 'Preguntas'],
@@ -360,7 +360,7 @@ def portada():
          tabla(['Qué', 'Dónde'], [
              ['Llaves de usuarios (privada, .pub y .ppk)', '/data/work/gestion_usuarios/keys/'],
              ['Llaves reemplazadas', '/data/work/gestion_usuarios/keys/_anteriores/'],
-             ['Reportes de auditoría (HTML y CSV)', '/data/work/gestion_usuarios/reportes/'],
+             ['Reportes de auditoría (Excel .xlsx)', '/data/work/gestion_usuarios/reportes/'],
              ['Respaldos de home eliminados', '/var/backups/usuarios_eliminados/ en cada servidor'],
              ['Reglas sudo', '/etc/sudoers.d/&lt;usuario&gt; en cada servidor'],
              ['Catálogos de usuarios', 'vars/catalogos/ del proyecto'],
@@ -491,7 +491,7 @@ def main():
         'si se le forzara el cambio no podría entrar.',
         nota('<b>En bloque</b> (catálogo o todos UID ≥ 1000) se omiten, sin detener el job: cuentas críticas, cuentas de servicio '
              '(lista cuentas_servicio en vars/comunes.yml), shells no interactivos y cuentas sin contraseña. Antes de lanzarlo, '
-             'ejecute la auditoría: la columna "Se le forzaría el cambio" muestra exactamente a quiénes se aplicaría.'))
+             'ejecute la auditoría: en el Excel, la hoja Usuarios (columna "Se le forzaría el cambio" y su motivo) muestra exactamente a quiénes se aplicaría.'))
     historia += seccion(
         'Opción 3 · Auditoría', 'Revisa cuentas, contraseñas, llaves, último acceso y sudo. No modifica los servidores. Sola, audita todas '
         'las cuentas; como último nodo de un workflow, verifica solo las cuentas que se acaban de modificar.',

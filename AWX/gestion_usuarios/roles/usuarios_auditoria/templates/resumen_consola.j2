@@ -25,5 +25,4 @@ Hallazgos críticos y altos:
 [{{ x.severidad }}] {{ h }} ({{ hostvars[h]['auditoria_resultado'].servidor.hostname | default('?') }}, {{ aud_ip[h] | default('') }}) / {{ u.usuario }}: {{ x.detalle }}
 {% endfor %}{% endfor %}{% endfor %}
 -----------------------------------------------------------------------------
-Reporte HTML: {{ aud_html | default('') }}
-Reporte CSV : {{ aud_csv | default('') }}
+Reporte Excel: {{ aud_xlsx | default('') }}

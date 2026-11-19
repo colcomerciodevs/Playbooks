@@ -1,6 +1,6 @@
 ---
 # =============================================================================
-# OPCIÓN 3 - Consolidado en localhost: HTML + CSV, resumen en el job,
+# OPCIÓN 3 - Consolidado en localhost: un Excel (.xlsx), resumen en el job y
 # estadísticas para AWX. Los archivos quedan en auditoria_dir_salida.
 # =============================================================================
 
@@ -15,11 +15,10 @@
       {%- set _ = r.update({h: hostvars[h]['ansible_host'] | default(h)}) %}{% endfor %}{{ r }}
 
 # En un workflow (llega cambio_cuentas) el informe es la verificación del cambio realizado.
-- name: Reporte | Rutas de salida
+- name: Reporte | Ruta del Excel
   ansible.builtin.set_fact:
     aud_cambio: "{{ cambio_cuentas is defined }}"
-    aud_html: "{{ auditoria_dir_salida }}/{{ 'verificacion_cambio' if cambio_cuentas is defined else 'auditoria_usuarios' }}_{{ aud_sello }}.html"
-    aud_csv: "{{ auditoria_dir_salida }}/{{ 'verificacion_cambio' if cambio_cuentas is defined else 'auditoria_usuarios' }}_{{ aud_sello }}.csv"
+    aud_xlsx: "{{ auditoria_dir_salida }}/{{ 'verificacion_cambio' if cambio_cuentas is defined else 'auditoria_usuarios' }}_{{ aud_sello }}.xlsx"
 
 - name: Reporte | Crear carpeta de reportes
   ansible.builtin.file:
@@ -27,17 +26,14 @@
     state: directory
     mode: "0750"
 
-- name: Reporte | Generar HTML
-  ansible.builtin.template:
-    src: reporte.html.j2
-    dest: "{{ aud_html }}"
-    mode: "0640"
-
-- name: Reporte | Generar CSV (separador ';' para Excel en español)
-  ansible.builtin.template:
-    src: reporte.csv.j2
-    dest: "{{ aud_csv }}"
-    mode: "0640"
+# Un solo archivo: Resumen, Usuarios, Hallazgos, Sudo, Detalle, Servidores (y No encontradas en un workflow).
+- name: Reporte | Generar Excel
+  generar_excel:
+    destino: "{{ aud_xlsx }}"
+    hojas: "{{ _hojas if _hojas is not string else _hojas | from_json }}"
+  vars:
+    # Ansible 2.9 ya entrega el JSON convertido en lista; las versiones nuevas, como texto.
+    _hojas: "{{ lookup('ansible.builtin.template', 'reporte_excel.json.j2') }}"
 
 - name: Reporte | Resumen consolidado
   ansible.builtin.debug:

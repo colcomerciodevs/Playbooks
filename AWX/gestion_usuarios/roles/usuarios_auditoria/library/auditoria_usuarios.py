@@ -202,6 +202,57 @@ def estado_contrasena(hash_):
     return ('BLOQUEADA' if bloqueada else 'ACTIVA'), algoritmo
 
 
+def detalle_contrasena(est, cad, llaves, interactivo):
+    """Texto claro del estado de la contraseña: distingue bloqueada, solo llave, vencida, etc."""
+    if est == 'ACTIVA':
+        t = 'Activa'
+    elif est == 'BLOQUEADA':
+        t = 'Bloqueada (tiene contraseña, no se puede usar)'
+    elif est == 'SIN_CLAVE':
+        if llaves:
+            t = 'Sin contraseña: entra solo con llave'
+        elif not interactivo:
+            t = 'Sin contraseña (cuenta sin inicio de sesión)'
+        else:
+            t = 'Sin contraseña ni llave: no puede entrar'
+    elif est == 'VACIA':
+        t = 'Vacía: entra SIN contraseña'
+    else:
+        t = 'Sin registro en /etc/shadow'
+    extras = []
+    if cad['debe_cambiar']:
+        extras.append('debe cambiarla al ingresar')
+    if cad['contrasena_expirada']:
+        extras.append('vencida desde %s' % cad['contrasena_caduca'])
+    if cad['cuenta_expirada']:
+        extras.append('cuenta expirada')
+    return t + (' · ' + ', '.join(extras) if extras else '')
+
+
+def motivo_no_forzar(u, uid, est, llaves, interactivo, shell, es_servicio, p):
+    """Por qué el forzado en bloque de la opción 2b omitiría la cuenta ('' = se le forzaría).
+    Mismo orden de reglas que roles/usuarios_contrasena/tasks/seleccionar.yml."""
+    if u in p['cuentas_criticas'] or uid == 0:
+        return 'Cuenta crítica'
+    if uid < p['uid_minimo_masivo']:
+        return 'Cuenta de sistema (UID < %d)' % p['uid_minimo_masivo']
+    if uid >= 65534:
+        return 'UID especial (>= 65534)'
+    if es_servicio:
+        return 'Cuenta de servicio (lista cuentas_servicio)'
+    if not interactivo:
+        return 'Shell no interactivo (%s)' % shell
+    if est == 'BLOQUEADA':
+        return 'Contraseña bloqueada'
+    if est == 'SIN_CLAVE':
+        return 'Sin contraseña: solo llave' if llaves else 'Sin contraseña'
+    if est == 'VACIA':
+        return 'Contraseña vacía'
+    if est != 'ACTIVA':
+        return 'Sin registro en /etc/shadow'
+    return ''
+
+
 def caducidad(sh, hoy):
     """Interpreta los campos de /etc/shadow."""
     r = {'ultimo_cambio': '', 'dias_desde_cambio': None, 'max_dias': None,
@@ -726,8 +777,8 @@ def main():
 
         # Misma regla que el forzado en bloque de la opción 2 (todos UID >= 1000).
         es_servicio = u in p['cuentas_servicio']
-        forzaria = (p['uid_minimo_masivo'] <= c['uid'] < 65534 and u not in p['cuentas_criticas'] and not es_servicio
-                    and interactivo and est == 'ACTIVA')
+        motivo_forzar = motivo_no_forzar(u, c['uid'], est, llaves, interactivo, c['shell'], es_servicio, p)
+        forzaria = motivo_forzar == ''
 
         h.sort(key=lambda x: SEVERIDADES.index(x['severidad']))
         usuarios.append({
@@ -735,6 +786,7 @@ def main():
             'home': c['home'], 'shell': c['shell'], 'shell_interactivo': interactivo,
             'grupo_primario': grupo_primario, 'grupos_secundarios': secundarios,
             'estado_contrasena': est, 'algoritmo_hash': alg,
+            'estado_detalle': detalle_contrasena(est, cad, llaves, interactivo),
             'ultimo_cambio': cad['ultimo_cambio'], 'dias_desde_cambio': cad['dias_desde_cambio'],
             'max_dias': cad['max_dias'], 'contrasena_caduca': cad['contrasena_caduca'],
             'contrasena_expirada': cad['contrasena_expirada'], 'debe_cambiar': cad['debe_cambiar'],
@@ -743,7 +795,7 @@ def main():
             'puede_iniciar_sesion': puede_entrar,
             'ultimo_acceso': acceso_txt, 'dias_sin_acceso': acceso_dias,
             'sudo': sudo, 'hallazgos': h,
-            'cuenta_servicio': es_servicio, 'forzaria_cambio': forzaria,
+            'cuenta_servicio': es_servicio, 'forzaria_cambio': forzaria, 'motivo_no_forzar': motivo_forzar,
             'severidad_max': h[0]['severidad'] if h else '',
         })
 
