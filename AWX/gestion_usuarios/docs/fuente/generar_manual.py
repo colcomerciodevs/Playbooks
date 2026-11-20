@@ -159,7 +159,7 @@ def ejemplos():
         ('Forzar el cambio de contraseña a todo el personal de GEOPOS',
          'Workflow Forzar cambio · Usuarios a incluir: todos_uid_1000 · Servidores: GEOPOS',
          'Se aplica a las cuentas de persona. Se <b>omiten solas</b>: root y demás críticas, pos y postgres, cuentas que solo entran con llave, '
-         'cuentas sin shell y cuentas expiradas (deshabilitadas por fecha). El informe final lista a quién se le aplicó. <b>Consejo:</b> lance antes la auditoría y, en la hoja '
+         'cuentas sin shell, cuentas expiradas (deshabilitadas por fecha) y las que ya tienen un cambio forzado pendiente. El informe final lista a quién se le aplicó. <b>Consejo:</b> lance antes la auditoría y, en la hoja '
          '<b>Plan forzar cambio contraseña</b> del Excel, revise las filas REVISAR y CONFIRMAR (ver "El informe de auditoría").'),
         ('Bloquear a dos personas, pero se coló root en la lista',
          'Workflow Bloquear o eliminar · Usuarios: jperez,root · Acción: bloquear',
@@ -247,7 +247,7 @@ def llaves_y_resultados():
             ['CONTRASEÑA CAMBIADA', 'Se le asignó la contraseña nueva.'],
             ['CREADA / ACTUALIZADA / LLAVE RENOVADA / COMPLETADA', 'Alta nueva, cuenta existente actualizada, llave reemplazada o cuenta de automatización completada.'],
             ['BLOQUEADA / REACTIVADA / ELIMINADA', 'Resultado de la opción 4.'],
-            ['OMITIDA', 'No se tocó a propósito: la columna Detalle dice por qué (crítica, de servicio, shell no interactivo, expirada, sin contraseña...).'],
+            ['OMITIDA', 'No se tocó a propósito: la columna Detalle dice por qué (crítica, de servicio, shell no interactivo, expirada, sin contraseña, cambio ya pendiente...).'],
             ['YA EXISTÍA / NO EXISTE', 'No había nada que hacer en ese servidor.'],
             ['NO APLICADO / SIN TERMINAR', 'El servidor falló antes de aplicarlo: vuelva a lanzar sobre ese servidor.'],
         ], [0.36, 0.64]),
@@ -292,7 +292,7 @@ def llaves_y_resultados():
         P('Plan forzar cambio contraseña: por qué NO se le forzaría', 'h2'),
         P('Mismas reglas que la opción 2b en bloque. La columna dice el primer motivo que aplica: <b>Cuenta crítica</b>, <b>Cuenta de sistema '
           '(UID &lt; 1000)</b>, <b>Cuenta de servicio (lista cuentas_servicio)</b>, <b>Shell no interactivo</b>, <b>Cuenta expirada</b>, <b>Contraseña bloqueada</b>, '
-          '<b>Sin contraseña: solo llave</b>, <b>Sin contraseña</b> o <b>Contraseña vacía</b>. Un usuario puede tener una fila SÍ y otra NO si su situación cambia según el servidor '
+          '<b>Sin contraseña: solo llave</b>, <b>Sin contraseña</b>, <b>Contraseña vacía</b> o <b>Cambio forzado ya pendiente</b> (ya debe cambiarla al ingresar). Un usuario puede tener una fila SÍ y otra NO si su situación cambia según el servidor '
           '(por ejemplo, activa en unos y bloqueada en otros).'),
         nota('<b>Indicios de cuenta de servicio</b> (configurables en roles/usuarios_auditoria/vars/main.yml): nombre genérico o de aplicación '
              '(oracle, geopos, soporte...), nombre terminado en número (caja40, tesor2), descripción de servicio ("Usuario de monitoreo") y uso de '

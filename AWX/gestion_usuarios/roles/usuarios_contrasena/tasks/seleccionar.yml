@@ -61,6 +61,7 @@
     # Cuenta expirada (no puede entrar, el cambio no tendría efecto). Misma regla que la auditoría:
     # pasó su fecha de expiración (chage -E) o venció la contraseña y también el período de inactividad.
     # Campos de getent shadow: [hash, ult_cambio, min, max, aviso, inactividad, expiracion, reservado]
+    # ult_cambio = 0: ya tiene un cambio forzado pendiente; forzarlo otra vez no cambiaría nada.
     _s: "{{ ansible_facts.getent_shadow[item] | default([]) }}"
     _hoy: "{{ (ansible_date_time.epoch | int) // 86400 }}"
     _expirada: >-
@@ -75,6 +76,7 @@
          else 'shell no interactivo' if _d[5] is search('(nologin|false)$')
          else 'cuenta expirada' if (_expirada | bool)
          else 'sin contraseña utilizable' if (_h | length == 0 or _h is match('^[!*]') or _h in ['x', 'NP', 'UP'])
+         else 'cambio ya pendiente' if (_s[1] | default('') | string) == '0'
          else '' }}
   when:
     - _cp_masivo | bool

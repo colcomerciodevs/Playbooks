@@ -77,7 +77,8 @@
     informe_resultado: >-
       {%- set r = {} -%}
       {%- set mot = {'crítica': 'Cuenta crítica', 'servicio': 'Cuenta de servicio (lista cuentas_servicio)',
-                     'cuenta expirada': 'Cuenta expirada: no puede entrar'} -%}
+                     'cuenta expirada': 'Cuenta expirada: no puede entrar',
+                     'cambio ya pendiente': 'Ya tenía un cambio forzado pendiente: forzarlo otra vez no cambia nada'} -%}
       {%- set clave_mot = {'BLOQUEADA': 'Contraseña bloqueada', 'SIN_CLAVE': 'Sin contraseña: entra solo con llave',
                            'VACIA': 'Contraseña vacía: corregir asignando contraseña (2a)'} -%}
       {%- set forzar = hostvars['localhost']['_cp_accion'] == 'solo_forzar_cambio' -%}

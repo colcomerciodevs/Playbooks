@@ -502,7 +502,8 @@ def main():
         'la lista incluye una cuenta crítica, o una cuenta de la lista no tiene contraseña (solo llave o bloqueada): '
         'si se le forzara el cambio no podría entrar.',
         nota('<b>En bloque</b> (catálogo o todos UID ≥ 1000) se omiten, sin detener el job: cuentas críticas, cuentas de servicio '
-             '(lista cuentas_servicio en vars/comunes.yml), shells no interactivos, cuentas expiradas y cuentas sin contraseña. Antes de lanzarlo, '
+             '(lista cuentas_servicio en vars/comunes.yml), shells no interactivos, cuentas expiradas, cuentas sin contraseña y cuentas que ya tienen '
+             'un cambio forzado pendiente (forzarlo otra vez no cambiaría nada). Antes de lanzarlo, '
              'ejecute la auditoría: en el Excel, la hoja Plan forzar cambio contraseña muestra a quiénes se aplicaría y por qué, y marca las posibles cuentas de servicio para revisar antes.'))
     historia += seccion(
         'Opción 3 · Auditoría', 'Revisa cuentas, contraseñas, llaves, último acceso y sudo. No modifica los servidores. Sola, audita todas '
