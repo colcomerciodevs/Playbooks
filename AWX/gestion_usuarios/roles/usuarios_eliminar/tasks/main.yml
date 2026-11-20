@@ -35,112 +35,153 @@
       loop: "{{ _el_aplicar }}"
       when: _el_accion == 'eliminar'
 
+# Foto de las cuentas ANTES del cambio, para el informe en Excel.
+- name: Eliminar | Estado de las cuentas antes del cambio
+  ansible.builtin.include_role:
+    name: usuarios_comun
+    tasks_from: informe_estado.yml
+  vars:
+    comun_usuarios: "{{ hostvars['localhost']['eliminar_lista'] }}"
+    informe_momento: antes
+
 - name: Eliminar | Cuentas omitidas o inexistentes
   ansible.builtin.debug:
     msg:
       - "No existen: {{ hostvars['localhost']['eliminar_lista'] | reject('in', ansible_facts.getent_passwd.keys() | list) | join(', ') or '-' }}"
       - "Omitidas por UID < {{ uid_minimo_humano }}: {{ _el_omitidas | join(', ') or '-' }}"
 
-- name: Eliminar | Retirar reglas sudo del usuario
-  ansible.builtin.file:
-    path: "/etc/sudoers.d/{{ item | regex_replace('[.~]', '_') }}"
-    state: absent
-  loop: "{{ _el_aplicar }}"
-  when: _el_accion != 'reactivar'
-
-# --- BLOQUEAR ----------------------------------------------------------------
-- name: Eliminar | Bloquear contraseña y expirar cuenta (Linux)
-  ansible.builtin.command:
-    argv: [usermod, -L, -e, '1970-01-02', "{{ item }}"]
-  loop: "{{ _el_aplicar }}"
-  changed_when: true
-  when:
-    - _el_accion == 'bloquear'
-    - ansible_system == 'Linux'
-
-- name: Eliminar | Bloquear cuenta (Solaris 11)
-  ansible.builtin.command:
-    argv: [passwd, -l, "{{ item }}"]
-  loop: "{{ _el_aplicar }}"
-  changed_when: true
-  when:
-    - _el_accion == 'bloquear'
-    - ansible_system == 'SunOS'
-
-# --- REACTIVAR ---------------------------------------------------------------
-# Reinicia intentos fallidos y quita la expiración (también lee /etc/shadow).
-- name: Eliminar | Reactivar cuentas
-  ansible.builtin.include_role:
-    name: usuarios_comun
-    tasks_from: desbloquear.yml
-  vars:
-    comun_usuarios: "{{ _el_aplicar }}"
-  when:
-    - _el_accion == 'reactivar'
-    - _el_aplicar | length > 0
-
-# Solo si hay una contraseña real bloqueada ("!$6$..."); las cuentas de solo llave siguen sin contraseña.
-- name: Eliminar | Desbloquear contraseña (Linux)
-  ansible.builtin.command:
-    argv: [usermod, -U, "{{ item }}"]
-  loop: "{{ _el_aplicar }}"
-  changed_when: true
-  when:
-    - _el_accion == 'reactivar'
-    - ansible_system == 'Linux'
-    - (ansible_facts.getent_shadow[item] | default(['']))[0] is match('^!+[$]')
-
-# --- ELIMINAR ----------------------------------------------------------------
-- name: Eliminar | Respaldar home antes de borrar
-  when:
-    - _el_accion == 'eliminar'
-    - (eliminar_respaldar_home | string | lower | trim) in valores_si
-    - _el_aplicar | length > 0
+# Cambio en el servidor. Si una tarea falla, rescue registra el error y lee el estado real de las
+# cuentas: el informe se genera igual y su play final marca el job como fallido.
+- name: Eliminar | Aplicar el cambio
   block:
-    - name: Eliminar | Carpeta de respaldo
+    - name: Eliminar | Retirar reglas sudo del usuario
       ansible.builtin.file:
-        path: "{{ eliminar_dir_respaldo }}"
-        state: directory
-        mode: "0700"
+        path: "/etc/sudoers.d/{{ item | regex_replace('[.~]', '_') }}"
+        state: absent
+      loop: "{{ _el_aplicar }}"
+      when: _el_accion != 'reactivar'
 
-    - name: Eliminar | Comprimir home
+    # --- BLOQUEAR ----------------------------------------------------------------
+    - name: Eliminar | Bloquear contraseña y expirar cuenta (Linux)
       ansible.builtin.command:
-        argv:
-          - tar
-          - -czf
-          - "{{ eliminar_dir_respaldo }}/{{ item }}_{{ ansible_date_time.iso8601_basic_short }}.tar.gz"
-          - -C
-          - "{{ ansible_facts.getent_passwd[item][4] | dirname }}"
-          - "{{ ansible_facts.getent_passwd[item][4] | basename }}"
+        argv: [usermod, -L, -e, '1970-01-02', "{{ item }}"]
       loop: "{{ _el_aplicar }}"
       changed_when: true
-      when: ansible_facts.getent_passwd[item][4] is match('^/(home|export/home)/')
+      when:
+        - _el_accion == 'bloquear'
+        - ansible_system == 'Linux'
 
-- name: Eliminar | Borrar cuenta y home
-  ansible.builtin.user:
-    name: "{{ item }}"
-    state: absent
-    remove: true
-  loop: "{{ _el_aplicar }}"
-  when: _el_accion == 'eliminar'
+    - name: Eliminar | Bloquear cuenta (Solaris 11)
+      ansible.builtin.command:
+        argv: [passwd, -l, "{{ item }}"]
+      loop: "{{ _el_aplicar }}"
+      changed_when: true
+      when:
+        - _el_accion == 'bloquear'
+        - ansible_system == 'SunOS'
 
-- name: Eliminar | Resumen
-  ansible.builtin.debug:
-    msg: "{{ inventory_hostname }}: {{ {'bloquear': 'bloqueadas', 'reactivar': 'reactivadas', 'eliminar': 'eliminadas'}[_el_accion] }} -> {{ _el_aplicar | join(', ') or '-' }}"
+    # --- REACTIVAR ---------------------------------------------------------------
+    # Reinicia intentos fallidos y quita la expiración (también lee /etc/shadow).
+    - name: Eliminar | Reactivar cuentas
+      ansible.builtin.include_role:
+        name: usuarios_comun
+        tasks_from: desbloquear.yml
+      vars:
+        comun_usuarios: "{{ _el_aplicar }}"
+      when:
+        - _el_accion == 'reactivar'
+        - _el_aplicar | length > 0
 
-# En un workflow, la auditoría siguiente recibe estos datos (artefactos de AWX) y revisa
-# solo las cuentas modificadas en cada servidor.
-- name: Eliminar | Publicar la operación (para la verificación del workflow)
-  ansible.builtin.set_stats:
-    data:
-      cambio_operacion: "{{ {'bloquear': 'Bloquear cuentas', 'reactivar': 'Reactivar cuentas', 'eliminar': 'Eliminar cuentas'}[hostvars['localhost']['_el_accion']] }}"
-    per_host: false
-    aggregate: false
-  run_once: true
+    # Solo si hay una contraseña real bloqueada ("!$6$..."); las cuentas de solo llave siguen sin contraseña.
+    - name: Eliminar | Desbloquear contraseña (Linux)
+      ansible.builtin.command:
+        argv: [usermod, -U, "{{ item }}"]
+      loop: "{{ _el_aplicar }}"
+      changed_when: true
+      when:
+        - _el_accion == 'reactivar'
+        - ansible_system == 'Linux'
+        - (ansible_facts.getent_shadow[item] | default(['']))[0] is match('^!+[$]')
 
-- name: Eliminar | Publicar cuentas modificadas en este servidor
-  ansible.builtin.set_stats:
-    data:
-      cambio_cuentas: "{{ {inventory_hostname: _el_aplicar} }}"
-    per_host: false
-    aggregate: true
+    # --- ELIMINAR ----------------------------------------------------------------
+    - name: Eliminar | Respaldar home antes de borrar
+      when:
+        - _el_accion == 'eliminar'
+        - (eliminar_respaldar_home | string | lower | trim) in valores_si
+        - _el_aplicar | length > 0
+      block:
+        - name: Eliminar | Carpeta de respaldo
+          ansible.builtin.file:
+            path: "{{ eliminar_dir_respaldo }}"
+            state: directory
+            mode: "0700"
+
+        - name: Eliminar | Comprimir home
+          ansible.builtin.command:
+            argv:
+              - tar
+              - -czf
+              - "{{ eliminar_dir_respaldo }}/{{ item }}_{{ ansible_date_time.iso8601_basic_short }}.tar.gz"
+              - -C
+              - "{{ ansible_facts.getent_passwd[item][4] | dirname }}"
+              - "{{ ansible_facts.getent_passwd[item][4] | basename }}"
+          loop: "{{ _el_aplicar }}"
+          changed_when: true
+          when: ansible_facts.getent_passwd[item][4] is match('^/(home|export/home)/')
+
+    - name: Eliminar | Borrar cuenta y home
+      ansible.builtin.user:
+        name: "{{ item }}"
+        state: absent
+        remove: true
+      loop: "{{ _el_aplicar }}"
+      when: _el_accion == 'eliminar'
+
+    - name: Eliminar | Resultado por cuenta para el informe
+      ansible.builtin.set_fact:
+        informe_resultado: >-
+          {%- set r = {} -%}
+          {%- set respaldo = _el_accion == 'eliminar' and (eliminar_respaldar_home | string | lower | trim) in valores_si -%}
+          {%- for u in hostvars['localhost']['eliminar_lista'] -%}
+          {%-   if u not in _el_existentes -%}{%- set _ = r.update({u: ['NO EXISTE', 'No existe en este servidor']}) -%}
+          {%-   elif u in _el_omitidas -%}{%- set _ = r.update({u: ['OMITIDA', 'Cuenta de sistema o de servicio (UID < ' ~ uid_minimo_humano ~ ')']}) -%}
+          {%-   elif _el_accion == 'bloquear' -%}{%- set _ = r.update({u: ['BLOQUEADA', 'Contraseña bloqueada, cuenta expirada y regla sudo retirada']}) -%}
+          {%-   elif _el_accion == 'reactivar' -%}{%- set _ = r.update({u: ['REACTIVADA', 'Sin bloqueo, sin expiración e intentos fallidos reiniciados. Su regla sudo no se restaura: asígnela con la opción 1 si la necesita']}) -%}
+          {%-   else -%}{%- set _ = r.update({u: ['ELIMINADA', 'Cuenta, home y regla sudo borrados'
+                    ~ ('; respaldo del home en ' ~ eliminar_dir_respaldo ~ '/' ~ u ~ '_' ~ ansible_date_time.iso8601_basic_short ~ '.tar.gz' if respaldo else '; sin respaldo del home')]}) -%}
+          {%-   endif -%}
+          {%- endfor -%}
+          {{ r }}
+
+    - name: Eliminar | Estado de las cuentas después del cambio
+      ansible.builtin.include_role:
+        name: usuarios_comun
+        tasks_from: informe_estado.yml
+      vars:
+        informe_momento: despues
+
+    - name: Eliminar | Resumen
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }}: {{ {'bloquear': 'bloqueadas', 'reactivar': 'reactivadas', 'eliminar': 'eliminadas'}[_el_accion] }} -> {{ _el_aplicar | join(', ') or '-' }}"
+
+    # En un workflow, la auditoría siguiente recibe estos datos (artefactos de AWX) y revisa
+    # solo las cuentas modificadas en cada servidor.
+    - name: Eliminar | Publicar la operación (para la verificación del workflow)
+      ansible.builtin.set_stats:
+        data:
+          cambio_operacion: "{{ {'bloquear': 'Bloquear cuentas', 'reactivar': 'Reactivar cuentas', 'eliminar': 'Eliminar cuentas'}[hostvars['localhost']['_el_accion']] }}"
+        per_host: false
+        aggregate: false
+      run_once: true
+
+    - name: Eliminar | Publicar cuentas modificadas en este servidor
+      ansible.builtin.set_stats:
+        data:
+          cambio_cuentas: "{{ {inventory_hostname: _el_aplicar} }}"
+        per_host: false
+        aggregate: true
+  rescue:
+    - name: Eliminar | Registrar el error para el informe
+      ansible.builtin.include_role:
+        name: usuarios_comun
+        tasks_from: informe_fallo.yml

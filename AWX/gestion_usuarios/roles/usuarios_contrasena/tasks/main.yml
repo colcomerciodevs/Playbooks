@@ -33,6 +33,15 @@
         - _cp_inexistentes | length > 0
         - not ((contrasena_omitir_inexistentes | string | lower | trim) in valores_si)
 
+# Foto de las cuentas ANTES del cambio, para el informe en Excel.
+- name: Contraseña | Estado de las cuentas antes del cambio
+  ansible.builtin.include_role:
+    name: usuarios_comun
+    tasks_from: informe_estado.yml
+  vars:
+    comun_usuarios: "{{ _cp_lista }}"
+    informe_momento: antes
+
 - name: Contraseña | Usuarios que no existen en este servidor
   ansible.builtin.debug:
     msg: "No existen en {{ inventory_hostname }}: {{ _cp_inexistentes | join(', ') }}"
@@ -40,7 +49,7 @@
 
 - name: Contraseña | Cuentas excluidas (operación en bloque)
   ansible.builtin.debug:
-    msg: "Omitidas en {{ inventory_hostname }}: {{ _cp_excluidas | dict2items | map('join', ' = ') | join(', ') }}"
+    msg: "Omitidas en {{ inventory_hostname }}: {{ _cp_excluidas | dictsort | map('join', ' = ') | join(', ') }}"
   when: _cp_excluidas | length > 0
 
 - name: Contraseña | Cuentas de servicio omitidas
@@ -55,127 +64,176 @@
       {{ inventory_hostname }}. Si la credencial de AWX usa contraseña, actualícela con la nueva clave.
   when: (ansible_user | default(ansible_user_id | default(''))) in _cp_aplicar
 
-# ---------------------------------------------------------------------------
-- name: Contraseña | Establecer nueva contraseña
-  ansible.builtin.include_role:
-    name: usuarios_comun
-    tasks_from: establecer_contrasena.yml
-  vars:
-    comun_usuarios: "{{ _cp_aplicar }}"
-    comun_clave: "{{ contrasena_nueva }}"
-  when:
-    - _cp_aplicar | length > 0
-    - hostvars['localhost']['_cp_accion'] == 'cambiar'
-
 # Las cuentas críticas (lista usuarios_protegidos o UID 0) conservan su caducidad actual:
 # a ellas no se les aplica "sin caducidad" ni "forzar cambio", diga lo que diga la encuesta.
 - name: Contraseña | Cuentas que conservan su caducidad (críticas)
   ansible.builtin.set_fact:
     _cp_conservan: "{{ _cp_aplicar | select('in', usuarios_protegidos + _cp_uid0) | list }}"
 
-- name: Contraseña | Aplicar política de caducidad
-  ansible.builtin.include_role:
-    name: usuarios_comun
-    tasks_from: politica_caducidad.yml
-  vars:
-    comun_usuarios: "{{ _cp_aplicar | reject('in', _cp_conservan) | list }}"
-    comun_politica: >-
-      {{ 'nunca' if hostvars['localhost']['_cp_nunca'] | bool
-         else ('forzar_cambio' if hostvars['localhost']['_cp_forzar'] | bool else 'mantener') }}
-    comun_quitar_expiracion_cuenta: "{{ (contrasena_quitar_expiracion_cuenta | string | lower | trim) in valores_si }}"
-  when: _cp_aplicar | length > 0
+# Resultado esperado de cada cuenta (se calcula antes de cambiar: si el servidor falla a mitad,
+# la columna Verificado del informe muestra cuáles alcanzaron a quedar aplicadas).
+- name: Contraseña | Resultado por cuenta para el informe
+  ansible.builtin.set_fact:
+    informe_resultado: >-
+      {%- set r = {} -%}
+      {%- set mot = {'crítica': 'Cuenta crítica', 'servicio': 'Cuenta de servicio (lista cuentas_servicio)',
+                     'cuenta expirada': 'Cuenta expirada: no puede entrar'} -%}
+      {%- set clave_mot = {'BLOQUEADA': 'Contraseña bloqueada', 'SIN_CLAVE': 'Sin contraseña: entra solo con llave',
+                           'VACIA': 'Contraseña vacía: corregir asignando contraseña (2a)'} -%}
+      {%- set forzar = hostvars['localhost']['_cp_accion'] == 'solo_forzar_cambio' -%}
+      {%- set politica = 'queda sin caducidad' if hostvars['localhost']['_cp_nunca'] | bool
+            else ('debe cambiarla en su próximo inicio de sesión' if hostvars['localhost']['_cp_forzar'] | bool
+            else 'conserva su política de caducidad') -%}
+      {%- for u in _cp_lista -%}
+      {%-   if u in _cp_inexistentes -%}{%- set _ = r.update({u: ['NO EXISTE', 'No existe en este servidor']}) -%}
+      {%-   elif u in _cp_servicio -%}{%- set _ = r.update({u: ['OMITIDA', 'Cuenta de sistema (UID < ' ~ uid_minimo_humano ~ ')']}) -%}
+      {%-   elif u in _cp_excluidas -%}
+      {%-     set m = _cp_excluidas[u] -%}
+      {%-     if m == 'shell no interactivo' -%}{%- set t = 'Shell no interactivo (' ~ ansible_facts.getent_passwd[u][5] ~ ')' -%}
+      {%-     elif m == 'sin contraseña utilizable' -%}{%- set t = clave_mot.get((informe_antes[u] | default({})).clave | default(''), 'Sin contraseña utilizable') -%}
+      {%-     else -%}{%- set t = mot.get(m, m) -%}{%- endif -%}
+      {%-     set _ = r.update({u: ['OMITIDA', t]}) -%}
+      {%-   elif forzar -%}{%- set _ = r.update({u: ['FORZADO', 'Debe cambiarla en su próximo inicio de sesión']}) -%}
+      {%-   else -%}
+      {%-     set _ = r.update({u: ['CONTRASEÑA CAMBIADA', 'Contraseña nueva; '
+                 ~ ('cuenta crítica: conserva su caducidad' if u in _cp_conservan | default([]) else politica)
+                 ~ ('; intentos fallidos reiniciados' if (contrasena_desbloquear | string | lower | trim) in valores_si else '')]}) -%}
+      {%-   endif -%}
+      {%- endfor -%}
+      {{ r }}
 
-- name: Contraseña | Desbloquear cuentas
-  ansible.builtin.include_role:
-    name: usuarios_comun
-    tasks_from: desbloquear.yml
-  vars:
-    comun_usuarios: "{{ _cp_aplicar }}"
-  when:
-    - _cp_aplicar | length > 0
-    - (contrasena_desbloquear | string | lower | trim) in valores_si
+# Cambio en el servidor. Si una tarea falla, rescue registra el error y lee el estado real de las
+# cuentas: el informe se genera igual y su play final marca el job como fallido.
+- name: Contraseña | Aplicar el cambio
+  block:
+    # ---------------------------------------------------------------------------
+    - name: Contraseña | Establecer nueva contraseña
+      ansible.builtin.include_role:
+        name: usuarios_comun
+        tasks_from: establecer_contrasena.yml
+      vars:
+        comun_usuarios: "{{ _cp_aplicar }}"
+        comun_clave: "{{ contrasena_nueva }}"
+      when:
+        - _cp_aplicar | length > 0
+        - hostvars['localhost']['_cp_accion'] == 'cambiar'
 
-# ---------------------------------------------------------------------------
-# Verificación (sin mostrar secretos)
-# ---------------------------------------------------------------------------
-- name: Contraseña | Consultar estado final de caducidad (Linux)
-  ansible.builtin.command:
-    argv: [chage, -l, "{{ item }}"]
-  environment:
-    LC_ALL: C
-    LANG: C
-  loop: "{{ _cp_aplicar }}"
-  register: _cp_chage
-  changed_when: false
-  check_mode: false
-  when: ansible_system == 'Linux'
+    - name: Contraseña | Aplicar política de caducidad
+      ansible.builtin.include_role:
+        name: usuarios_comun
+        tasks_from: politica_caducidad.yml
+      vars:
+        comun_usuarios: "{{ _cp_aplicar | reject('in', _cp_conservan) | list }}"
+        comun_politica: >-
+          {{ 'nunca' if hostvars['localhost']['_cp_nunca'] | bool
+             else ('forzar_cambio' if hostvars['localhost']['_cp_forzar'] | bool else 'mantener') }}
+        comun_quitar_expiracion_cuenta: "{{ (contrasena_quitar_expiracion_cuenta | string | lower | trim) in valores_si }}"
+      when: _cp_aplicar | length > 0
 
-- name: Contraseña | Consultar estado final (Solaris 11)
-  ansible.builtin.command:
-    argv: [passwd, -s, "{{ item }}"]
-  loop: "{{ _cp_aplicar }}"
-  register: _cp_solstat
-  changed_when: false
-  check_mode: false
-  when: ansible_system == 'SunOS'
+    - name: Contraseña | Desbloquear cuentas
+      ansible.builtin.include_role:
+        name: usuarios_comun
+        tasks_from: desbloquear.yml
+      vars:
+        comun_usuarios: "{{ _cp_aplicar }}"
+      when:
+        - _cp_aplicar | length > 0
+        - (contrasena_desbloquear | string | lower | trim) in valores_si
 
-- name: Contraseña | Verificar que /etc/shadow registre el cambio (Linux)
-  ansible.builtin.getent:
-    database: shadow
-  no_log: true  # el resultado incluye los hashes de todas las cuentas
-  when:
-    - ansible_system == 'Linux'
-    - _cp_aplicar | length > 0
-    - not ansible_check_mode
+    # ---------------------------------------------------------------------------
+    # Verificación (sin mostrar secretos)
+    # ---------------------------------------------------------------------------
+    - name: Contraseña | Consultar estado final de caducidad (Linux)
+      ansible.builtin.command:
+        argv: [chage, -l, "{{ item }}"]
+      environment:
+        LC_ALL: C
+        LANG: C
+      loop: "{{ _cp_aplicar }}"
+      register: _cp_chage
+      changed_when: false
+      check_mode: false
+      when: ansible_system == 'Linux'
 
-# Campo 1 de shadow = día (desde 1970) del último cambio; 0 = cambio forzado.
-- name: Contraseña | Comprobar fecha de último cambio
-  ansible.builtin.assert:
-    quiet: true
-    that: >-
-      (ansible_facts.getent_shadow[item][1] | int) >= (_hoy | int) - 1
-      or (ansible_facts.getent_shadow[item][1] == '0' and (hostvars['localhost']['_cp_forzar'] | bool))
-    fail_msg: "La fecha de último cambio de {{ item }} no se actualizó en {{ inventory_hostname }}."
-  loop: "{{ _cp_aplicar }}"
-  vars:
-    _hoy: "{{ (ansible_date_time.epoch | int) // 86400 }}"
-  when:
-    - ansible_system == 'Linux'
-    - not ansible_check_mode
+    - name: Contraseña | Consultar estado final (Solaris 11)
+      ansible.builtin.command:
+        argv: [passwd, -s, "{{ item }}"]
+      loop: "{{ _cp_aplicar }}"
+      register: _cp_solstat
+      changed_when: false
+      check_mode: false
+      when: ansible_system == 'SunOS'
 
-- name: Contraseña | Resultado por usuario
-  ansible.builtin.debug:
-    msg: >-
-      {{ [item.item ~ ' @ ' ~ inventory_hostname ~ ': contraseña actualizada']
-         + (item.stdout_lines | select('match', '^(Last password change|Password expires|Password inactive|Account expires|Maximum number)') | list) }}
-  loop: "{{ (_cp_chage.results | default([])) + (_cp_solstat.results | default([])) }}"
-  loop_control:
-    label: "{{ item.item | default('') }}"
-  when: item.stdout_lines is defined
+    - name: Contraseña | Verificar que /etc/shadow registre el cambio (Linux)
+      ansible.builtin.getent:
+        database: shadow
+      no_log: true  # el resultado incluye los hashes de todas las cuentas
+      when:
+        - ansible_system == 'Linux'
+        - _cp_aplicar | length > 0
+        - not ansible_check_mode
 
-- name: Contraseña | Resumen del servidor
-  ansible.builtin.debug:
-    msg:
-      - "Servidor: {{ inventory_hostname }}"
-      - "Actualizados: {{ _cp_aplicar | join(', ') or '-' }}"
-      - "Caducidad sin cambios (cuentas críticas): {{ _cp_conservan | default([]) | join(', ') or '-' }}"
-      - "Inexistentes: {{ _cp_inexistentes | join(', ') or '-' }}"
-      - "Omitidos (servicio): {{ _cp_servicio | join(', ') or '-' }}"
-      - "Excluidos (en bloque): {{ _cp_excluidas.keys() | list | join(', ') or '-' }}"
+    # Foto DESPUÉS del cambio (antes de comprobar, para que el informe muestre también las que no quedaron bien).
+    - name: Contraseña | Estado de las cuentas después del cambio
+      ansible.builtin.include_role:
+        name: usuarios_comun
+        tasks_from: informe_estado.yml
+      vars:
+        informe_momento: despues
 
-# En un workflow, la auditoría siguiente recibe estos datos (artefactos de AWX) y revisa
-# solo las cuentas modificadas en cada servidor.
-- name: Contraseña | Publicar la operación (para la verificación del workflow)
-  ansible.builtin.set_stats:
-    data:
-      cambio_operacion: "{{ 'Forzar cambio de contraseña' if hostvars['localhost']['_cp_accion'] == 'solo_forzar_cambio' else 'Cambiar contraseña' }}"
-    per_host: false
-    aggregate: false
-  run_once: true
+    # Campo 1 de shadow = día (desde 1970) del último cambio; 0 = cambio forzado.
+    - name: Contraseña | Comprobar fecha de último cambio
+      ansible.builtin.assert:
+        quiet: true
+        that: >-
+          (ansible_facts.getent_shadow[item][1] | int) >= (_hoy | int) - 1
+          or (ansible_facts.getent_shadow[item][1] == '0' and (hostvars['localhost']['_cp_forzar'] | bool))
+        fail_msg: "La fecha de último cambio de {{ item }} no se actualizó en {{ inventory_hostname }}."
+      loop: "{{ _cp_aplicar }}"
+      vars:
+        _hoy: "{{ (ansible_date_time.epoch | int) // 86400 }}"
+      when:
+        - ansible_system == 'Linux'
+        - not ansible_check_mode
 
-- name: Contraseña | Publicar cuentas modificadas en este servidor
-  ansible.builtin.set_stats:
-    data:
-      cambio_cuentas: "{{ {inventory_hostname: _cp_aplicar} }}"
-    per_host: false
-    aggregate: true
+    - name: Contraseña | Resultado por usuario
+      ansible.builtin.debug:
+        msg: >-
+          {{ [item.item ~ ' @ ' ~ inventory_hostname ~ ': contraseña actualizada']
+             + (item.stdout_lines | select('match', '^(Last password change|Password expires|Password inactive|Account expires|Maximum number)') | list) }}
+      loop: "{{ (_cp_chage.results | default([])) + (_cp_solstat.results | default([])) }}"
+      loop_control:
+        label: "{{ item.item | default('') }}"
+      when: item.stdout_lines is defined
+
+    - name: Contraseña | Resumen del servidor
+      ansible.builtin.debug:
+        msg:
+          - "Servidor: {{ inventory_hostname }}"
+          - "Actualizados: {{ _cp_aplicar | join(', ') or '-' }}"
+          - "Caducidad sin cambios (cuentas críticas): {{ _cp_conservan | default([]) | join(', ') or '-' }}"
+          - "Inexistentes: {{ _cp_inexistentes | join(', ') or '-' }}"
+          - "Omitidos (servicio): {{ _cp_servicio | join(', ') or '-' }}"
+          - "Excluidos (en bloque): {{ _cp_excluidas.keys() | list | join(', ') or '-' }}"
+
+    # En un workflow, la auditoría siguiente recibe estos datos (artefactos de AWX) y revisa
+    # solo las cuentas modificadas en cada servidor.
+    - name: Contraseña | Publicar la operación (para la verificación del workflow)
+      ansible.builtin.set_stats:
+        data:
+          cambio_operacion: "{{ 'Forzar cambio de contraseña' if hostvars['localhost']['_cp_accion'] == 'solo_forzar_cambio' else 'Cambiar contraseña' }}"
+        per_host: false
+        aggregate: false
+      run_once: true
+
+    - name: Contraseña | Publicar cuentas modificadas en este servidor
+      ansible.builtin.set_stats:
+        data:
+          cambio_cuentas: "{{ {inventory_hostname: _cp_aplicar} }}"
+        per_host: false
+        aggregate: true
+  rescue:
+    - name: Contraseña | Registrar el error para el informe
+      ansible.builtin.include_role:
+        name: usuarios_comun
+        tasks_from: informe_fallo.yml

@@ -32,91 +32,142 @@
     _au_existian: "{{ automatizacion_cuentas | map(attribute='usuario') | select('in', ansible_facts.getent_passwd.keys() | list) | list }}"
     _au_grupo_ssh: "{{ automatizacion_grupo_acceso_ssh in ansible_facts.getent_group.keys() | list }}"
 
-# --- sudo -------------------------------------------------------------------
-- name: Automatización | Desactivar "Defaults requiretty" si existe
-  ansible.builtin.lineinfile:
-    path: /etc/sudoers
-    regexp: '^(Defaults\s+requiretty.*)$'
-    line: '# \1'
-    backrefs: true
-    validate: /usr/sbin/visudo -cf %s
-
-- name: Automatización | Verificar que /etc/sudoers incluya /etc/sudoers.d
-  ansible.builtin.command:
-    argv: [grep, -Eq, '^[#@]includedir[[:space:]]+/etc/sudoers\.d', /etc/sudoers]
-  register: _au_includedir
-  changed_when: false
-  failed_when: false
-  check_mode: false
-
-- name: Automatización | Agregar includedir /etc/sudoers.d
-  ansible.builtin.lineinfile:
-    path: /etc/sudoers
-    line: '#includedir /etc/sudoers.d'
-    insertafter: EOF
-    validate: /usr/sbin/visudo -cf %s
-  when: _au_includedir.rc != 0
-
-# --- cuentas ----------------------------------------------------------------
-# password '*' = sin contraseña utilizable (solo llave). Solo se asigna al crear.
-- name: Automatización | Crear o completar cuentas
-  ansible.builtin.user:
-    name: "{{ item }}"
-    shell: "{{ automatizacion_shell }}"
-    create_home: true
-    password: '*'
-    update_password: on_create
-    groups: "{{ [automatizacion_grupo_acceso_ssh] if (_au_grupo_ssh | bool) else omit }}"
-    append: true
-    state: present
-  loop: "{{ _au_nombres }}"
-
-- name: Automatización | Regla sudo sin contraseña
-  ansible.builtin.copy:
-    dest: "/etc/sudoers.d/{{ item }}"
-    content: |
-      # Gestionado por Ansible (gestion_usuarios - relación de confianza). NO editar manualmente.
-      {{ item }} ALL=(ALL) NOPASSWD: ALL
-    owner: root
-    group: root
-    mode: "0440"
-    validate: /usr/sbin/visudo -cf %s
-  loop: "{{ _au_nombres }}"
-
-- name: Automatización | Instalar llaves públicas
-  ansible.posix.authorized_key:
-    user: "{{ item.0.usuario }}"
-    key: "{{ lookup('ansible.builtin.file', item.1) }}"
-    state: present
-    manage_dir: true
-  loop: "{{ automatizacion_cuentas | subelements('llaves') }}"
-  loop_control:
-    label: "{{ item.0.usuario }} <- {{ item.1 }}"
-
-# Una contraseña vencida bloquea también el ingreso por llave (PAM).
-- name: Automatización | Sin caducidad ni expiración
+# Foto de las cuentas ANTES del cambio, para el informe en Excel.
+- name: Automatización | Estado de las cuentas antes del cambio
   ansible.builtin.include_role:
     name: usuarios_comun
-    tasks_from: politica_caducidad.yml
+    tasks_from: informe_estado.yml
   vars:
     comun_usuarios: "{{ _au_nombres }}"
-    comun_politica: nunca
-    comun_quitar_expiracion_cuenta: true
+    informe_momento: antes
 
-# --- acceso SSH ---------------------------------------------------------------
-- name: Automatización | Agregar a AllowUsers de sshd_config
-  ansible.builtin.include_role:
-    name: usuarios_comun
-    tasks_from: allowusers.yml
-  vars:
-    comun_usuarios: "{{ _au_nombres }}"
-    comun_sshd_config: "{{ automatizacion_sshd_config }}"
+# Lo que se pidió, para el informe (lo lee el play final en localhost).
+- name: Automatización | Datos de la solicitud para el informe
+  ansible.builtin.set_fact:
+    _au_solicitud:
+      - - Cuentas de automatización
+        - "{{ automatizacion_cuentas | map(attribute='usuario') | join(', ') }}"
+      - - Qué se asegura en cada cuenta
+        - "Existe, sudo total sin contraseña (NOPASSWD), llaves públicas instaladas, sin caducidad ni expiración y acceso SSH ({{ automatizacion_grupo_acceso_ssh }} y AllowUsers)."
+      - - Usuario usado para entrar
+        - "{{ relacion_usuario | default('') | string | trim }}"
+  delegate_to: localhost
+  delegate_facts: true
+  run_once: true
 
-- name: Automatización | Resumen del servidor
-  ansible.builtin.debug:
-    msg:
-      - "Servidor: {{ inventory_hostname }} ({{ ansible_distribution | default('') }} {{ ansible_distribution_version | default('') }})"
-      - "Creadas: {{ _au_nombres | reject('in', _au_existian) | join(', ') or '-' }}"
-      - "Ya existían (completadas): {{ _au_existian | join(', ') or '-' }}"
-      - "Grupo {{ automatizacion_grupo_acceso_ssh }}: {{ 'agregadas' if (_au_grupo_ssh | bool) else 'no existe en el servidor' }}"
-      - "AllowUsers: {{ (comun_allowusers_agregados | default([]) | join(', ')) or 'sin cambios (no existe la línea o ya estaban)' }}"
+# Cambio en el servidor. Si una tarea falla, rescue registra el error y lee el estado real de las
+# cuentas: el informe se genera igual y su play final marca el job como fallido.
+- name: Automatización | Aplicar el cambio
+  block:
+    # --- sudo -------------------------------------------------------------------
+    - name: Automatización | Desactivar "Defaults requiretty" si existe
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers
+        regexp: '^(Defaults\s+requiretty.*)$'
+        line: '# \1'
+        backrefs: true
+        validate: /usr/sbin/visudo -cf %s
+
+    - name: Automatización | Verificar que /etc/sudoers incluya /etc/sudoers.d
+      ansible.builtin.command:
+        argv: [grep, -Eq, '^[#@]includedir[[:space:]]+/etc/sudoers\.d', /etc/sudoers]
+      register: _au_includedir
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Automatización | Agregar includedir /etc/sudoers.d
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers
+        line: '#includedir /etc/sudoers.d'
+        insertafter: EOF
+        validate: /usr/sbin/visudo -cf %s
+      when: _au_includedir.rc != 0
+
+    # --- cuentas ----------------------------------------------------------------
+    # password '*' = sin contraseña utilizable (solo llave). Solo se asigna al crear.
+    - name: Automatización | Crear o completar cuentas
+      ansible.builtin.user:
+        name: "{{ item }}"
+        shell: "{{ automatizacion_shell }}"
+        create_home: true
+        password: '*'
+        update_password: on_create
+        groups: "{{ [automatizacion_grupo_acceso_ssh] if (_au_grupo_ssh | bool) else omit }}"
+        append: true
+        state: present
+      loop: "{{ _au_nombres }}"
+
+    - name: Automatización | Regla sudo sin contraseña
+      ansible.builtin.copy:
+        dest: "/etc/sudoers.d/{{ item }}"
+        content: |
+          # Gestionado por Ansible (gestion_usuarios - relación de confianza). NO editar manualmente.
+          {{ item }} ALL=(ALL) NOPASSWD: ALL
+        owner: root
+        group: root
+        mode: "0440"
+        validate: /usr/sbin/visudo -cf %s
+      loop: "{{ _au_nombres }}"
+
+    - name: Automatización | Instalar llaves públicas
+      ansible.posix.authorized_key:
+        user: "{{ item.0.usuario }}"
+        key: "{{ lookup('ansible.builtin.file', item.1) }}"
+        state: present
+        manage_dir: true
+      loop: "{{ automatizacion_cuentas | subelements('llaves') }}"
+      loop_control:
+        label: "{{ item.0.usuario }} <- {{ item.1 }}"
+
+    # Una contraseña vencida bloquea también el ingreso por llave (PAM).
+    - name: Automatización | Sin caducidad ni expiración
+      ansible.builtin.include_role:
+        name: usuarios_comun
+        tasks_from: politica_caducidad.yml
+      vars:
+        comun_usuarios: "{{ _au_nombres }}"
+        comun_politica: nunca
+        comun_quitar_expiracion_cuenta: true
+
+    # --- acceso SSH ---------------------------------------------------------------
+    - name: Automatización | Agregar a AllowUsers de sshd_config
+      ansible.builtin.include_role:
+        name: usuarios_comun
+        tasks_from: allowusers.yml
+      vars:
+        comun_usuarios: "{{ _au_nombres }}"
+        comun_sshd_config: "{{ automatizacion_sshd_config }}"
+
+    - name: Automatización | Resultado por cuenta para el informe
+      ansible.builtin.set_fact:
+        informe_resultado: >-
+          {%- set r = {} -%}
+          {%- for c in automatizacion_cuentas -%}
+          {%-   set t = 'sudo total sin contraseña; ' ~ (c.llaves | length) ~ ' llave(s) instalada(s); sin caducidad; '
+                  ~ ('grupo ' ~ automatizacion_grupo_acceso_ssh if _au_grupo_ssh | bool else 'el grupo ' ~ automatizacion_grupo_acceso_ssh ~ ' no existe aquí')
+                  ~ ('; agregada a AllowUsers' if c.usuario in comun_allowusers_agregados | default([]) else '') -%}
+          {%-   set _ = r.update({c.usuario: ['COMPLETADA' if c.usuario in _au_existian else 'CREADA', t]}) -%}
+          {%- endfor -%}
+          {{ r }}
+
+    - name: Automatización | Estado de las cuentas después del cambio
+      ansible.builtin.include_role:
+        name: usuarios_comun
+        tasks_from: informe_estado.yml
+      vars:
+        informe_momento: despues
+
+    - name: Automatización | Resumen del servidor
+      ansible.builtin.debug:
+        msg:
+          - "Servidor: {{ inventory_hostname }} ({{ ansible_distribution | default('') }} {{ ansible_distribution_version | default('') }})"
+          - "Creadas: {{ _au_nombres | reject('in', _au_existian) | join(', ') or '-' }}"
+          - "Ya existían (completadas): {{ _au_existian | join(', ') or '-' }}"
+          - "Grupo {{ automatizacion_grupo_acceso_ssh }}: {{ 'agregadas' if (_au_grupo_ssh | bool) else 'no existe en el servidor' }}"
+          - "AllowUsers: {{ (comun_allowusers_agregados | default([]) | join(', ')) or 'sin cambios (no existe la línea o ya estaban)' }}"
+  rescue:
+    - name: Automatización | Registrar el error para el informe
+      ansible.builtin.include_role:
+        name: usuarios_comun
+        tasks_from: informe_fallo.yml

@@ -1,0 +1,185 @@
+{#- Contenido del Excel del informe de cambio (lo escribe el módulo generar_excel).
+    Hojas: Resumen, Por usuario, Detalle y Servidores.
+    De cada servidor: informe_usuarios, informe_antes, informe_despues (tasks/informe_estado.yml)
+    e informe_resultado ({usuario: [RESULTADO, detalle]}, lo deja el rol de cada opción). -#}
+{%- set CAMBIO = ['FORZADO', 'CONTRASEÑA CAMBIADA', 'CREADA', 'ACTUALIZADA', 'LLAVE RENOVADA', 'COMPLETADA', 'BLOQUEADA', 'REACTIVADA', 'ELIMINADA'] %}
+{%- set SIN_CAMBIO = ['OMITIDA', 'YA EXISTÍA', 'NO EXISTE'] %}
+{%- set expl = {
+      'FORZADO': 'Conserva su contraseña actual, pero el sistema le exigirá cambiarla en su próximo inicio de sesión.',
+      'CONTRASEÑA CAMBIADA': 'Se le asignó la contraseña nueva.',
+      'CREADA': 'La cuenta no existía y se creó.',
+      'ACTUALIZADA': 'Ya existía: se le aplicaron grupos, llave y perfil sin tocar su contraseña.',
+      'LLAVE RENOVADA': 'Ya existía: se reemplazó su llave SSH por la nueva.',
+      'COMPLETADA': 'Ya existía: se completó lo que faltaba (llaves, sudo, caducidad y acceso SSH).',
+      'BLOQUEADA': 'Contraseña bloqueada y cuenta expirada: no puede entrar, ni siquiera con llave. Se retiró su regla sudo.',
+      'REACTIVADA': 'Se quitaron el bloqueo, la expiración y los intentos fallidos: puede volver a entrar.',
+      'ELIMINADA': 'Se borraron la cuenta, su home y su regla sudo.',
+      'OMITIDA': 'No se modificó por seguridad. El motivo está en la columna Detalle:',
+      'YA EXISTÍA': 'Ya existía y no se modificó (la encuesta no pidió actualizar las existentes).',
+      'NO EXISTE': 'La cuenta no existe en ese servidor: no había nada que cambiar.',
+      'SIN TERMINAR': 'El servidor falló durante el cambio: revise el job de AWX y confirme el estado con una auditoría.',
+      'NO APLICADO': 'El servidor falló antes de aplicar el cambio a esta cuenta: quedó como estaba. Vuelva a lanzar sobre ese servidor.'} %}
+{%- set clave_txt = {'ACTIVA': 'Activa', 'BLOQUEADA': 'Bloqueada', 'SIN_CLAVE': 'Sin contraseña (solo llave)',
+                     'VACIA': 'Vacía: entra sin contraseña', 'NO_DISPONIBLE': 'No disponible (Solaris)'} %}
+{%- set simulacion = ansible_check_mode | default(false) | bool %}
+{#- ---------------------------------------------------------------- Recorrido por servidor -#}
+{%- set det = [] %}{% set srv = [] %}{% set porusu = {} %}{% set cnt = {} %}{% set motivos = {} %}
+{%- set ver = {'SÍ': 0, 'NO': 0, 'No disponible': 0} %}{% set est = {'OK': 0, 'FALLÓ DURANTE EL CAMBIO': 0, 'SIN RESPUESTA': 0} %}
+{%- for h in informe_hosts | default([]) %}
+{%-   set hv = hostvars[h] %}
+{%-   set ip = hv['ansible_host'] | default(h) %}
+{%-   if hv['informe_antes'] is not defined %}
+{%-     set _ = est.update({'SIN RESPUESTA': est['SIN RESPUESTA'] + 1}) %}
+{%-     set _ = srv.append([h, ip, 'SIN RESPUESTA', 0, 0, 0, 0, 'No respondió o falló antes de empezar: no se modificó nada en este servidor.']) %}
+{%-   else %}
+{%-     set antes = hv['informe_antes'] %}
+{%-     set despues = hv['informe_despues'] | default({}) %}
+{%-     set resul = hv['informe_resultado'] | default({}) %}
+{%-     set estado = 'OK' if (hv['informe_despues'] is defined and hv['informe_error'] is not defined) else 'FALLÓ DURANTE EL CAMBIO' %}
+{%-     set _ = est.update({estado: est[estado] + 1}) %}
+{%-     set hoy = (hv['ansible_date_time']['epoch'] | int) // 86400 %}
+{%-     set c = {'cam': 0, 'sin': 0, 'err': 0} %}
+{%-     for u in hv['informe_usuarios'] | default([]) %}
+{%-       set a = antes[u] | default({'existe': false}) %}
+{%-       set d = despues[u] | default(none) %}
+{%-       set r = resul[u] | default(['SIN TERMINAR', 'El servidor falló antes de terminar el cambio: ver el estado DESPUÉS.']) %}
+{#-       Verificación: el estado leído después del cambio coincide con lo esperado. -#}
+{%-       if simulacion %}{% set v = 'Simulación' %}
+{%-       elif r[0] not in CAMBIO or d is none %}{% set v = '-' %}
+{%-       elif r[0] == 'ELIMINADA' %}{% set v = 'NO' if d.existe else 'SÍ' %}
+{%-       elif not d.existe %}{% set v = 'NO' %}
+{%-       elif r[0] in ['FORZADO', 'CONTRASEÑA CAMBIADA', 'BLOQUEADA', 'REACTIVADA'] and d.clave == 'NO_DISPONIBLE' %}{% set v = 'No disponible' %}
+{%-       elif r[0] == 'FORZADO' %}{% set v = 'SÍ' if d.lastchg == 0 else 'NO' %}
+{%-       elif r[0] == 'CONTRASEÑA CAMBIADA' %}{% set v = 'SÍ' if (d.lastchg == 0 or d.lastchg >= hoy - 1) else 'NO' %}
+{%-       elif r[0] == 'BLOQUEADA' %}{% set v = 'SÍ' if (d.clave == 'BLOQUEADA' or d.expirada) else 'NO' %}
+{%-       elif r[0] == 'REACTIVADA' %}{% set v = 'NO' if d.expirada else 'SÍ' %}
+{%-       else %}{% set v = 'SÍ' %}
+{%-       endif %}
+{%-       if estado != 'OK' and v == 'NO' %}{% set r = ['NO APLICADO', 'Debía quedar ' ~ r[0] ~ ', pero el servidor falló antes de aplicarlo.'] %}{% endif %}
+{%-       if v in ver %}{% set _ = ver.update({v: ver[v] + 1}) %}{% endif %}
+{%-       set _ = cnt.update({r[0]: cnt.get(r[0], 0) + 1}) %}
+{%-       if r[0] == 'OMITIDA' %}{% set _ = motivos.update({r[1]: motivos.get(r[1], 0) + 1}) %}{% endif %}
+{#-       Estado antes y después (4 columnas cada uno). -#}
+{%-       set cols = [] %}
+{%-       for x in [a, d] %}
+{%-         if x is none %}{% set _ = cols.extend(['Sin datos (el servidor falló)', '', '', '']) %}
+{%-         elif not x.existe %}{% set _ = cols.extend(['No existe', '', '', '']) %}
+{%-         else %}{% set _ = cols.extend([clave_txt[x.clave], x.ult, x.vence ~ (' (vencida)' if x.vencida else ''), x.expira ~ (' (expirada)' if x.expirada else '')]) %}
+{%-         endif %}
+{%-       endfor %}
+{%-       set f = d if (d is not none and d.existe) else a %}
+{%-       set _ = det.append([h, ip, u, f.nombre | default(''), r[0], r[1], v] + cols
+                             + [(d.grupos | join(', ')) if (d is not none and d.existe) else '', f.uid | default(''), f.shell | default('')]) %}
+{#-       Por usuario. -#}
+{%-       set pu = porusu.setdefault(u, {'nombre': '', 'cam': [], 'sin': {}, 'err': []}) %}
+{%-       if f.nombre | default('') and not pu.nombre %}{% set _ = pu.update({'nombre': f.nombre}) %}{% endif %}
+{%-       if r[0] in ['SIN TERMINAR', 'NO APLICADO'] or v == 'NO' %}
+{%-         set _ = pu.err.append(h) %}{% set _ = c.update({'err': c.err + 1}) %}
+{%-       elif r[0] in CAMBIO %}
+{%-         set _ = pu.cam.append(h) %}{% set _ = c.update({'cam': c.cam + 1}) %}
+{%-       else %}
+{%-         set _ = pu.sin.setdefault(r[1] if (r[0] == 'OMITIDA' and r[1]) else (r[0] | capitalize), []).append(h) %}
+{%-         set _ = c.update({'sin': c.sin + 1}) %}
+{%-       endif %}
+{%-     endfor %}
+{%-     set _ = srv.append([h, ip, estado, (hv['informe_usuarios'] | default([])) | length, c.cam, c.sin, c.err,
+                            ('Simulación: no se modificó nada.' if simulacion else '') if estado == 'OK'
+                            else ('Falló a mitad del cambio. Error: ' ~ (hv['informe_error'] | default('el servidor dejó de responder') | trim)
+                                  ~ '. La columna Verificado de la hoja Detalle muestra qué cuentas alcanzaron a quedar aplicadas.')]) %}
+{%-   endif %}
+{%- endfor %}
+{#- ---------------------------------------------------------------- Por usuario -#}
+{%- set usuarios = [] %}{% set res_usu = {'APLICADO': 0, 'PARCIAL': 0, 'SIN CAMBIOS': 0, 'REVISAR': 0} %}
+{%- for u in porusu | sort %}
+{%-   set pu = porusu[u] %}
+{%-   set nsin = pu.sin.values() | map('length') | sum %}
+{%-   set res = 'REVISAR' if pu.err else ('PARCIAL' if (pu.cam and nsin) else ('APLICADO' if pu.cam else 'SIN CAMBIOS')) %}
+{%-   set _ = res_usu.update({res: res_usu[res] + 1}) %}
+{%-   set sin_txt = [] %}{% for m in pu.sin | sort %}{% set _ = sin_txt.append(m ~ ': ' ~ (pu.sin[m] | join(', '))) %}{% endfor %}
+{%-   set _ = usuarios.append([u, pu.nombre, res, pu.cam | length, pu.cam | join(', '), nsin, sin_txt | join(' | '), pu.err | length, pu.err | join(', ')]) %}
+{%- endfor %}
+{#- ---------------------------------------------------------------- Resumen -#}
+{%- set res = [] %}{% set res_est = {'0': 'titulo'} %}
+{%- set _ = res.append(['Informe del cambio: ' ~ informe_operacion, '', '']) %}
+{%- set _ = res.append(['Generado', '', informe_fecha]) %}
+{%- if simulacion %}{% set _ = res.append(['Modo', '', 'SIMULACIÓN (check): no se modificó ningún servidor. El informe muestra lo que se habría hecho.']) %}{% endif %}
+{%- set _ = res.append(['Operación', '', informe_operacion]) %}
+{%- set _ = res.append(['Servidores solicitados', '', objetivo | default('-')]) %}
+{%- for s in informe_solicitud | default([]) %}{% set _ = res.append([s[0], '', s[1]]) %}{% endfor %}
+{%- if ticket_cambio | default('') | string | length > 0 %}{% set _ = res.append(['Ticket o justificación', '', ticket_cambio]) %}{% endif %}
+{%- set _ = res.append(['Ejecutado por', '', awx_user_name | default(tower_user_name | default('Línea de comandos'))]) %}
+{%- set _ = res.append(['Job de AWX', '', awx_job_id | default(tower_job_id | default('-'))]) %}
+{%- set _ = res.append(['', '', '']) %}
+{%- set _ = res_est.update({res | length | string: 'seccion'}) %}{% set _ = res.append(['1. Servidores', 'Cantidad', 'Qué significa']) %}
+{%- set _ = res.append(['Servidores del objetivo', informe_hosts | default([]) | length, 'Todos los servidores que abarcó el objetivo (hoja Servidores).']) %}
+{%- set _ = res.append(['     Terminaron (OK)', est['OK'], 'Se aplicó el cambio y se leyó el estado final de las cuentas.']) %}
+{%- set _ = res.append(['     Fallaron durante el cambio', est['FALLÓ DURANTE EL CAMBIO'], ('Pueden haber quedado a medias: el error está en la hoja Servidores y la columna Verificado de Detalle muestra qué quedó aplicado. Corrija y vuelva a lanzar sobre ellos.' if est['FALLÓ DURANTE EL CAMBIO'] else 'Ninguno.')]) %}
+{%- set _ = res.append(['     Sin respuesta', est['SIN RESPUESTA'], ('No se modificó nada en ellos (apagados, sin acceso o con error antes de empezar). Vuelva a lanzar sobre ellos.' if est['SIN RESPUESTA'] else 'Todos respondieron.')]) %}
+{%- set _ = res.append(['', '', '']) %}
+{%- set _ = res_est.update({res | length | string: 'seccion'}) %}{% set _ = res.append(['2. Cuentas (una por cuenta y servidor)', 'Cuentas', 'Qué significa']) %}
+{%- set _ = res.append(['Cuentas revisadas', det | length, 'La misma persona en 10 servidores cuenta 10 veces (hoja Detalle).']) %}
+{%- set ncam = [] %}{% for k in CAMBIO %}{% set _ = ncam.append(cnt.get(k, 0)) %}{% endfor %}
+{%- set _ = res.append(['Con cambio', ncam | sum, '']) %}
+{%- for k in CAMBIO if cnt.get(k, 0) > 0 %}{% set _ = res.append(['     ' ~ k, cnt[k], expl[k]]) %}{% endfor %}
+{%- set nsin = [] %}{% for k in SIN_CAMBIO %}{% set _ = nsin.append(cnt.get(k, 0)) %}{% endfor %}
+{%- set _ = res.append(['Sin cambio', nsin | sum, '']) %}
+{%- for k in SIN_CAMBIO if cnt.get(k, 0) > 0 %}
+{%-   set _ = res.append(['     ' ~ k, cnt[k], expl[k]]) %}
+{%-   if k == 'OMITIDA' %}{% for m in motivos | dictsort(by='value') | reverse %}{% set _ = res.append(['          · ' ~ m[0], m[1], '']) %}{% endfor %}{% endif %}
+{%- endfor %}
+{%- for k in ['NO APLICADO', 'SIN TERMINAR'] if cnt.get(k, 0) > 0 %}{% set _ = res.append([k, cnt[k], expl[k]]) %}{% endfor %}
+{%- set _ = res.append(['', '', '']) %}
+{%- set _ = res_est.update({res | length | string: 'seccion'}) %}{% set _ = res.append(['3. Verificación del cambio', 'Cuentas', 'Qué significa']) %}
+{%- if simulacion %}
+{%-   set _ = res.append(['Simulación', '', 'En modo simulación no se verifica: no se cambió nada.']) %}
+{%- else %}
+{%-   set _ = res.append(['Verificadas', ver['SÍ'], 'Después del cambio se volvió a leer la cuenta y quedó como se esperaba.']) %}
+{%-   set _ = res.append(['No coinciden', ver['NO'], ('Revíselas en la hoja Detalle (filtre Verificado = NO).' if ver['NO'] else 'Ninguna.')]) %}
+{%-   if ver['No disponible'] %}{% set _ = res.append(['No disponible', ver['No disponible'], 'Solaris: no se lee /etc/shadow; el resultado del job confirma el cambio.']) %}{% endif %}
+{%- endif %}
+{%- set _ = res.append(['', '', '']) %}
+{%- set _ = res_est.update({res | length | string: 'seccion'}) %}{% set _ = res.append(['4. Usuarios distintos', 'Usuarios', 'Qué significa (hoja Por usuario)']) %}
+{%- set _ = res.append(['     APLICADO', res_usu['APLICADO'], 'El cambio se aplicó en todos los servidores donde se pidió.']) %}
+{%- set _ = res.append(['     PARCIAL', res_usu['PARCIAL'], 'Se aplicó en algunos servidores; en otros se omitió o no existe la cuenta (ver el motivo).']) %}
+{%- set _ = res.append(['     SIN CAMBIOS', res_usu['SIN CAMBIOS'], 'No se modificó en ningún servidor (ver el motivo).']) %}
+{%- set _ = res.append(['     REVISAR', res_usu['REVISAR'], 'En algún servidor el cambio no terminó o no se pudo verificar.']) %}
+{%- if informe_que_sigue | default('') | length > 0 %}
+{%-   set _ = res.append(['', '', '']) %}
+{%-   set _ = res_est.update({res | length | string: 'seccion'}) %}{% set _ = res.append(['5. Qué sigue', '', '']) %}
+{%-   for l in informe_que_sigue %}{% set _ = res.append(['', '', l]) %}{% endfor %}
+{%- endif %}
+{%- set _ = res.append(['', '', '']) %}
+{%- set _ = res_est.update({res | length | string: 'seccion'}) %}{% set _ = res.append(['Cómo leer este informe', '', 'Qué contiene cada hoja']) %}
+{%- set _ = res.append(['Por usuario', '', 'Una fila por usuario: en qué servidores se aplicó el cambio, en cuáles no y por qué. Sirve para avisar a cada persona.']) %}
+{%- set _ = res.append(['Detalle', '', 'Una fila por cuenta y servidor: resultado, motivo, verificación y el estado de la cuenta ANTES y DESPUÉS del cambio.']) %}
+{%- set _ = res.append(['Servidores', '', 'Una fila por servidor: si terminó, falló o no respondió, y cuántas cuentas cambió.']) %}
+{%- set _ = res.append(['Consejo', '', 'Todas las hojas tienen filtros en la fila de títulos, que queda fija al desplazarse.']) %}
+{#- ---------------------------------------------------------------- Hojas -#}
+{%- set c_res = {} %}
+{%- for k in CAMBIO %}{% set _ = c_res.update({k: 'verde'}) %}{% endfor %}
+{%- for k in SIN_CAMBIO %}{% set _ = c_res.update({k: 'gris'}) %}{% endfor %}
+{%- set _ = c_res.update({'SIN TERMINAR': 'rojo', 'NO APLICADO': 'rojo'}) %}
+{%- set hojas = [
+      {'nombre': 'Resumen', 'encabezados': [], 'filas': res, 'estilos_fila': res_est, 'ajustar': [2], 'anchos': [42, 10, 100]},
+      {'nombre': 'Por usuario',
+       'encabezados': ['Usuario', 'Nombre completo', 'Resultado', 'Servidores con cambio (n.º)', 'Servidores con cambio',
+                       'Servidores sin cambio (n.º)', 'Servidores sin cambio y motivo', 'Con error o sin verificar (n.º)',
+                       'Servidores con error o sin verificar'],
+       'filas': usuarios, 'vacia': 'No hubo cuentas que revisar.', 'anchos': [18, 30, 13, 13, 50, 13, 60, 14, 40], 'ajustar': [4, 6, 8],
+       'colores': {'Resultado': {'APLICADO': 'verde', 'PARCIAL': 'amarillo', 'SIN CAMBIOS': 'gris', 'REVISAR': 'rojo'}}, 'fijar_columnas': 1},
+      {'nombre': 'Detalle',
+       'encabezados': ['Servidor', 'IP', 'Usuario', 'Nombre completo', 'Resultado', 'Detalle', 'Verificado',
+                       'Contraseña ANTES', 'Último cambio de contraseña ANTES', 'Vencimiento de la contraseña ANTES', 'Expiración de la cuenta ANTES',
+                       'Contraseña DESPUÉS', 'Último cambio de contraseña DESPUÉS', 'Vencimiento de la contraseña DESPUÉS', 'Expiración de la cuenta DESPUÉS',
+                       'Grupos (después)', 'UID', 'Shell'],
+       'filas': det, 'vacia': 'No hubo cuentas que revisar.',
+       'anchos': [22, 15, 16, 28, 20, 45, 11, 22, 18, 18, 16, 22, 22, 18, 16, 30, 8, 16], 'ajustar': [5],
+       'colores': {'Resultado': c_res, 'Verificado': {'SÍ': 'verde', 'NO': 'rojo', 'No disponible': 'gris'},
+                   'Contraseña ANTES': {'Vacía: entra sin contraseña': 'rojo'}, 'Contraseña DESPUÉS': {'Vacía: entra sin contraseña': 'rojo'}},
+       'fijar_columnas': 3},
+      {'nombre': 'Servidores',
+       'encabezados': ['Servidor', 'IP', 'Estado', 'Cuentas revisadas', 'Con cambio', 'Sin cambio', 'Con error o sin verificar', 'Observación'],
+       'filas': srv | sort, 'vacia': 'Sin servidores.', 'anchos': [24, 16, 24, 11, 11, 11, 13, 70], 'ajustar': [7],
+       'colores': {'Estado': {'OK': 'verde', 'FALLÓ DURANTE EL CAMBIO': 'rojo', 'SIN RESPUESTA': 'naranja'}}, 'fijar_columnas': 1},
+    ] %}
+{{ hojas | to_json }}

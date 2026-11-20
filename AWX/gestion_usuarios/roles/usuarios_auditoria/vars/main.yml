@@ -72,3 +72,15 @@ auditoria_severidades:
   MEDIO: Planificar la corrección.
   BAJO: Buenas prácticas y limpieza.
   INFO: Para conocimiento; no exige acción.
+
+# Indicios de que una cuenta NO es de una persona (servicio, aplicación, automatización o
+# cuenta compartida). Solo sirven para la hoja "Plan forzar cambio contraseña": marcan qué
+# revisar antes del cambio masivo. No excluyen nada por sí mismos; la exclusión real es
+# agregar la cuenta a cuentas_servicio en vars/comunes.yml.
+auditoria_indicios_servicio:
+  # Usuario que empieza como un nombre genérico o de aplicación (sin distinguir mayúsculas).
+  nombre_generico: '^(oracle|grid|postgres|mysql|geopos|pos|admin|soporte|support|operador|test|qa|prueba|consul|lista|repositorio|impres|proactiva|monitor|srm|uim|svc|app|backup|batch|cron|ftp|sftp|jenkins|ansible|deploy|usu|genuser|caja|audit|tomcat|wildfly|jboss)'
+  # Usuario terminado en número: cuenta de puesto o compartida (caja40, tesor2, barven1).
+  nombre_con_numero: '[0-9]+$'
+  # Descripción (nombre completo) que habla de un servicio y no de una persona.
+  descripcion_servicio: '(usuario|servicio|gen[eé]ric|monitore|soporte|support|desplieg|deploy|autom|test|prueba|impres|webmin|aplicati|proveedor|interfa|integraci|batch|backup|cron|\bapp\b)'

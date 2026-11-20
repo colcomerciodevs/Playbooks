@@ -26,5 +26,33 @@
   gather_subset: [min]
   vars_files:
     - vars/comunes.yml
+  pre_tasks:
+    # Lista completa ANTES de conectarse: el informe incluye también los que no respondan.
+    - name: Registrar servidores para el informe
+      ansible.builtin.set_fact:
+        informe_hosts: "{{ ansible_play_hosts_all }}"
+      delegate_to: localhost
+      delegate_facts: true
+      run_once: true
   roles:
     - usuarios_eliminar
+
+- name: "Opción 4 | Informe del cambio"
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: false
+  vars_files:
+    - vars/comunes.yml
+  tasks:
+    - name: Generar informe en Excel
+      ansible.builtin.include_role:
+        name: usuarios_comun
+        tasks_from: informe.yml
+      vars:
+        informe_operacion: "{{ {'bloquear': 'Bloquear cuentas', 'reactivar': 'Reactivar cuentas', 'eliminar': 'Eliminar cuentas'}[_el_accion] }}"
+        informe_prefijo: "{{ {'bloquear': 'bloquear_cuentas', 'reactivar': 'reactivar_cuentas', 'eliminar': 'eliminar_cuentas'}[_el_accion] }}"
+        informe_solicitud:
+          - [Usuarios, "{{ eliminar_lista | join(', ') }}"]
+          - - Respaldo del home
+            - "{{ _el_respaldo_txt }}"

@@ -158,9 +158,9 @@ def ejemplos():
          'digitación no cambie root en todo el parque.'),
         ('Forzar el cambio de contraseña a todo el personal de GEOPOS',
          'Workflow Forzar cambio · Usuarios a incluir: todos_uid_1000 · Servidores: GEOPOS',
-         'Se aplica a las cuentas de persona. Se <b>omiten solas</b>: root y demás críticas, pos y postgres, cuentas que solo entran con llave '
+         'Se aplica a las cuentas de persona. Se <b>omiten solas</b>: root y demás críticas, pos y postgres, cuentas que solo entran con llave, '
          'cuentas sin shell y cuentas expiradas (deshabilitadas por fecha). El informe final lista a quién se le aplicó. <b>Consejo:</b> lance antes la auditoría y, en la hoja '
-         '<b>Usuarios</b> del Excel, filtre "Se le forzaría el cambio" (ver "El informe de auditoría").'),
+         '<b>Plan forzar cambio contraseña</b> del Excel, revise las filas REVISAR y CONFIRMAR (ver "El informe de auditoría").'),
         ('Bloquear a dos personas, pero se coló root en la lista',
          'Workflow Bloquear o eliminar · Usuarios: jperez,root · Acción: bloquear',
          '<b>Se detiene sin bloquear a nadie</b>, tampoco a jperez. El mensaje dice "No se permiten cuentas protegidas: root". Quite root y '
@@ -218,11 +218,41 @@ def llaves_y_resultados():
         tabla(['Lo que ve en AWX', 'Qué significa'], [
             ['El workflow espera en "Aprobación"', 'Falta que admin apruebe. Si no lo hace en 4 horas o lo rechaza, termina sin cambios.'],
             ['El nodo 2 en rojo con "No se modificó ningún servidor"', 'Una validación detuvo el trabajo. Lea el mensaje: dice qué corregir.'],
-            ['El nodo 2 en rojo sin ese mensaje', 'Falló un servidor mientras se aplicaba. Avise a un administrador con el número de job.'],
+            ['El nodo 2 en rojo sin ese mensaje', 'Falló un servidor mientras se aplicaba. El informe del cambio se genera igual: en la hoja '
+             'Servidores está el error y en Detalle, qué cuentas alcanzaron a quedar aplicadas. Avise a un administrador con el número de job.'],
             ['Un servidor como "unreachable"', 'No respondió. Se omitió; los demás siguieron. Reintente solo ese servidor más tarde.'],
-            ['Todo en verde', 'Revise el informe del nodo 3 (abajo).'],
+            ['Todo en verde', 'Revise el informe del cambio (nodo 2) y la verificación del nodo 3 (abajo).'],
         ], [0.38, 0.62]),
         Spacer(1, 5),
+        PageBreak(),
+        P('El informe del cambio (Excel)', 'h1'),
+        P('Cada cambio (opciones 0, 1a, 1b, 2a, 2b y 4, solas o dentro de su workflow) deja <b>un archivo Excel</b> en '
+          '/data/work/gestion_usuarios/reportes/ con lo que se pidió y lo que pasó en cada cuenta y servidor. Se llama según la operación: '
+          '<font name="Mono" size="7.6">forzar_cambio_contrasena_&lt;fecha&gt;.xlsx</font>, cambio_contrasena, crear_usuarios_contrasena, '
+          'crear_usuarios_llave, bloquear_cuentas, reactivar_cuentas, eliminar_cuentas o relacion_confianza. La ruta sale al final del job '
+          '(y en Artefactos: informe_cambio). Se genera aunque un servidor falle a mitad; nunca incluye contraseñas ni hashes.'),
+        tabla(['Hoja', 'Qué tiene'], [
+            ['<b>Resumen</b>', 'Fecha, operación, servidores, lo que pidió la encuesta, ticket, quién lo lanzó y número de job. Luego, cuántos '
+             'servidores terminaron, fallaron o no respondieron; cuántas cuentas cambiaron y cuántas no (con los motivos); cuántas se '
+             'verificaron y qué sigue.'],
+            ['<b>Por usuario</b>', 'Una fila por usuario: en qué servidores se aplicó, en cuáles no y por qué. Resultado APLICADO, PARCIAL, '
+             'SIN CAMBIOS o REVISAR. Es la lista para avisar a cada persona.'],
+            ['<b>Detalle</b>', 'Una fila por cuenta y servidor: resultado, motivo, si se verificó y el estado <b>ANTES</b> y <b>DESPUÉS</b> '
+             '(contraseña, último cambio, vencimiento y expiración de la cuenta), grupos, UID y shell.'],
+            ['<b>Servidores</b>', 'Cada servidor: OK, FALLÓ DURANTE EL CAMBIO (con el error) o SIN RESPUESTA, y cuántas cuentas cambió.'],
+        ], [0.18, 0.82]),
+        P('Resultado de cada cuenta', 'h2'),
+        tabla(['Resultado', 'Qué significa'], [
+            ['FORZADO', 'Conserva su contraseña, pero en el próximo ingreso el sistema le pedirá la actual y una nueva.'],
+            ['CONTRASEÑA CAMBIADA', 'Se le asignó la contraseña nueva.'],
+            ['CREADA / ACTUALIZADA / LLAVE RENOVADA / COMPLETADA', 'Alta nueva, cuenta existente actualizada, llave reemplazada o cuenta de automatización completada.'],
+            ['BLOQUEADA / REACTIVADA / ELIMINADA', 'Resultado de la opción 4.'],
+            ['OMITIDA', 'No se tocó a propósito: la columna Detalle dice por qué (crítica, de servicio, shell no interactivo, expirada, sin contraseña...).'],
+            ['YA EXISTÍA / NO EXISTE', 'No había nada que hacer en ese servidor.'],
+            ['NO APLICADO / SIN TERMINAR', 'El servidor falló antes de aplicarlo: vuelva a lanzar sobre ese servidor.'],
+        ], [0.36, 0.64]),
+        P('<b>Verificado</b>: después del cambio se vuelve a leer la cuenta. SÍ = quedó como se esperaba; NO = revisar; '
+          '"No disponible" = Solaris (no se lee /etc/shadow).', 'c'),
         PageBreak(),
         P('El informe de auditoría (Excel)', 'h1'),
         P('Cada auditoría deja <b>un archivo Excel</b> en /data/work/gestion_usuarios/reportes/. La plantilla 3 sola genera '
@@ -235,8 +265,11 @@ def llaves_y_resultados():
              'con la propia, con la de root, limitado), hallazgos por severidad y cuántas cuentas se forzarían en bloque, con los motivos.'],
             ['<b>Tipos de hallazgo</b>', '<b>Empiece aquí.</b> Una fila por tipo de problema: qué significa, qué se recomienda y en cuántos '
              'servidores y cuentas aparece.'],
-            ['<b>Usuarios</b>', 'Una fila por cuenta, sumando todos los servidores: severidad más alta, sudo, si <b>se le forzaría el cambio</b> '
-             '(SÍ, PARCIAL o NO), por qué no y el estado de su contraseña. Es la hoja para revisar antes de forzar en bloque.'],
+            ['<b>Usuarios</b>', 'Una fila por usuario, sumando todos los servidores: en cuántos existe y puede entrar, último acceso, '
+             'hallazgo más grave, sudo y estado de su contraseña.'],
+            ['<b>Plan forzar cambio contraseña</b>', 'Prepara el cambio masivo (2b, UID ≥ 1000). Por usuario: una fila con los servidores donde '
+             'SÍ se le forzaría y una por cada motivo de NO, con su <b>justificación</b>, los <b>indicios de cuenta de servicio</b> y una '
+             '<b>recomendación</b>: REVISAR, CONFIRMAR, APLICAR, EXCLUIDA o CORREGIR.'],
             ['<b>Servidores</b>', 'Cada servidor: hostname real, IP, sistema, totales, estado de root, versión de sudo, AllowUsers/AllowGroups. '
              'Los que no respondieron aparecen con Estado SIN RESPUESTA.'],
             ['<b>Sudo</b>', 'Cuentas con sudo: total o limitado, qué contraseña pide, comandos permitidos y de qué regla sale.'],
@@ -256,12 +289,16 @@ def llaves_y_resultados():
             ['… · debe cambiarla al ingresar', 'Tiene un cambio forzado pendiente.'],
             ['… · cuenta expirada', 'La cuenta está deshabilitada por fecha.'],
         ], [0.40, 0.60]),
-        P('Se le forzaría el cambio: por qué no', 'h2'),
+        P('Plan forzar cambio contraseña: por qué NO se le forzaría', 'h2'),
         P('Mismas reglas que la opción 2b en bloque. La columna dice el primer motivo que aplica: <b>Cuenta crítica</b>, <b>Cuenta de sistema '
           '(UID &lt; 1000)</b>, <b>Cuenta de servicio (lista cuentas_servicio)</b>, <b>Shell no interactivo</b>, <b>Cuenta expirada</b>, <b>Contraseña bloqueada</b>, '
-          '<b>Sin contraseña: solo llave</b>, <b>Sin contraseña</b> o <b>Contraseña vacía</b>. En la hoja Usuarios, <b>PARCIAL</b> significa que en '
-          'unos servidores sí y en otros no (por ejemplo, bloqueada solo en algunos).'),
-        nota('<b>Cómo revisar antes de un forzado en bloque:</b> abra la hoja Usuarios, filtre "Se le forzaría el cambio" = SÍ o PARCIAL y '
+          '<b>Sin contraseña: solo llave</b>, <b>Sin contraseña</b> o <b>Contraseña vacía</b>. Un usuario puede tener una fila SÍ y otra NO si su situación cambia según el servidor '
+          '(por ejemplo, activa en unos y bloqueada en otros).'),
+        nota('<b>Indicios de cuenta de servicio</b> (configurables en roles/usuarios_auditoria/vars/main.yml): nombre genérico o de aplicación '
+             '(oracle, geopos, soporte...), nombre terminado en número (caja40, tesor2), descripción de servicio ("Usuario de monitoreo") y uso de '
+             'llave SSH, porque si un proceso automático entra con esa llave, el cambio forzado lo interrumpe. Una cuenta sin descripción queda '
+             'en CONFIRMAR. Los indicios solo orientan: lo que excluye de verdad es la lista cuentas_servicio.'),
+        nota('<b>Cómo preparar el cambio masivo:</b> abra la hoja Plan forzar cambio contraseña, filtre Recomendación = REVISAR y CONFIRMAR y '
              'revise la lista. Si aparece una cuenta de aplicación (no de una persona), pida que la agreguen a cuentas_servicio en '
              'vars/comunes.yml y vuelva a auditar.'),
         PageBreak(),

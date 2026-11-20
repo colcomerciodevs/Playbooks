@@ -1,0 +1,20 @@
+---
+# Se usa en el rescue de cada opción cuando el cambio falla a mitad en un servidor.
+# Registra el error y lee el estado real de las cuentas: el informe se genera igual y el play
+# final (informe.yml) marca el job como fallido. Las tareas con no_log (claves) no exponen su salida.
+
+- name: Informe | Registrar el error del servidor
+  ansible.builtin.set_fact:
+    # En una tarea con bucle el mensaje general no dice nada: se toman las cuentas que fallaron.
+    informe_error: >-
+      {%- set det = [] -%}
+      {%- for x in ansible_failed_result.results | default([]) if x.failed | default(false) -%}
+      {%-   set _ = det.append((x.item | default('') | string) ~ ' (' ~ ((x.stderr | default('') | string | trim) or (x.msg | default('error') | string)) ~ ')') -%}
+      {%- endfor -%}
+      {{ ansible_failed_task.name | default('Tarea desconocida') }}:
+      {{ (det | join(', ') if det else (ansible_failed_result.msg | default('error sin mensaje') | string)) | truncate(300) }}
+
+- name: Informe | Estado de las cuentas después del error
+  ansible.builtin.include_tasks: informe_estado.yml
+  vars:
+    informe_momento: despues

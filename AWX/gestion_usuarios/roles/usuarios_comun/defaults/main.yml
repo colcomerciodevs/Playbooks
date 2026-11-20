@@ -7,6 +7,8 @@
 #   desbloquear.yml            -> comun_usuarios
 #   allowusers.yml             -> comun_usuarios (agrega a AllowUsers de sshd_config si existe la línea)
 #   verificar_sshd.yml         -> (sshd -t si sshd_config tiene AllowUsers)
+#   informe_estado.yml         -> comun_usuarios, informe_momento (antes | despues): foto de las cuentas
+#   informe.yml                -> (localhost) Excel del cambio con la foto de cada servidor
 comun_usuarios: []
 comun_clave: ""
 comun_politica: mantener
@@ -17,3 +19,7 @@ comun_max_dias_nunca: 99999
 
 # Acceso SSH (allowusers.yml / verificar_sshd.yml)
 comun_sshd_config: /etc/ssh/sshd_config
+
+# Informe del cambio en Excel (opciones 0, 1, 2 y 4). Carpeta persistente: requiere el grupo
+# de instancias Container_Group_Corbeta en la plantilla.
+informe_dir: "{{ gestion_dir_persistente }}/reportes"

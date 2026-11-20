@@ -210,6 +210,12 @@ def seccion(titulo, intro, playbook, rol, nodos, clave, cmds, detiene, extra=Non
     return salida
 
 
+# Informe del cambio (opciones 0, 1, 2 y 4): foto de las cuentas antes y después, y Excel al final.
+INFORME_ANTES = [('Servidor', 'getent passwd ; getent group ; getent shadow', 'Antes del cambio, para el informe. Resultado oculto: solo se guarda el tipo de contraseña y sus fechas.')]
+INFORME_DESPUES = [
+    ('Servidor', 'getent passwd ; getent group ; getent shadow', 'Después del cambio (o al fallar), para verificar. Resultado oculto.'),
+    ('Contenedor', 'genera <operación>_<fecha>.xlsx en /data/work/gestion_usuarios/reportes/', 'Al final, aunque un servidor haya fallado a mitad.'),
+]
 VERIFICAR = [('Servidor', 'getent passwd', 'Verificación, solo lectura.')]
 VERIFICAR_SSH = [('Servidor', 'sshd -t', 'Verificación: si sshd_config tiene AllowUsers y Permitir SSH = SI.')]
 CUENTA = [
@@ -228,40 +234,42 @@ SUDO = [
     ('Servidor', '≈ escribe /etc/sudoers.d/U (0440), validado con: visudo -cf <archivo>', 'El perfil da sudo.'),
     ('Servidor', '≈ rm -f /etc/sudoers.d/U', 'perfil_estandar (o ningún programa del perfil existe) y el archivo lo creó este proyecto.'),
 ]
-CREAR_CLAVE = VERIFICAR + VERIFICAR_SSH + CUENTA + [
+CREAR_CLAVE = VERIFICAR + VERIFICAR_SSH + INFORME_ANTES + CUENTA + [
     ('Servidor', 'chpasswd   (recibe U:clave por entrada estándar)', 'Cuenta nueva.'),
     ('Servidor', 'chage -d 0 U', 'Cuenta nueva con Forzar cambio = SI.'),
-] + SUDO
+] + SUDO + INFORME_DESPUES
 CREAR_LLAVE = VERIFICAR + VERIFICAR_SSH + [
     ('Contenedor', 'ssh-keygen -q -t rsa -b 4096 -N "" -C U@ansible -f <tmp>/U', 'El usuario no tiene llave, o Renovar = SI.'),
     ('Contenedor', 'generar_ppk (módulo del proyecto) -> U.ppk', 'Llave nueva, o le falta el .ppk.'),
     ('Contenedor', 'mv keys/U{,.pub,.ppk} keys/_anteriores/U_<fecha>*', 'Renovar = SI.'),
     ('Contenedor', 'mv <tmp>/U{,.pub,.ppk} /data/work/gestion_usuarios/keys/', 'Llave nueva o renovada.'),
-] + CUENTA + [
+] + INFORME_ANTES + CUENTA + [
     ('Servidor', '≈ usermod -L U', 'Cuenta nueva (queda sin contraseña).'),
     ('Servidor', 'chage -m 0 -M 99999 -I -1 -E -1 U', 'Cuenta nueva.'),
     ('Servidor', '≈ quita la llave anterior de ~U/.ssh/authorized_keys', 'Renovar = SI.'),
     ('Servidor', '≈ agrega la llave pública a ~U/.ssh/authorized_keys', 'Siempre.'),
-] + SUDO
+] + SUDO + INFORME_DESPUES
 DESBLOQUEO = [
     ('Servidor', 'faillock --user U --reset ; pam_tally2 --user U --reset', 'Desbloquear = SI, el que exista.'),
     ('Servidor', 'chage -E -1 U', 'Desbloquear = SI y la cuenta está vencida.'),
 ]
-CAMBIAR = VERIFICAR + [
+CAMBIAR = VERIFICAR + INFORME_ANTES + [
     ('Servidor', 'chpasswd   (recibe U:clave por entrada estándar)', 'Siempre.'),
     ('Servidor', 'chage -m 0 -M 99999 -I -1 U', 'Nunca caduca = SI (excepto cuentas críticas).'),
     ('Servidor', 'chage -d 0 U', 'Forzar cambio = SI (excepto cuentas críticas).'),
 ] + DESBLOQUEO + [
     ('Servidor', 'getent shadow ; chage -l U', 'Siempre, para comprobar el cambio. Resultado de shadow oculto.'),
-]
+] + INFORME_DESPUES
 FORZAR = VERIFICAR + [
     ('Servidor', 'getent shadow', 'Siempre: comprueba que cada cuenta tenga clave y aplica las exclusiones. Resultado oculto.'),
+] + INFORME_ANTES + [
     ('Servidor', 'chage -d 0 U', 'Siempre (no cambia la contraseña).'),
 ] + DESBLOQUEO + [
     ('Servidor', 'chage -l U', 'Siempre, para mostrar el estado final.'),
-]
+] + INFORME_DESPUES
 RELACION = [
     ('Servidor', 'getent passwd ; getent group ; sshd -t', 'Verificación, solo lectura (sshd -t solo si hay AllowUsers).'),
+] + INFORME_ANTES + [
     ('Servidor', '≈ comenta "Defaults requiretty" en /etc/sudoers (validado con visudo)', 'Si existe esa línea.'),
     ('Servidor', '≈ agrega "#includedir /etc/sudoers.d" a /etc/sudoers (validado con visudo)', 'Si no está.'),
     ('Servidor', '≈ useradd -s /bin/bash -m -p "*" U ; usermod -a -G ssh_access U', 'Cuenta nueva; el grupo solo si existe.'),
@@ -269,7 +277,7 @@ RELACION = [
     ('Servidor', '≈ agrega las llaves públicas a ~U/.ssh/authorized_keys', 'Siempre (no borra otras llaves).'),
     ('Servidor', 'chage -m 0 -M 99999 -I -1 -E -1 U', 'Si la cuenta tiene caducidad.'),
     ('Servidor', '≈ agrega U al final de la última línea AllowUsers ; systemctl reload sshd', 'Si existe la línea y U no está.'),
-]
+] + INFORME_DESPUES
 AUDITORIA = [
     ('Servidor', 'lee /etc/passwd, /etc/shadow, /etc/group, /etc/sudoers, /etc/os-release', 'Siempre. No muestra los hashes.'),
     ('Servidor', 'lee ~U/.ssh/authorized_keys', 'Por cada cuenta.'),
@@ -281,6 +289,7 @@ AUDITORIA = [
 ]
 BLOQUEAR = [
     ('Servidor', 'getent passwd', 'Verificación, solo lectura.'),
+] + INFORME_ANTES + [
     ('Servidor', '≈ rm -f /etc/sudoers.d/U', 'Bloquear o eliminar.'),
     ('Servidor', 'usermod -L -e 1970-01-02 U', 'Bloquear.'),
     ('Servidor', 'faillock --user U --reset ; pam_tally2 --user U --reset', 'Reactivar, el que exista.'),
@@ -290,7 +299,7 @@ BLOQUEAR = [
     ('Servidor', '≈ mkdir -p -m 0700 /var/backups/usuarios_eliminados', 'Eliminar con respaldo.'),
     ('Servidor', 'tar -czf /var/backups/usuarios_eliminados/U_<fecha>.tar.gz -C /home U', 'Eliminar con respaldo.'),
     ('Servidor', '≈ userdel -r U', 'Eliminar.'),
-]
+] + INFORME_DESPUES
 
 
 # IDs en AWX (awxtest.coldecom.com). Si se recrea un objeto en AWX, actualice este dato.
@@ -336,10 +345,11 @@ def portada():
                 for k, w in enc.WORKFLOWS.items()], [0.06, 0.28, 0.31, 0.22, 0.13]),
          Spacer(1, 7),
          Flujo([('1. Aprobación', 'revisa ticket, objetivo\ny usuarios'), ('2. Plantilla', 'aplica el cambio\nsolicitado'), ('3. Auditoría', 'verifica cómo\nquedaron las cuentas')],
-               pies={0: 'Rechazada o vencida:\ntermina sin cambios', 1: 'Si falla, no\ncorre la auditoría'}),
-         P('El ticket y las demás respuestas se pasan a los nodos. La auditoría del nodo 3 revisa solo las cuentas que modificó el nodo 2, '
-           'en cada servidor, y genera el informe <b>verificacion_cambio_&lt;fecha&gt;</b> (un Excel) con la operación y el ticket. '
-           'La plantilla 3 lanzada sola sigue siendo la auditoría general.'),
+               pies={0: 'Rechazada o vencida:\ntermina sin cambios', 1: 'Deja el informe del cambio.\nSi falla, no corre la auditoría'}),
+         P('El ticket y las demás respuestas se pasan a los nodos. El nodo 2 deja el <b>informe del cambio</b> (un Excel con el ticket, quién '
+           'lo lanzó, el resultado de cada cuenta en cada servidor y su estado antes y después), aunque algún servidor falle a mitad. '
+           'La auditoría del nodo 3 revisa solo las cuentas que modificó el nodo 2 y genera <b>verificacion_cambio_&lt;fecha&gt;</b> con sus '
+           'hallazgos de seguridad. La plantilla 3 lanzada sola sigue siendo la auditoría general.'),
          P('Plantillas', 'h1'),
          tabla(['ID', 'Plantilla', 'Playbook', 'Valores fijos', 'Preguntas'],
                [[str(AWX_ID[e['name']]), e['name'], 'AWX/gestion_usuarios/' + enc.PLANTILLAS[k]['playbook'],
@@ -355,12 +365,14 @@ def portada():
          P('Qué pasa dentro de cada ejecución', 'h1'),
          P('Las plantillas que modifican siguen tres etapas. Si la etapa 1 o 2 falla, no se cambia ningún servidor.'),
          Flujo([('1. Validar', 'en el contenedor:\nrevisa la encuesta'), ('2. Verificar', 'en los servidores:\nsolo lectura'), ('3. Aplicar', 'en los servidores:\nhace los cambios')]),
-         P('Un servidor que no responde se omite y queda indicado en el resultado del job. Si una verificación falla en un servidor, se detienen todos.'),
+         P('Un servidor que no responde se omite y queda indicado en el resultado del job. Si una verificación falla en un servidor, se detienen todos. '
+           'Al final, el contenedor genera el <b>informe del cambio</b> (Excel). Si un servidor falla a mitad del cambio, se registra el error y el estado '
+           'real de sus cuentas, el informe se genera igual y el job termina en rojo.'),
          P('Dónde queda cada cosa', 'h1'),
          tabla(['Qué', 'Dónde'], [
              ['Llaves de usuarios (privada, .pub y .ppk)', '/data/work/gestion_usuarios/keys/'],
              ['Llaves reemplazadas', '/data/work/gestion_usuarios/keys/_anteriores/'],
-             ['Reportes de auditoría (Excel .xlsx)', '/data/work/gestion_usuarios/reportes/'],
+             ['Informes del cambio y de auditoría (Excel .xlsx)', '/data/work/gestion_usuarios/reportes/'],
              ['Respaldos de home eliminados', '/var/backups/usuarios_eliminados/ en cada servidor'],
              ['Reglas sudo', '/etc/sudoers.d/&lt;usuario&gt; en cada servidor'],
              ['Catálogos de usuarios', 'vars/catalogos/ del proyecto'],
@@ -491,7 +503,7 @@ def main():
         'si se le forzara el cambio no podría entrar.',
         nota('<b>En bloque</b> (catálogo o todos UID ≥ 1000) se omiten, sin detener el job: cuentas críticas, cuentas de servicio '
              '(lista cuentas_servicio en vars/comunes.yml), shells no interactivos, cuentas expiradas y cuentas sin contraseña. Antes de lanzarlo, '
-             'ejecute la auditoría: en el Excel, la hoja Usuarios (columna "Se le forzaría el cambio" y su motivo) muestra exactamente a quiénes se aplicaría.'))
+             'ejecute la auditoría: en el Excel, la hoja Plan forzar cambio contraseña muestra a quiénes se aplicaría y por qué, y marca las posibles cuentas de servicio para revisar antes.'))
     historia += seccion(
         'Opción 3 · Auditoría', 'Revisa cuentas, contraseñas, llaves, último acceso y sudo. No modifica los servidores. Sola, audita todas '
         'las cuentas; como último nodo de un workflow, verifica solo las cuentas que se acaban de modificar.',

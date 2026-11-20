@@ -35,5 +35,38 @@
   gather_subset: [min]
   vars_files:
     - vars/comunes.yml
+  pre_tasks:
+    # Lista completa ANTES de conectarse: el informe incluye también los que no respondan.
+    - name: Registrar servidores para el informe
+      ansible.builtin.set_fact:
+        informe_hosts: "{{ ansible_play_hosts_all }}"
+      delegate_to: localhost
+      delegate_facts: true
+      run_once: true
   roles:
     - usuarios_contrasena
+
+- name: "Opción 2 | Informe del cambio"
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: false
+  vars_files:
+    - vars/comunes.yml
+  tasks:
+    - name: Generar informe en Excel
+      ansible.builtin.include_role:
+        name: usuarios_comun
+        tasks_from: informe.yml
+      vars:
+        _forzar: "{{ _cp_accion == 'solo_forzar_cambio' }}"
+        informe_operacion: "{{ 'Forzar cambio de contraseña' if _forzar | bool else 'Cambiar contraseña' }}"
+        informe_prefijo: "{{ 'forzar_cambio_contrasena' if _forzar | bool else 'cambio_contrasena' }}"
+        informe_solicitud: "{{ _cp_solicitud }}"
+        informe_que_sigue: >-
+          {{ ['Avise a cada usuario de la hoja «Por usuario» con resultado APLICADO o PARCIAL: en su próximo ingreso el sistema le pedirá la contraseña actual y luego una nueva.',
+              'Las cuentas OMITIDA no se tocaron a propósito (servicio, sin contraseña, expiradas...). Si alguna debía cambiar, use la opción 2a sobre ella.',
+              'Revise primero las filas REVISAR y los servidores que fallaron o no respondieron.']
+             if _forzar | bool else
+             ['Entregue la contraseña nueva a cada usuario por un canal seguro.',
+              'Revise primero las filas REVISAR y los servidores que fallaron o no respondieron.'] }}

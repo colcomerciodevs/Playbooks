@@ -44,5 +44,33 @@
     ansible_user: "{{ relacion_usuario | string | trim }}"
     ansible_password: "{{ relacion_clave }}"
     ansible_become_password: "{{ relacion_clave_sudo if (relacion_clave_sudo | default('') | length > 0) else relacion_clave }}"
+  pre_tasks:
+    # Lista completa ANTES de conectarse: el informe incluye también los que no respondan.
+    - name: Registrar servidores para el informe
+      ansible.builtin.set_fact:
+        informe_hosts: "{{ ansible_play_hosts_all }}"
+      delegate_to: localhost
+      delegate_facts: true
+      run_once: true
   roles:
     - usuarios_automatizacion
+
+- name: "Opción 0 | Informe del cambio"
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: false
+  vars_files:
+    - vars/comunes.yml
+  tasks:
+    - name: Generar informe en Excel
+      ansible.builtin.include_role:
+        name: usuarios_comun
+        tasks_from: informe.yml
+      vars:
+        informe_operacion: Relación de confianza (cuentas de automatización)
+        informe_prefijo: relacion_confianza
+        informe_solicitud: "{{ _au_solicitud | default([]) }}"
+        informe_que_sigue:
+          - Los servidores con resultado OK ya aceptan la conexión de AWX con las cuentas de automatización.
+          - Vuelva a lanzar sobre los que fallaron o no respondieron.

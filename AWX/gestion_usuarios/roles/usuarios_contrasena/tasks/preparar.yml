@@ -110,6 +110,20 @@
     that: not ((_cp_nunca | bool) and (_cp_forzar | bool))
     fail_msg: "'Nunca caduca' y 'Forzar cambio en el próximo inicio' son excluyentes: deje uno en NO."
 
+# Lo que se pidió, para el informe en Excel (play final del playbook).
+- name: Preparar | Datos de la solicitud para el informe
+  ansible.builtin.set_fact:
+    _cp_solicitud:
+      - - Usuarios a incluir
+        - >-
+          {{ {'lista': 'Lista: ' ~ (contrasena_lista | join(', ')),
+              'catalogo': 'Catálogo ' ~ contrasena_catalogo ~ ': ' ~ (contrasena_lista | join(', ')),
+              'todos_uid_1000': 'Todas las cuentas con UID ' ~ uid_minimo_humano ~ ' o mayor de cada servidor, menos las excluidas'}[_cp_origen] }}
+      - - Política de caducidad
+        - "{{ 'Nunca caduca' if _cp_nunca | bool else ('Forzar cambio en el próximo inicio de sesión' if _cp_forzar | bool else 'Se conserva la existente') }}"
+      - - Reiniciar intentos fallidos
+        - "{{ 'SÍ' if (contrasena_desbloquear | string | lower | trim) in valores_si else 'NO' }}"
+
 - name: Preparar | Resumen
   ansible.builtin.debug:
     msg:

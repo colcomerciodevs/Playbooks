@@ -1,5 +1,5 @@
 {#- Contenido del Excel de auditoría (lo escribe el módulo generar_excel).
-    Hojas: Resumen, Tipos de hallazgo, Usuarios, Servidores, Sudo, Hallazgos, Detalle y,
+    Hojas: Resumen, Tipos de hallazgo, Usuarios, Plan forzar cambio contraseña, Servidores, Sudo, Hallazgos, Detalle y,
     en la verificación de un workflow, No encontradas.
     Explicaciones de cada tipo de hallazgo: roles/usuarios_auditoria/vars/main.yml -#}
 {%- set rango = {'CRITICO': 0, 'ALTO': 1, 'MEDIO': 2, 'BAJO': 3, 'INFO': 4} %}
@@ -62,31 +62,63 @@
 {%-     set _ = detalle.append([h, u.usuario, u.nombre, u.uid, sev_txt[u.severidad_max | default('')], u.hallazgos | map(attribute='detalle') | join(' | '),
           'SÍ' if u.puede_iniciar_sesion else 'NO', 'SÍ' if u.ssh_permitido else 'NO: ' ~ u.ssh_motivo, estado,
           'SÍ' if u.forzaria_cambio else 'NO', motivo,
-          nivel_txt[nivel], pide, u.sudo.comandos | join(' , '), u.sudo.comandos_riesgo | join(' , '),
-          u.ultimo_acceso, u.dias_sin_acceso, u.ultimo_cambio, u.contrasena_caduca, 'SÍ' if u.contrasena_expirada else 'NO', u.cuenta_expira,
+          nivel_txt[nivel], pide, u.ultimo_acceso, u.dias_sin_acceso, u.ultimo_cambio, u.contrasena_caduca, 'SÍ' if u.contrasena_expirada else 'NO', u.cuenta_expira,
           u.llaves_ssh | length, u.algoritmo_hash, u.shell, u.grupo_primario, u.grupos_secundarios | join(', '), hn[h], ip, r.servidor.sistema]) %}
-{%-     set e = porusu.setdefault(u.usuario, {'nombres': [], 'si': [], 'no': [], 'motivos': {}, 'estados': {}, 'sev': 9, 'tot': 0, 'np': 0}) %}
-{%-     if u.nombre and u.nombre not in e.nombres %}{% set _ = e.nombres.append(u.nombre) %}{% endif %}
-{%-     if u.forzaria_cambio %}{% set _ = e.si.append(h) %}{% else %}{% set _ = e.no.append(h) %}{% set _ = e.motivos.update({motivo: e.motivos.get(motivo, 0) + 1}) %}{% endif %}
-{%-     set _ = e.update({'sev': [e.sev, rango.get(u.severidad_max | default(''), 9)] | min}) %}
+{%-     set acceso = u.ultimo_acceso if (u.ultimo_acceso | default('') | string) is match('[0-9]{4}-') else '' %}
+{%-     set e = porusu.setdefault(u.usuario, {'nombres': [], 'n': 0, 'login': 0, 'ult': '', 'estados': {}, 'grupos': {}, 'sev': 9, 'tot': 0, 'np': 0}) %}
+{%-     if u.nombre and u.nombre | trim not in e.nombres %}{% set _ = e.nombres.append(u.nombre | trim) %}{% endif %}
+{%-     set _ = e.update({'n': e.n + 1, 'login': e.login + (1 if u.puede_iniciar_sesion else 0), 'ult': [e.ult, acceso] | max,
+          'sev': [e.sev, rango.get(u.severidad_max | default(''), 9)] | min}) %}
 {%-     if nivel == 'COMPLETO' %}{% set _ = e.update({'tot': e.tot + 1, 'np': e.np + (1 if u.sudo.nopasswd else 0)}) %}{% endif %}
 {%-     set d = estado | regex_replace(' desde [0-9-]+', '') %}{% set _ = e.estados.update({d: e.estados.get(d, 0) + 1}) %}
+{#-     Grupo del plan: misma decisión y mismo motivo (todos los SÍ del usuario van en una sola fila) -#}
+{%-     set g = e.grupos.setdefault(('SÍ' if u.forzaria_cambio else 'NO') ~ '|' ~ motivo, {'srv': [], 'est': {}, 'llave': 0, 'ult': ''}) %}
+{%-     set _ = g.srv.append(h) %}{% set _ = g.est.update({d: g.est.get(d, 0) + 1}) %}
+{%-     set _ = g.update({'llave': g.llave + (1 if u.llaves_ssh | length else 0), 'ult': [g.ult, acceso] | max}) %}
 {%-   endfor %}
 {%-   set _ = srv.update({h: c}) %}
 {%-   set _ = t.update({'u': t.u + r.usuarios | length, 'acc': t.acc + r.resumen.pueden_iniciar_sesion, 'tot': t.tot + c.tot, 'np': t.np + c.np,
         'pr': t.pr + c.pr, 'rt': t.rt + c.rt, 'lim': t.lim + c.lim, 'fz': t.fz + c.fz}) %}
 {%- endfor %}
 {%- set sev_por_rango = ['CRÍTICO', 'ALTO', 'MEDIO', 'BAJO', 'INFO'] %}
-{#- ---------------------------------------------------------------- Usuarios -#}
-{%- set usuarios = [] %}
+{#- ---------------------------------------------------------------- Usuarios y Plan forzar cambio contraseña -#}
+{%- set REVISAR = 'REVISAR: posible cuenta de servicio, aplicación o compartida' %}
+{%- set CONFIRMAR = 'CONFIRMAR: cuenta sin descripción' %}
+{%- set APLICAR = 'APLICAR: cuenta personal' %}
+{%- set EXCLUIDA = 'EXCLUIDA: el sistema la omite' %}
+{%- set CORREGIR = 'CORREGIR: asignar contraseña (opción 2)' %}
+{%- set ind = auditoria_indicios_servicio %}
+{%- set usuarios = [] %}{% set plan = [] %}{% set rec_cuenta = {} %}
 {%- for nombre in porusu | sort %}{% set e = porusu[nombre] %}
-{%-   set f = 'SÍ' if not e.no else ('NO' if not e.si else 'PARCIAL') %}
-{%-   set _ = usuarios.append([nombre, e.nombres | join(' / '), e.si | length + e.no | length, sev_por_rango[e.sev] if e.sev < 9 else '-',
-        e.tot, e.np, f, e.si | length,
-        e.motivos | dictsort | map('join', ' (') | map('regex_replace', '$', ')') | join('; '),
-        e.estados | dictsort | map('join', ' (') | map('regex_replace', '$', ')') | join('; '),
-        e.no | join(', ')]) %}
+{%-   set desc = e.nombres | join(' / ') %}
+{%-   set estados_txt = [] %}{% for m in e.estados | dictsort(by='value') | reverse %}{% set _ = estados_txt.append(m[0] ~ ' (' ~ m[1] ~ (' servidor)' if m[1] == 1 else ' servidores)')) %}{% endfor %}
+{%-   set _ = usuarios.append([nombre, desc or '-', e.n, e.login, e.ult or 'Nunca', sev_por_rango[e.sev] if e.sev < 9 else '-', e.tot, e.np, estados_txt | join('; ')]) %}
+{#-   Indicios propios del usuario (valen para todos sus servidores) -#}
+{%-   set fuertes = [] %}{% set debiles = [] %}
+{%-   if nombre is search(ind.nombre_generico, ignorecase=True) %}{% set _ = fuertes.append('Nombre genérico o de aplicación') %}{% endif %}
+{%-   if nombre is search(ind.nombre_con_numero) %}{% set _ = fuertes.append('Nombre terminado en número (cuenta de puesto o compartida)') %}{% endif %}
+{%-   if desc and desc is search(ind.descripcion_servicio, ignorecase=True) %}{% set _ = fuertes.append('La descripción habla de un servicio o de un uso genérico') %}{% endif %}
+{%-   if not desc %}{% set _ = debiles.append('Sin descripción (nombre completo vacío)') %}{% endif %}
+{#-   Plan: primero la fila SÍ y luego las de NO, de más a menos servidores -#}
+{%-   set grupos = [] %}{% for k in e.grupos %}{% set _ = grupos.append([0 if k.startswith('SÍ') else 1, 100000 - e.grupos[k].srv | length, k]) %}{% endfor %}
+{%-   for x in grupos | sort %}{% set p = x[2].split('|') %}{% set g = e.grupos[x[2]] %}
+{%-     set est = [] %}{% for m in g.est | dictsort(by='value') | reverse %}{% set _ = est.append(m[0] ~ ' (' ~ m[1] ~ ')') %}{% endfor %}
+{%-     if p[0] == 'SÍ' %}
+{%-       set indicios = fuertes + debiles + (['Usa llave SSH en ' ~ g.llave ~ ' de estos servidores: si la usa un proceso automático, el cambio forzado lo interrumpiría'] if g.llave else []) %}
+{%-       set rec = REVISAR if (fuertes or g.llave) else (CONFIRMAR if debiles else APLICAR) %}
+{%-       set just = 'Tiene contraseña activa, terminal interactiva y no está en ninguna lista de excepción, así que el cambio masivo la incluye.'
+                   ~ ('' if rec == APLICAR else ' Si no es de una persona, agréguela a cuentas_servicio (vars/comunes.yml) antes del cambio masivo.') %}
+{%-     else %}
+{%-       set indicios = fuertes + debiles %}
+{%-       set exp = [] %}{% for q in motivo_exp if p[1].startswith(q[0]) and not exp %}{% set _ = exp.append(q[1]) %}{% endfor %}
+{%-       set rec = CORREGIR if p[1].startswith('Contraseña vacía') else EXCLUIDA %}
+{%-       set just = p[1] ~ ': ' ~ (exp | first | default('')) %}
+{%-     endif %}
+{%-     set _ = rec_cuenta.update({rec: rec_cuenta.get(rec, 0) + g.srv | length}) %}
+{%-     set _ = plan.append([nombre, desc or '-', rec, p[0], just, indicios | join('; ') or '-', est | join('; '), g.ult or 'Nunca', g.srv | length, g.srv | join(', ')]) %}
+{%-   endfor %}
 {%- endfor %}
+{%- set rec_usuarios = {} %}{% for x in plan %}{% set _ = rec_usuarios.setdefault(x[2], {}).update({x[0]: 1}) %}{% endfor %}
 {#- ---------------------------------------------------------------- Servidores -#}
 {%- set servidores = [] %}
 {%- for h in aud_hosts %}{% set r = hostvars[h]['auditoria_resultado'] | default({}) %}
@@ -137,17 +169,24 @@
 {%- for s in ['CRITICO', 'ALTO', 'MEDIO', 'BAJO', 'INFO'] %}{% set _ = res.append([sev_txt[s], conteo[s], auditoria_severidades[s]]) %}{% endfor %}
 {%- set _ = res.append(['Total', hall | length, 'La hoja "Tipos de hallazgo" explica cada problema y qué hacer; la hoja "Hallazgos" los lista uno por uno.']) %}
 {%- set _ = res.append(['', '', '']) %}
-{%- set _ = res_est.update({res | length | string: 'seccion'}) %}{% set _ = res.append(['4. Forzar cambio de contraseña en bloque (opción 2b)', 'Cuentas', 'Qué significa']) %}
-{%- set _ = res.append(['Se les forzaría el cambio', t.fz, 'Deberían cambiar la contraseña en su próximo ingreso. Revise la hoja Usuarios antes de lanzarlo.']) %}
-{%- set _ = res.append(['No se les forzaría', t.u - t.fz, 'El sistema las omite por uno de estos motivos:']) %}
+{%- set _ = res_est.update({res | length | string: 'seccion'}) %}{% set _ = res.append(['4. Preparar el cambio masivo de contraseña (2b, UID ' ~ auditoria_uid_minimo ~ ' o mayor)', 'Cuentas', 'Qué significa y qué hacer']) %}
+{%- set _ = res.append(['Se les forzaría el cambio', t.fz, 'El cambio masivo les pediría una contraseña nueva en el próximo ingreso. Antes, revise las que no parecen de una persona:']) %}
+{%- for r_ in [[REVISAR, 'Tienen indicios de servicio, aplicación o automatización (nombre genérico, terminado en número, descripción de servicio o uso de llave). Si lo son, agréguelas a cuentas_servicio.'],
+               [CONFIRMAR, 'No tienen descripción: confirme a quién pertenecen.'],
+               [APLICAR, 'Parecen cuentas de personas: el cambio se les puede aplicar.']] %}
+{%-   set _ = res.append(['     ' ~ r_[0], rec_cuenta.get(r_[0], 0), r_[1] ~ ' (' ~ (rec_usuarios.get(r_[0], {}) | length) ~ ' usuarios)']) %}
+{%- endfor %}
+{%- set _ = res.append(['No se les forzaría', t.u - t.fz, 'El sistema las omite solo, por uno de estos motivos:']) %}
 {%- for m in motivos | dictsort(by='value') | reverse %}
 {%-   set exp = [] %}{% for p in motivo_exp if m[0].startswith(p[0]) and not exp %}{% set _ = exp.append(p[1]) %}{% endfor %}
 {%-   set _ = res.append(['     ' ~ m[0], m[1], exp | first | default('')]) %}
 {%- endfor %}
+{%- set _ = res.append(['Pasos', '', '1) En la hoja «Plan forzar cambio contraseña», filtre la columna Recomendación por REVISAR y CONFIRMAR.  2) Las que sean de aplicaciones o automatizaciones, agréguelas a cuentas_servicio en vars/comunes.yml.  3) Vuelva a auditar y confirme que pasan a EXCLUIDA.  4) Lance la 2b con «todos_uid_1000».']) %}
 {%- set _ = res.append(['', '', '']) %}
 {%- set _ = res_est.update({res | length | string: 'seccion'}) %}{% set _ = res.append(['5. Cómo leer este informe', '', 'Qué contiene cada hoja']) %}
 {%- set _ = res.append(['Tipos de hallazgo', '', 'Empiece aquí. Cada problema encontrado con lo que significa, qué hacer y en cuántos servidores y cuentas aparece.']) %}
-{%- set _ = res.append(['Usuarios', '', 'Una fila por usuario: en cuántos servidores está, su severidad más alta, su sudo y si se le forzaría el cambio (SÍ, PARCIAL o NO) con el motivo.']) %}
+{%- set _ = res.append(['Usuarios', '', 'Una fila por usuario: en cuántos servidores existe y puede entrar, su último acceso, su hallazgo más grave, su sudo y el estado de su contraseña.']) %}
+{%- set _ = res.append(['Plan forzar cambio contraseña', '', 'Prepara el cambio masivo: por usuario, los servidores donde SÍ se le forzaría y los de NO, con la justificación, los indicios de cuenta de servicio y una recomendación (REVISAR, CONFIRMAR, APLICAR, EXCLUIDA).']) %}
 {%- set _ = res.append(['Servidores', '', 'Una fila por servidor: cuentas, sudo, estado de root, configuración de SSH y los servidores que no respondieron.']) %}
 {%- set _ = res.append(['Sudo', '', 'Cada cuenta con sudo: qué puede ejecutar, qué contraseña le pide y de qué regla sale.']) %}
 {%- set _ = res.append(['Hallazgos', '', 'Todos los hallazgos, uno por fila, del más grave al menos grave.']) %}
@@ -157,15 +196,24 @@
 {#- ---------------------------------------------------------------- Hojas -#}
 {%- set hall_filas = [] %}{% for x in hall | sort(attribute='0') %}{% set _ = hall_filas.append(x[1:]) %}{% endfor %}
 {%- set tipos_hoja = [] %}{% for x in tipos_filas %}{% set _ = tipos_hoja.append(x[2:]) %}{% endfor %}
-{%- set c_sev = {'Severidad': sev_color, 'Severidad máxima': sev_color} %}
+{%- set c_sev = {'Severidad': sev_color, 'Severidad máxima': sev_color, 'Hallazgo más grave en sus servidores': sev_color} %}
 {%- set hojas = [
       {'nombre': 'Resumen', 'encabezados': [], 'filas': res, 'estilos_fila': res_est, 'ajustar': [2], 'anchos': [48, 12, 100],
        'colores': {'0': sev_color}},
       {'nombre': 'Tipos de hallazgo', 'encabezados': ['Severidad', 'Tipo', 'Qué significa', 'Qué se recomienda', 'Casos', 'Servidores', 'Cuentas distintas'],
        'filas': tipos_hoja, 'vacia': 'Sin hallazgos.', 'anchos': [11, 26, 60, 55, 9, 11, 11], 'ajustar': [2, 3], 'colores': c_sev},
-      {'nombre': 'Usuarios', 'encabezados': ['Usuario', 'Nombre', 'Servidores', 'Severidad máxima', 'Sudo total (n.º de servidores)', 'Sudo sin contraseña (n.º de servidores)',
-                                             'Se le forzaría el cambio', 'Servidores donde SÍ', 'Por qué no (n.º de servidores)', 'Estado de la contraseña (n.º de servidores)', 'Servidores donde NO'],
-       'filas': usuarios, 'anchos': [18, 30, 11, 11, 12, 12, 13, 12, 45, 55, 60], 'colores': c_sev, 'fijar_columnas': 1},
+      {'nombre': 'Usuarios', 'encabezados': ['Usuario', 'Nombre completo (descripción de la cuenta)', 'Existe en (n.º de servidores)',
+                                             'Puede iniciar sesión en (n.º de servidores)', 'Último acceso más reciente (en cualquier servidor)',
+                                             'Hallazgo más grave en sus servidores', 'Servidores donde tiene sudo total (ALL)', 'Servidores donde tiene sudo total sin contraseña',
+                                             'Estado de la contraseña (estado y n.º de servidores)'],
+       'filas': usuarios, 'anchos': [18, 32, 12, 13, 17, 13, 14, 14, 70], 'colores': c_sev, 'fijar_columnas': 1},
+      {'nombre': 'Plan forzar cambio contraseña', 'encabezados': ['Usuario', 'Nombre completo (descripción de la cuenta)', 'Recomendación',
+                                                       '¿Se forzaría el cambio en estos servidores?', 'Justificación',
+                                                       'Indicios de cuenta de servicio, aplicación o automatización', 'Estado de la contraseña en estos servidores (n.º)',
+                                                       'Último acceso más reciente en estos servidores', 'Cantidad de servidores', 'Servidores'],
+       'filas': plan, 'anchos': [18, 28, 30, 14, 60, 50, 40, 17, 11, 70], 'fijar_columnas': 1,
+       'colores': {'¿Se forzaría el cambio en estos servidores?': {'SÍ': 'verde', 'NO': 'gris'},
+                   'Recomendación': {REVISAR: 'naranja', CONFIRMAR: 'amarillo', APLICAR: 'verde', EXCLUIDA: 'gris', CORREGIR: 'rojo'}}},
       {'nombre': 'Servidores', 'encabezados': ['Servidor', 'Hostname', 'IP', 'Estado', 'Sistema', 'Cuentas', 'Pueden iniciar sesión', 'Sudo total', 'Sudo total sin contraseña',
                                                'Sudo total con su contraseña', 'Sudo total con la de root', 'Sudo limitado', 'Se les forzaría el cambio', 'Hallazgos críticos', 'Hallazgos altos',
                                                'root: contraseña', 'root: último cambio', 'root: caduca', 'Cuentas con UID 0', 'Versión de sudo', 'Contraseña que pide sudo (Defaults)',
@@ -178,11 +226,11 @@
       {'nombre': 'Hallazgos', 'encabezados': ['Severidad', 'Servidor', 'Usuario', 'Tipo', 'Detalle', 'Hostname', 'IP'],
        'filas': hall_filas, 'vacia': 'Sin hallazgos.', 'anchos': [11, 22, 16, 26, 80, 20, 15], 'colores': c_sev},
       {'nombre': 'Detalle', 'encabezados': ['Servidor', 'Usuario', 'Nombre', 'UID', 'Severidad máxima', 'Hallazgos', 'Puede iniciar sesión', 'SSH permitido',
-                                            'Estado de la contraseña', 'Se le forzaría el cambio', 'Por qué no', 'Sudo', 'Sudo: contraseña que pide', 'Sudo: comandos',
-                                            'Sudo: comandos de riesgo', 'Último acceso', 'Días sin acceso', 'Último cambio de contraseña', 'Contraseña caduca',
+                                            'Estado de la contraseña', '¿Se forzaría el cambio?', 'Por qué no se forzaría', 'Sudo (comandos en la hoja Sudo)', 'Sudo: contraseña que pide',
+                                            'Último acceso', 'Días sin acceso', 'Último cambio de contraseña', 'Contraseña caduca',
                                             'Contraseña vencida', 'Cuenta expira', 'Llaves SSH', 'Algoritmo de la contraseña', 'Shell', 'Grupo primario',
                                             'Grupos secundarios', 'Hostname', 'IP', 'Sistema operativo'],
-       'filas': detalle, 'anchos': [22, 16, 24, 7, 11, 60, 10, 14, 40, 11, 30, 12, 20, 40, 25, 17, 9, 13, 12, 10, 12, 8, 11, 14, 14, 30, 20, 15, 34],
+       'filas': detalle, 'anchos': [22, 16, 24, 7, 11, 60, 10, 14, 40, 11, 30, 14, 20, 17, 9, 13, 12, 10, 12, 8, 11, 14, 14, 30, 20, 15, 34],
        'colores': c_sev, 'fijar_columnas': 2},
     ] %}
 {%- if aud_cambio | bool %}

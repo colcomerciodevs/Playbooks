@@ -241,3 +241,21 @@
   loop: "{{ crear_usuarios_normalizados }}"
   loop_control:
     label: "{{ item.usuario }}"
+
+# Lo que se pidió, para el informe en Excel (play final del playbook).
+- name: Preparar | Datos de la solicitud para el informe
+  ansible.builtin.set_fact:
+    _crear_solicitud:
+      - - Método de acceso
+        - >-
+          {{ ('Llave SSH (sin contraseña utilizable)' ~ ('; renovación de llave' if _crear_renovar | bool else ''))
+             if _crear_metodo == 'llave' else
+             ('Contraseña inicial' ~ ('; debe cambiarla en el primer inicio de sesión' if (crear_forzar_cambio | string | lower | trim) in valores_si else '')) }}
+      - - Usuarios y perfil
+        - "{{ crear_usuarios_normalizados | map(attribute='usuario') | zip(crear_usuarios_normalizados | map(attribute='perfil')) | map('join', ' → ') | join(', ') }}"
+      - - Origen de los usuarios
+        - "{{ ('Catálogo ' ~ crear_catalogo) if _crear_origen == 'catalogo' else 'Encuesta' }}"
+      - - Actualizar cuentas que ya existen
+        - "{{ 'SÍ' if (crear_actualizar_existentes | string | lower | trim) in valores_si else 'NO' }}"
+      - - Permitir acceso SSH
+        - "{{ ('SÍ (grupo ' ~ crear_grupo_acceso_ssh ~ ' y AllowUsers)') if (crear_permitir_ssh | string | lower | trim) in valores_si else 'NO' }}"

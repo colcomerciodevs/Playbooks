@@ -10,6 +10,10 @@
       {{ (eliminar_usuarios | default('') | string | regex_replace('[,;\s]+', ' ')).split(' ')
          | map('trim') | map('lower') | reject('equalto', '') | unique | list }}
     _el_accion: "{{ eliminar_accion | string | lower | trim }}"
+    # Para el informe en Excel (play final del playbook).
+    _el_respaldo_txt: >-
+      {{ 'No aplica' if (eliminar_accion | string | lower | trim) != 'eliminar'
+         else (('SÍ, en cada servidor: ' ~ eliminar_dir_respaldo) if (eliminar_respaldar_home | string | lower | trim) in valores_si else 'NO') }}
 
 - name: Preparar | Validar entradas
   ansible.builtin.assert:

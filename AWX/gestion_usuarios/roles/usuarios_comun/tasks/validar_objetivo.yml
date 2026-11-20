@@ -23,3 +23,12 @@
     fail_msg: >-
       El objetivo '{{ objetivo | default('') }}' no es válido: no puede ir vacío, no puede ser localhost
       y debe coincidir con al menos un servidor del inventario. No se modificó ningún servidor.
+
+# Todas las opciones dejan un informe en Excel: si la carpeta no se puede crear, se detiene
+# aquí, antes de modificar algún servidor.
+- name: Objetivo | Crear carpeta de reportes
+  ansible.builtin.file:
+    path: "{{ informe_dir }}"
+    state: directory
+    mode: "0750"
+  check_mode: false

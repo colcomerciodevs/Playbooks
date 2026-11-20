@@ -37,6 +37,14 @@
     - vars/comunes.yml
     - vars/perfiles.yml
   tasks:
+    # Lista completa: el informe incluye también los servidores que no respondan.
+    - name: Registrar servidores para el informe
+      ansible.builtin.set_fact:
+        informe_hosts: "{{ ansible_play_hosts_all }}"
+      delegate_to: localhost
+      delegate_facts: true
+      run_once: true
+
     - name: Verificar
       ansible.builtin.include_role:
         name: usuarios_crear
@@ -65,3 +73,24 @@
     - vars/perfiles.yml
   roles:
     - usuarios_crear
+
+- name: "Opción 1 | Informe del cambio"
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: false
+  vars_files:
+    - vars/comunes.yml
+  tasks:
+    - name: Generar informe en Excel
+      ansible.builtin.include_role:
+        name: usuarios_comun
+        tasks_from: informe.yml
+      vars:
+        informe_operacion: "{{ 'Crear usuarios con ' ~ ('llave SSH' if _crear_metodo == 'llave' else 'contraseña') }}"
+        informe_prefijo: "{{ 'crear_usuarios_llave' if _crear_metodo == 'llave' else 'crear_usuarios_contrasena' }}"
+        informe_solicitud: "{{ _crear_solicitud }}"
+        informe_que_sigue: >-
+          {{ ['Entregue a cada usuario su llave privada por un canal seguro (almacén de llaves del proyecto).']
+             if _crear_metodo == 'llave' else
+             ['Entregue la contraseña inicial a cada usuario por un canal seguro: en su primer ingreso deberá cambiarla.'] }}

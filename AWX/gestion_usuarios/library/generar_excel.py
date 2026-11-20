@@ -119,7 +119,10 @@ def hoja_xml(h):
     fila_n = 0
     if enc:
         fila_n = 1
-        partes.append(u'<row r="1">%s</row>' % u''.join(celda(columna(i) + u'1', v, E_ENCABEZADO) for i, v in enumerate(enc)))
+        # Alto del encabezado según el título más largo (Excel no lo recalcula al abrir).
+        lineas = max([1] + [-(-int(len(texto(v)) * 1.15) // max(int(anchos[i]) - 1, 1)) for i, v in enumerate(enc)])
+        alto = u' ht="%d" customHeight="1"' % (lineas * 13 + 3) if lineas > 1 else u''
+        partes.append(u'<row r="1"%s>%s</row>' % (alto, u''.join(celda(columna(i) + u'1', v, E_ENCABEZADO) for i, v in enumerate(enc))))
     for n, f in enumerate(filas):
         fila_n += 1
         base = estilos_fila.get(n)

@@ -1,0 +1,55 @@
+---
+# Informe del cambio en Excel (.xlsx). Se ejecuta en localhost al final de las opciones 0, 1, 2 y 4.
+#   informe_operacion -> nombre de la operación (título del informe)
+#   informe_prefijo   -> inicio del nombre del archivo
+#   informe_solicitud -> [[campo, valor], ...] lo que se pidió en la encuesta
+#   informe_que_sigue -> (opcional) qué hacer después
+# De cada servidor lee informe_usuarios, informe_antes, informe_despues (informe_estado.yml)
+# e informe_resultado ({usuario: [RESULTADO, detalle]}, lo deja cada rol).
+# Se escribe también en modo simulación (check): solo escribe en el contenedor.
+
+- name: Informe | Archivo de salida
+  ansible.builtin.set_fact:
+    informe_fecha: "{{ now(fmt='%Y-%m-%d %H:%M:%S') }}"
+    informe_xlsx: "{{ informe_dir }}/{{ informe_prefijo }}_{{ now(fmt='%Y%m%d_%H%M%S') }}.xlsx"
+
+- name: Informe | Crear carpeta de reportes
+  ansible.builtin.file:
+    path: "{{ informe_dir }}"
+    state: directory
+    mode: "0750"
+  check_mode: false
+
+- name: Informe | Generar Excel
+  generar_excel:
+    destino: "{{ informe_xlsx }}"
+    hojas: "{{ _hojas if _hojas is not string else _hojas | from_json }}"
+  vars:
+    # Ansible 2.9 ya entrega el JSON convertido en lista; las versiones nuevas, como texto.
+    _hojas: "{{ lookup('ansible.builtin.template', 'informe_cambio.json.j2') }}"
+  check_mode: false
+
+- name: Informe | Ubicación del informe
+  ansible.builtin.debug:
+    msg: "Informe del cambio (Excel): {{ informe_xlsx }}"
+
+# Visible en AWX: Detalles del job -> Artefactos.
+- name: Informe | Publicar la ruta del informe
+  ansible.builtin.set_stats:
+    data:
+      informe_cambio: "{{ informe_xlsx }}"
+    per_host: false
+    aggregate: false
+
+# El rescue de cada opción evita que un fallo a mitad del cambio impida el informe; aquí, ya escrito
+# el informe, el job queda marcado como fallido para que AWX (y el workflow) lo trate como error.
+- name: Informe | Fallar si el cambio no terminó en algún servidor
+  ansible.builtin.fail:
+    msg: >-
+      El cambio falló a mitad en: {{ _fallidos | join(', ') }}. Revise la hoja Servidores del informe
+      ({{ informe_xlsx }}), corrija y vuelva a lanzar sobre esos servidores.
+  vars:
+    _fallidos: >-
+      {% set f = [] %}{% for h in informe_hosts | default([]) if hostvars[h]['informe_error'] is defined %}
+      {%- set _ = f.append(h) %}{% endfor %}{{ f }}
+  when: _fallidos | length > 0

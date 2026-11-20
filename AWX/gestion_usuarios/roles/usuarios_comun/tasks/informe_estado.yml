@@ -1,0 +1,72 @@
+---
+# Foto del estado de las cuentas en ESTE servidor, para el informe del cambio (informe.yml).
+#   comun_usuarios  -> cuentas a revisar (se toman en el momento "antes")
+#   informe_momento -> antes | despues
+# Deja informe_antes / informe_despues = {usuario: {existe, uid, nombre, shell, grupos, clave, lastchg,
+# ult, vence, vencida, expira, expirada}}. De la contraseña solo guarda el TIPO, nunca el hash.
+# Campos de getent shadow: [hash, ult_cambio, min, max, aviso, inactividad, expiracion, reservado]
+
+- name: Informe | Cuentas a revisar
+  ansible.builtin.set_fact:
+    informe_usuarios: "{{ comun_usuarios }}"
+  when: informe_momento == 'antes'
+
+- name: Informe | Leer cuentas y grupos
+  ansible.builtin.getent:
+    database: "{{ item }}"
+  loop: [passwd, group]
+
+- name: Informe | Leer /etc/shadow (Linux)
+  ansible.builtin.getent:
+    database: shadow
+  no_log: true  # el resultado incluye los hashes de todas las cuentas
+  when: ansible_system == 'Linux'
+
+- name: Informe | Guardar el estado de las cuentas
+  ansible.builtin.set_fact:
+    "informe_{{ informe_momento }}": >-
+      {%- set r = {} -%}
+      {%- set hoy = (ansible_date_time.epoch | int) // 86400 -%}
+      {%- set pw = ansible_facts.getent_passwd | default({}) -%}
+      {%- set gr = ansible_facts.getent_group | default({}) -%}
+      {%- set sh = (ansible_facts.getent_shadow | default({})) if ansible_system == 'Linux' else {} -%}
+      {%- for u in informe_usuarios | default([]) -%}
+      {%-   if u not in pw -%}
+      {%-     set _ = r.update({u: {'existe': false}}) -%}
+      {%-   else -%}
+      {%-     set p = pw[u] -%}
+      {%-     set g = [] -%}
+      {%-     for n, d in gr.items() if (d[1] | string) == (p[2] | string) or u in ((d[2] | default('')) | string).split(',') -%}
+      {%-       set _ = g.append(n) -%}
+      {%-     endfor -%}
+      {%-     set s = sh[u] | default([]) -%}
+      {%-     set n_ = [] -%}
+      {%-     for i in [1, 3, 5, 6] -%}
+      {%-       set _ = n_.append((s[i] | int) if (s | length > i and (s[i] | string | length) > 0) else -1) -%}
+      {%-     endfor -%}
+      {%-     set lc, mx, ina, ex = n_[0], n_[1], n_[2], n_[3] -%}
+      {%-     if s | length == 0 -%}{%- set clave = 'NO_DISPONIBLE' -%}
+      {%-     else -%}
+      {%-       set h = s[0] | string -%}
+      {%-       set hs = h | regex_replace('^!+', '') -%}
+      {%-       if h == '' -%}{%- set clave = 'VACIA' -%}
+      {%-       elif h.startswith('*LK*') -%}{%- set clave = 'BLOQUEADA' -%}
+      {%-       elif hs in ['', '*', 'x', 'NP', 'UP'] or hs.startswith('*') -%}{%- set clave = 'SIN_CLAVE' -%}
+      {%-       elif h.startswith('!') -%}{%- set clave = 'BLOQUEADA' -%}
+      {%-       else -%}{%- set clave = 'ACTIVA' -%}
+      {%-       endif -%}
+      {%-     endif -%}
+      {%-     set vd = (lc + mx) if (lc > 0 and 0 <= mx < 99999) else -1 -%}
+      {%-     set vencida = vd >= 0 and hoy > vd -%}
+      {%-     set _ = r.update({u: {
+                'existe': true, 'uid': p[1] | int, 'nombre': p[3], 'shell': p[5], 'grupos': g | sort,
+                'clave': clave, 'lastchg': lc,
+                'ult': '' if s | length == 0 else ('forzado: debe cambiarla al ingresar' if lc == 0
+                       else (('%Y-%m-%d' | strftime(lc * 86400 + 43200)) if lc > 0 else '')),
+                'vence': '' if s | length == 0 else ('-' if lc == 0 else (('%Y-%m-%d' | strftime(vd * 86400 + 43200)) if vd >= 0 else 'nunca')),
+                'vencida': vencida,
+                'expira': '' if s | length == 0 else (('%Y-%m-%d' | strftime(ex * 86400 + 43200)) if ex >= 0 else 'nunca'),
+                'expirada': (ex >= 0 and hoy >= ex) or (vencida and ina >= 0 and hoy > vd + ina)}}) -%}
+      {%-   endif -%}
+      {%- endfor -%}
+      {{ r }}
