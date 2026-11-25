@@ -43,7 +43,12 @@
     that:
       - item.key is match('^perfil_[a-z0-9_]+$')
       - item.value.sudo | default('') in ['ninguno', 'completo', 'limitado']
-      - item.value.sudo != 'limitado' or (_cmds | length > 0)
+      - item.value.sudo != 'limitado' or (_cmds | length + item.value.comandos_libres | default([]) | length > 0)
+      # comandos_libres: solo en perfiles limitados y solo nombres de programa (sin ruta ni argumentos).
+      - item.value.comandos_libres | default([]) | length == 0 or item.value.sudo == 'limitado'
+      - item.value.comandos_libres | default([]) | reject('match', '^[A-Za-z0-9._+-]+$') | list | length == 0
+      # defaults: opciones de sudo sueltas (nombre, !nombre o nombre=valor), sin comas ni espacios.
+      - item.value.defaults | default([]) | reject('match', '^!?[a-z_]+(=[A-Za-z0-9_./-]+)?$') | list | length == 0
       # Primera palabra: programa sin ruta o ruta absoluta. Sin comodines en ningún comando.
       - _cmds | map('regex_replace', ' .*$', '') | reject('match', '^/?[A-Za-z0-9._+/-]+$') | list | length == 0
       - _cmds | select('search', '[*?\\[\\]]') | list | length == 0
@@ -58,7 +63,8 @@
       El perfil '{{ item.key }}' de vars/perfiles.yml es inválido: el nombre debe empezar por perfil_,
       sudo = ninguno|completo|limitado, limitado necesita al menos un comando y los comandos no
       pueden tener comodines (*, ?, [ ]); 'prohibidos' solo con sudo completo y sin rutas;
-      'grupo_sudo' solo con sudo completo, no privilegiado ({{ grupos_prohibidos | join(', ') }}) y en un solo perfil.
+      'grupo_sudo' solo con sudo completo, no privilegiado ({{ grupos_prohibidos | join(', ') }}) y en un solo perfil;
+      'comandos_libres' solo con sudo limitado y sin rutas; 'defaults' como nombre, !nombre o nombre=valor.
   loop: "{{ perfiles | dict2items }}"
   loop_control:
     label: "{{ item.key }}"
@@ -172,12 +178,18 @@
       # Con grupo_sudo manda el perfil (la regla es de todo el grupo); ver la validación de abajo.
       sudo_nopasswd: >-
         {{ (_p.sudo_nopasswd | default(false) | bool)
-           or (_crear_metodo == 'llave' and _sudo != 'ninguno' and _p.grupo_sudo is not defined) }}
+           or (_crear_metodo == 'llave' and _sudo != 'ninguno' and _p.grupo_sudo is not defined
+               and not (_p.solo_contrasena | default(false) | bool)) }}
+      solo_contrasena: "{{ (_p.solo_contrasena | default(false) | bool) or (_p.grupo_sudo is defined and not (_p.sudo_nopasswd | default(false) | bool)) }}"
       sudo_grupo: "{{ _p.grupo_sudo | default('') if _sudo == 'completo' else '' }}"
       sudo_comandos: >-
         {{ (_p.comandos | default([]))
            + (_p.servicios | default([]) | product(_p.acciones | default([])) | map('join', ' ') | list) }}
       sudo_prohibidos: "{{ _p.prohibidos | default([]) if _sudo == 'completo' else [] }}"
+      sudo_libres: "{{ _p.comandos_libres | default([]) if _sudo == 'limitado' else [] }}"
+      sudo_defaults: "{{ _p.defaults | default([]) if _sudo != 'ninguno' else [] }}"
+      # Líneas para ~/.profile (solo desde catálogo).
+      entorno: "{{ item.entorno | default([]) }}"
       sudo_archivo: "{{ item.usuario | regex_replace('[.~]', '_') }}"
 
 # ---------------------------------------------------------------------------
@@ -197,28 +209,30 @@
       - item.uid == '' or (item.uid is match('^[0-9]+$') and (item.uid | int) >= (uid_minimo_humano | int))
       - item.perfil in perfiles
       - item.llave_publica == '' or (item.llave_publica is match(regex_llave_publica))
+      - item.entorno | select('search', '\n') | list | length == 0
     fail_msg: >-
       Usuario '{{ item.usuario }}' inválido. Verifique: nombre en minúsculas (máx. 32), que no sea
       una cuenta protegida ({{ usuarios_protegidos | join(', ') }}), nombre completo sin ':', grupo válido y
       no privilegiado ({{ grupos_prohibidos | join(', ') }}), UID >= {{ uid_minimo_humano }},
-      perfil existente ({{ perfiles.keys() | list | join(', ') }}) y llave pública válida.
+      perfil existente ({{ perfiles.keys() | list | join(', ') }}), llave pública válida y 'entorno' con una línea por elemento.
   loop: "{{ crear_usuarios_normalizados }}"
   loop_control:
     label: "{{ item.usuario }}"
 
-- name: Preparar | Perfiles con sudo por grupo y método llave
+# Perfiles cuyo sudo pide contraseña sí o sí (solo_contrasena, o grupo_sudo sin NOPASSWD):
+# con el método llave la cuenta no tiene contraseña y sudo no le funcionaría.
+- name: Preparar | Perfiles que solo admiten el método contraseña
   ansible.builtin.assert:
     quiet: true
-    that: _cu_grupo_sin_clave | length == 0
+    that: _cu_solo_clave | length == 0
     fail_msg: >-
-      {{ _cu_grupo_sin_clave | map(attribute='usuario') | join(', ') }}: el perfil da sudo al grupo
-      {{ _cu_grupo_sin_clave | map(attribute='sudo_grupo') | unique | join(', ') }} pidiendo contraseña,
-      y con el método llave la cuenta no tiene contraseña (sudo no le funcionaría). Use la opción 1a
-      (con contraseña) o ponga sudo_nopasswd: true en el perfil (vars/perfiles.yml).
+      {{ _cu_solo_clave | map(attribute='usuario') | join(', ') }}: el perfil
+      {{ _cu_solo_clave | map(attribute='perfil') | unique | join(', ') }} usa sudo con contraseña y con el
+      método llave la cuenta no tiene contraseña (sudo no le funcionaría). Use la opción 1a (con contraseña).
   vars:
-    _cu_grupo_sin_clave: >-
+    _cu_solo_clave: >-
       {% set r = [] %}{% for u in crear_usuarios_normalizados if _crear_metodo == 'llave'
-         and u.sudo_grupo | length > 0 and not (u.sudo_nopasswd | bool) %}{% set _ = r.append(u) %}{% endfor %}{{ r }}
+         and (u.solo_contrasena | bool) %}{% set _ = r.append(u) %}{% endfor %}{{ r }}
 
 - name: Preparar | Validar que no haya usuarios repetidos
   ansible.builtin.assert:
@@ -264,9 +278,12 @@
       {{ item.usuario }} ({{ item.nombre }}) | grupo={{ item.grupo }}
       | acceso={{ _crear_metodo }} | {{ item.perfil }} (sudo {{ item.sudo }}
       {{- ', sin contraseña' if (item.sudo_nopasswd | bool) else '' }})
-      {{- (' [' ~ (item.sudo_comandos | join(', ')) ~ ']') if item.sudo == 'limitado' else '' }}
+      {{- (' [' ~ (item.sudo_comandos | join(', ')) ~ ']') if item.sudo_comandos | length > 0 else '' }}
       {{- (' [prohibidos: ' ~ (item.sudo_prohibidos | join(', ')) ~ ']') if item.sudo_prohibidos | length > 0 else '' }}
       {{- (' [regla para el grupo ' ~ item.sudo_grupo ~ ']') if item.sudo_grupo | length > 0 else '' }}
+      {{- (' [con cualquier argumento: ' ~ (item.sudo_libres | join(', ')) ~ ']') if item.sudo_libres | length > 0 else '' }}
+      {{- (' [Defaults: ' ~ (item.sudo_defaults | join(', ')) ~ ']') if item.sudo_defaults | length > 0 else '' }}
+      {{- (' | shell=' ~ item.shell ~ ' | ~/.profile: ' ~ (item.entorno | length) ~ ' línea(s)') if item.entorno | length > 0 else '' }}
   loop: "{{ crear_usuarios_normalizados }}"
   loop_control:
     label: "{{ item.usuario }}"

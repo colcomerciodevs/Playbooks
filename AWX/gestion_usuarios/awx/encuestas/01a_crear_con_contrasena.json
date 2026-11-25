@@ -43,7 +43,7 @@
     },
     {
       "question_name": "Catálogo (si origen = catalogo) · el catálogo define perfil y grupos",
-      "question_description": "⚠ El catálogo manda sobre esta encuesta: admins_linux da perfil_admin_linux (sudo completo); soporte_qa da perfil_qa (solo 1a).",
+      "question_description": "⚠ El catálogo manda sobre esta encuesta: admins_linux da perfil_admin_linux (sudo completo); soporte_qa da perfil_qa e integracion_oim da perfil_integracion_oim (ambos solo 1a).",
       "required": false,
       "type": "multiplechoice",
       "variable": "crear_catalogo",
@@ -55,7 +55,8 @@
         "cuentas_de_servicio",
         "soporte_zona_norte",
         "soporte_zona_centro",
-        "soporte_qa"
+        "soporte_qa",
+        "integracion_oim"
       ],
       "new_question": true
     },
@@ -115,7 +116,7 @@
     },
     {
       "question_name": "Perfil de la cuenta",
-      "question_description": "Define el sudo de la cuenta (vars/perfiles.yml). [perfil_estandar] Sin sudo. [perfil_admin_linux] Administrador global Linux: sudo completo. [perfil_qa] QA: sudo completo para TODO el grupo soporte (el usuario se agrega a él), sin su ni shells de root (sudo -i, sudo -s, sudo su -). [perfil_auditor_linux] Auditor: solo comandos de consulta (last, ps, ss, journalctl…). [perfil_soporte_geopos] Soporte Geopos: status, start, stop y restart de los servicios Geopos. sudo pide la contraseña del usuario; en 1b (llave) no la pide porque la cuenta no tiene contraseña.",
+      "question_description": "Define el sudo de la cuenta (vars/perfiles.yml). [perfil_estandar] Sin sudo. [perfil_admin_linux] Administrador global Linux: sudo completo. [perfil_qa] QA: sudo completo para TODO el grupo soporte (el usuario se agrega a él), sin su ni shells de root (sudo -i, sudo -s, sudo su -). [perfil_auditor_linux] Auditor: solo comandos de consulta (last, ps, ss, journalctl…). [perfil_soporte_geopos] Soporte Geopos: status, start, stop y restart de los servicios Geopos. [perfil_integracion_oim] Cuenta de servicio del conector UNIX de OIM: useradd, usermod, userdel, passwd, chage, sh… (equivale a root; use el catálogo integracion_oim). sudo pide la contraseña del usuario; en 1b (llave) no la pide porque la cuenta no tiene contraseña.",
       "required": true,
       "type": "multiplechoice",
       "variable": "crear_perfil",
@@ -127,7 +128,8 @@
         "perfil_admin_linux",
         "perfil_qa",
         "perfil_auditor_linux",
-        "perfil_soporte_geopos"
+        "perfil_soporte_geopos",
+        "perfil_integracion_oim"
       ],
       "new_question": true
     },

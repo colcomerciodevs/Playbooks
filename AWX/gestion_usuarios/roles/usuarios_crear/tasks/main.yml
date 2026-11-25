@@ -214,9 +214,10 @@
       ansible.builtin.set_fact:
         _cu_sudo: []
         _cu_programas: >-
-          {{ (_cu_procesar | selectattr('sudo', 'eq', 'limitado') | map(attribute='sudo_comandos') | flatten
-              | map('regex_replace', ' .*$', '') | list)
-             + (_cu_procesar | map(attribute='sudo_prohibidos') | flatten | list) | unique | list }}
+          {{ ((_cu_procesar | selectattr('sudo', 'eq', 'limitado') | map(attribute='sudo_comandos') | flatten
+               | map('regex_replace', ' .*$', '') | list)
+              + (_cu_procesar | map(attribute='sudo_prohibidos') | flatten | list)
+              + (_cu_procesar | map(attribute='sudo_libres') | flatten | list)) | unique | list }}
 
     - name: Crear | Buscar los programas en el servidor
       ansible.builtin.shell: |
@@ -245,6 +246,7 @@
           {%- set _ = r.update({p[0]: r.get(p[0], []) + [p[1]]}) %}{% endfor %}{{ r }}
 
     # Cada comando queda como "<ruta> <argumentos>". Sin argumentos se agrega "" (no admite ninguno).
+    # Los comandos_libres quedan como "<ruta>" a secas (admiten cualquier argumento), en todas sus rutas.
     # En sudoers los caracteres \ , : = de los argumentos deben escaparse.
     - name: Crear | Regla sudo de cada usuario en este servidor
       ansible.builtin.set_fact:
@@ -258,10 +260,12 @@
           {%- if p[0] in _cu_rutas %}{% set a = p[1] | trim if p | length > 1 else '' %}
           {%- set a = a | replace('\\', '\\\\') | replace(',', '\\,') | replace(':', '\\:') | replace('=', '\\=') %}
           {%- set _ = out.append(_cu_rutas[p[0]] ~ ' ' ~ (a if a | length > 0 else '""')) %}
-          {%- endif %}{% endfor %}{{ out }}
+          {%- endif %}{% endfor %}
+          {%- for n in item.sudo_libres %}{% for r in _cu_rutas_todas.get(n, []) %}{% set _ = out.append(r) %}{% endfor %}{% endfor %}{{ out }}
         _omit: >-
           {% set out = [] %}{% for c in item.sudo_comandos if item.sudo == 'limitado' and c.split(' ', 1)[0] not in _cu_rutas %}
-          {%- set _ = out.append(c) %}{% endfor %}{{ out }}
+          {%- set _ = out.append(c) %}{% endfor %}
+          {%- for n in item.sudo_libres if n not in _cu_rutas %}{% set _ = out.append(n) %}{% endfor %}{{ out }}
         _ef: "{{ 'ninguno' if (item.sudo == 'limitado' and _res | length == 0) else item.sudo }}"
         _neg: >-
           {% set out = [] %}{% for n in item.sudo_prohibidos %}{% for r in _cu_rutas_todas.get(n, []) %}
@@ -344,6 +348,25 @@
         label: "{{ item.item.usuario }}"
 
     # ---------------------------------------------------------------------------
+    # Entorno de la cuenta (campo 'entorno' del catálogo): bloque gestionado en ~/.profile.
+    # Se usa el home real de las cuentas que ya existían.
+    # ---------------------------------------------------------------------------
+    - name: Crear | Entorno de la cuenta en ~/.profile
+      ansible.builtin.blockinfile:
+        path: "{{ _home }}/.profile"
+        create: true
+        owner: "{{ item.usuario }}"
+        group: "{{ ansible_facts.getent_passwd[item.usuario][2] if item.usuario in _cu_existian else item.grupo }}"
+        mode: "0644"
+        marker: "# {mark} gestion_usuarios (entorno de la cuenta)"
+        block: "{{ item.entorno | join('\n') }}"
+      loop: "{{ _cu_procesar | selectattr('entorno', 'ne', []) | list }}"
+      loop_control:
+        label: "{{ item.usuario }}"
+      vars:
+        _home: "{{ ansible_facts.getent_passwd[item.usuario][4] if item.usuario in _cu_existian else item.home }}"
+
+    # ---------------------------------------------------------------------------
     # Acceso SSH: el grupo ssh_access ya se agregó arriba (si existe). Aquí, si
     # sshd_config tiene "AllowUsers", se agregan las cuentas al final de la última línea.
     # ---------------------------------------------------------------------------
@@ -391,6 +414,7 @@
                     ~ (' sin contraseña' if (it.sudo_nopasswd | bool) and (sd.sudo_efectivo | default(it.sudo)) != 'ninguno' else '')
                     ~ (', sin ' ~ (it.sudo_prohibidos | join(', ')) if it.sudo_prohibidos | default([]) else '')
                     ~ (', vía grupo ' ~ it.sudo_grupo if it.sudo_grupo | default('') else '') ~ ')') -%}
+          {%-     if it.entorno | default([]) -%}{%- set _ = t.append('~/.profile con ' ~ (it.entorno | length) ~ ' línea(s) de entorno') -%}{%- endif -%}
           {%-     if sd.sudo_omitidos | default([]) -%}{%- set _ = t.append('comandos del perfil que no existen aquí: ' ~ (sd.sudo_omitidos | join(', '))) -%}{%- endif -%}
           {%-     if it.grupos | reject('in', _cu_grupos_existentes) | list -%}{%- set _ = t.append('grupos inexistentes omitidos: ' ~ (it.grupos | reject('in', _cu_grupos_existentes) | join(', '))) -%}{%- endif -%}
           {%-     if it.llave_publica | length > 0 -%}{%- set _ = t.append('llave instalada') -%}{%- endif -%}

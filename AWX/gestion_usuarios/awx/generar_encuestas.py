@@ -40,7 +40,7 @@ def q(var, nombre, desc, tipo='text', req=False, default='', choices=None, mn=0,
     return d
 
 
-CATALOGOS = ['admins_linux', 'cuentas_de_servicio', 'soporte_zona_norte', 'soporte_zona_centro', 'soporte_qa']
+CATALOGOS = ['admins_linux', 'cuentas_de_servicio', 'soporte_zona_norte', 'soporte_zona_centro', 'soporte_qa', 'integracion_oim']
 
 # ---------------------------------------------------------------------------
 # Preguntas (cada una se define una vez y se reutiliza en las encuestas)
@@ -62,7 +62,7 @@ C_USUARIOS = q('crear_usuarios_texto', 'Usuarios (si origen = encuesta)',
                '• Ejemplo: jperez;Juan Pérez;soporte',
                'textarea', mx=20000)
 C_CATALOGO = q('crear_catalogo', 'Catálogo (si origen = catalogo) · el catálogo define perfil y grupos',
-               '⚠ El catálogo manda sobre esta encuesta: admins_linux da perfil_admin_linux (sudo completo); soporte_qa da perfil_qa (solo 1a).',
+               '⚠ El catálogo manda sobre esta encuesta: admins_linux da perfil_admin_linux (sudo completo); soporte_qa da perfil_qa e integracion_oim da perfil_integracion_oim (ambos solo 1a).',
                'multiplechoice', False, '', CATALOGOS)
 C_GRUPOS = q('crear_grupos_secundarios', 'Grupos secundarios',
              'Separados por coma. Solo se agregan si ya existen en el servidor.\n'
@@ -81,14 +81,18 @@ C_RENOVAR = q('crear_renovar_llave', '⚠ RENOVAR LLAVE (opción crítica)',
               'Deje NO salvo pérdida o robo de la llave. Si el usuario ya tiene llave, se reutiliza.\n'
               '• SI → crea una llave nueva, archiva la anterior y la reemplaza solo en los servidores de este objetivo.',
               'multiplechoice', True, 'NO', SINO)
-PERFILES = ['perfil_estandar', 'perfil_admin_linux', 'perfil_qa', 'perfil_auditor_linux', 'perfil_soporte_geopos']
+PERFILES = ['perfil_estandar', 'perfil_admin_linux', 'perfil_qa', 'perfil_auditor_linux', 'perfil_soporte_geopos',
+            'perfil_integracion_oim']
 PERFILES_AYUDA = {
     'perfil_estandar': 'sin sudo.',
     'perfil_admin_linux': 'administrador global Linux: sudo completo.',
     'perfil_qa': 'QA: sudo completo para TODO el grupo soporte (el usuario se agrega a él), sin su ni shells de root (sudo -i, sudo -s, sudo su -).',
     'perfil_auditor_linux': 'auditor: solo comandos de consulta (last, ps, ss, journalctl…).',
     'perfil_soporte_geopos': 'soporte Geopos: status, start, stop y restart de los servicios Geopos.',
+    'perfil_integracion_oim': 'cuenta de servicio del conector UNIX de OIM: useradd, usermod, userdel, passwd, chage, sh… (equivale a root; use el catálogo integracion_oim).',
 }
+# Perfiles cuyo sudo pide contraseña sí o sí: no se ofrecen en 1b (llave).
+PERFILES_SOLO_CONTRASENA = ['perfil_qa', 'perfil_integracion_oim']
 
 
 def pregunta_perfil(perfiles):
@@ -100,8 +104,8 @@ def pregunta_perfil(perfiles):
 
 
 C_PERFIL = pregunta_perfil(PERFILES)
-# 1b (llave): sin perfil_qa, que da sudo al grupo pidiendo contraseña y la cuenta de llave no tiene.
-C_PERFIL_LLAVE = pregunta_perfil([p for p in PERFILES if p != 'perfil_qa'])
+# 1b (llave): sin los perfiles que piden contraseña para sudo (la cuenta de llave no tiene).
+C_PERFIL_LLAVE = pregunta_perfil([p for p in PERFILES if p not in PERFILES_SOLO_CONTRASENA])
 C_ACTUALIZAR = q('crear_actualizar_existentes', 'Actualizar usuarios que ya existen',
                  '• NO → las cuentas que ya existen se omiten.\n'
                  '• SI → se les aplican grupos, llave y perfil (no cambia su contraseña).',

@@ -55,7 +55,7 @@
     },
     {
       "question_name": "Catálogo (si origen = catalogo) · el catálogo define perfil y grupos",
-      "question_description": "⚠ El catálogo manda sobre esta encuesta: admins_linux da perfil_admin_linux (sudo completo); soporte_qa da perfil_qa (solo 1a).",
+      "question_description": "⚠ El catálogo manda sobre esta encuesta: admins_linux da perfil_admin_linux (sudo completo); soporte_qa da perfil_qa e integracion_oim da perfil_integracion_oim (ambos solo 1a).",
       "required": false,
       "type": "multiplechoice",
       "variable": "crear_catalogo",
@@ -67,7 +67,8 @@
         "cuentas_de_servicio",
         "soporte_zona_norte",
         "soporte_zona_centro",
-        "soporte_qa"
+        "soporte_qa",
+        "integracion_oim"
       ],
       "new_question": true
     },

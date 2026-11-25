@@ -49,6 +49,7 @@ usuarios_protegidos:
 cuentas_servicio:
   - pos        # aplicación POS (GeoPOS)
   - postgres   # PostgreSQL
+  - svc_oim    # conector UNIX de Oracle Identity Manager (vars/catalogos/integracion_oim.yml)
 
 # Grupos que dan privilegios: no se pueden asignar desde la opción 1.
 grupos_prohibidos: [root, wheel, sudo, admin, adm, shadow, disk, kmem, docker, lxd, libvirt]

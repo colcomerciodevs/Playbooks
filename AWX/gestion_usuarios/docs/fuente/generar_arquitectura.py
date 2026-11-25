@@ -400,12 +400,14 @@ def perfiles_tabla():
     datos = yaml.safe_load(open(os.path.join(RAIZ, 'vars', 'perfiles.yml'), encoding='utf-8'))
     filas = []
     for nombre, p in datos['perfiles'].items():
-        cmds = list(p.get('comandos', []))
+        cmds = list(p.get('comandos', [])) + ['%s (cualquier argumento)' % c for c in p.get('comandos_libres', [])]
         if p.get('servicios'):
             cmds.append('%s: %s' % (' | '.join(p['acciones']), ', '.join(p['servicios'])))
         sudo = {'ninguno': 'Sin sudo', 'completo': 'Todo (ALL)', 'limitado': '<br/>'.join(html.escape(c) for c in cmds)}[p['sudo']]
         if p.get('prohibidos'):
             sudo += ' excepto: ' + ', '.join(p['prohibidos'])
+        if p.get('defaults'):
+            sudo += '<br/>Defaults: ' + html.escape(', '.join(p['defaults']))
         if p.get('grupo_sudo'):
             sudo += '<br/>Regla para el grupo %%%s (todos sus miembros)' % p['grupo_sudo']
         filas.append([nombre, html.escape(p['descripcion'].split(':')[0]), sudo])

@@ -1,0 +1,17 @@
+---
+# Catálogo: cuenta de servicio del conector UNIX/Linux de Oracle Identity Manager (OIM).
+# Uso: encuesta de la opción 1a -> Origen = catalogo, Catálogo = integracion_oim
+#   - Forzar cambio de contraseña en el primer ingreso = NO (es una cuenta de servicio).
+#   - Después, opción 2a con "Contraseña sin caducidad = SI", para que no venza y rompa el conector.
+# Perfil perfil_integracion_oim (vars/perfiles.yml): sudo con contraseña, timestamp_timeout=10,
+# !requiretty y los comandos que pide Oracle. Equivale a root.
+# entorno: líneas que se escriben en un bloque gestionado de ~/.profile (lo lee sh al iniciar sesión).
+usuarios:
+  - usuario: svc_oim
+    nombre: "Cuenta de servicio conector UNIX OIM"
+    perfil: perfil_integracion_oim
+    shell: /bin/sh
+    shell_solaris: /bin/sh
+    entorno:
+      - 'PATH="$PATH:/usr/sbin"; export PATH'
+      - 'PS1="$(id -un)@$(hostname)# "; export PS1'

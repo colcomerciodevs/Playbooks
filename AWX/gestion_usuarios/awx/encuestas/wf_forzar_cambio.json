@@ -68,7 +68,8 @@
         "cuentas_de_servicio",
         "soporte_zona_norte",
         "soporte_zona_centro",
-        "soporte_qa"
+        "soporte_qa",
+        "integracion_oim"
       ],
       "new_question": true
     },

@@ -22,6 +22,11 @@
 #                  sudo -i, sudo -s o sudo su -, pero NO es una barrera de seguridad: con
 #                  sudo completo hay otras formas de llegar a root (editores, intérpretes,
 #                  copiar binarios...). Úselo solo donde eso sea aceptable (p. ej. QA).
+#   comandos_libres (limitado, opcional) programas sin ruta que admiten CUALQUIER argumento.
+#                  Se permiten en todas las rutas donde existan en el servidor.
+#   defaults       (opcional) opciones de sudo solo para esta cuenta, p. ej. timestamp_timeout=10,
+#                  !requiretty. Se escriben como "Defaults:<usuario> ...".
+#   solo_contrasena (opcional) true = el perfil no se puede usar con el método llave (1b).
 #   grupo_sudo     (completo, opcional) la regla se da al GRUPO (%grupo, archivo
 #                  /etc/sudoers.d/grupo_<grupo>) y no a cada usuario. El grupo se crea si no
 #                  existe y el usuario se agrega a él. ⚠ TODO miembro del grupo en ese servidor
@@ -30,7 +35,8 @@
 #                  sudo_nopasswd false el perfil solo se puede usar con contraseña (1a).
 #
 # NO agregue editores, paginadores ni shells (vi, less, more, man, bash, su...) ni
-# comodines (*): permiten llegar a root o tocar archivos no previstos.
+# comodines (*): permiten llegar a root o tocar archivos no previstos. Única excepción:
+# perfil_integracion_oim, que Oracle exige así para el conector UNIX de OIM (equivale a root).
 # Para cambiar un perfil: edite este archivo y ejecute la opción 1 con
 # "Actualizar usuarios que ya existen = SI" sobre las cuentas que lo tienen.
 # =============================================================================
@@ -48,6 +54,18 @@ perfiles:
     sudo_nopasswd: false
     grupo_sudo: soporte
     prohibidos: [su, sudo, bash, sh, dash, ksh, zsh, csh, tcsh, visudo, passwd]
+
+  # Cuenta de servicio del conector UNIX/Linux de Oracle Identity Manager (reemplaza a root).
+  # Comandos y opciones según la documentación de Oracle (sección 2.1.2.5). Equivale a root:
+  # con sh, awk, sed, rm o passwd puede hacer cualquier cosa; queda registrado en el log de sudo.
+  perfil_integracion_oim:
+    descripcion: "Integración OIM (conector UNIX): administración de cuentas. Equivale a root"
+    sudo: limitado
+    sudo_nopasswd: false
+    solo_contrasena: true
+    defaults: [timestamp_timeout=10, "!requiretty"]
+    comandos_libres: [usermod, useradd, userdel, passwd, chage, id, cut, touch, awk, uniq,
+                      sed, cat, diff, sort, rm, grep, egrep, echo, sh]
 
   perfil_auditor_linux:
     descripcion: "Auditor Linux: solo comandos de consulta"
