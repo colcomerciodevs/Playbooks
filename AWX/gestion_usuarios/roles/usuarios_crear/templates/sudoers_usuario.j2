@@ -1,12 +1,23 @@
 # Gestionado por Ansible (gestion_usuarios). NO editar manualmente.
+{% if item.sudo_grupo | default('') %}
+{% set quien = '%' ~ item.sudo_grupo %}
+# Grupo: {{ item.sudo_grupo }} | Perfil: {{ item.perfil }} - {{ perfiles[item.perfil].descripcion | default('') }}
+# TODO miembro del grupo {{ item.sudo_grupo }} en este servidor recibe esta regla.
+{% else %}
+{% set quien = item.usuario %}
 # Usuario: {{ item.usuario }} | Perfil: {{ item.perfil }} - {{ perfiles[item.perfil].descripcion | default('') }}
+{% endif %}
 {% if not (item.sudo_nopasswd | bool) %}
 # sudo pide la contraseña del propio usuario (SUSE por defecto pediría la de root).
-Defaults:{{ item.usuario }} !targetpw, !rootpw
+Defaults:{{ quien }} !targetpw, !rootpw
 {% endif %}
-{% if item.sudo_efectivo == 'completo' %}
-{{ item.usuario }} ALL=({{ crear_sudo_runas }}) {{ 'NOPASSWD: ' if (item.sudo_nopasswd | bool) else '' }}ALL
+{% if item.sudo_efectivo == 'completo' and item.sudo_negados | default([]) %}
+# Prohibidos ({{ item.sudo_prohibidos | join(', ') }}): evita sudo -i / -s / su por descuido; no es una barrera de seguridad.
+{{ quien }} ALL=({{ crear_sudo_runas }}) {{ 'NOPASSWD: ' if (item.sudo_nopasswd | bool) else '' }}ALL, \
+    !{{ item.sudo_negados | join(', \\\n    !') }}
+{% elif item.sudo_efectivo == 'completo' %}
+{{ quien }} ALL=({{ crear_sudo_runas }}) {{ 'NOPASSWD: ' if (item.sudo_nopasswd | bool) else '' }}ALL
 {% else %}
-{{ item.usuario }} ALL=({{ crear_sudo_runas }}) {{ 'NOPASSWD: ' if (item.sudo_nopasswd | bool) else '' }}\
+{{ quien }} ALL=({{ crear_sudo_runas }}) {{ 'NOPASSWD: ' if (item.sudo_nopasswd | bool) else '' }}\
     {{ item.sudo_resueltos | join(', \\\n    ') }}
 {% endif %}

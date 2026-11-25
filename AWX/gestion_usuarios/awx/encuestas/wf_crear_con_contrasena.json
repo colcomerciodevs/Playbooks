@@ -126,7 +126,7 @@
     },
     {
       "question_name": "Perfil de la cuenta",
-      "question_description": "Define el sudo de la cuenta (vars/perfiles.yml). [perfil_estandar] Sin sudo. [perfil_admin_linux] Administrador global Linux: sudo completo. [perfil_auditor_linux] Auditor: solo comandos de consulta (last, ps, ss, journalctl…). [perfil_soporte_geopos] Soporte Geopos: status, start, stop y restart de los servicios Geopos. sudo pide la contraseña del usuario; en 1b (llave) no la pide porque la cuenta no tiene contraseña.",
+      "question_description": "Define el sudo de la cuenta (vars/perfiles.yml). [perfil_estandar] Sin sudo. [perfil_admin_linux] Administrador global Linux: sudo completo. [perfil_qa] QA: sudo completo para TODO el grupo soporte (el usuario se agrega a él), sin su ni shells de root (sudo -i, sudo -s, sudo su -). [perfil_auditor_linux] Auditor: solo comandos de consulta (last, ps, ss, journalctl…). [perfil_soporte_geopos] Soporte Geopos: status, start, stop y restart de los servicios Geopos. sudo pide la contraseña del usuario; en 1b (llave) no la pide porque la cuenta no tiene contraseña.",
       "required": true,
       "type": "multiplechoice",
       "variable": "crear_perfil",
@@ -136,6 +136,7 @@
       "choices": [
         "perfil_estandar",
         "perfil_admin_linux",
+        "perfil_qa",
         "perfil_auditor_linux",
         "perfil_soporte_geopos"
       ],

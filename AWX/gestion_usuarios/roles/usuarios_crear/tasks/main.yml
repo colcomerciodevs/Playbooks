@@ -55,11 +55,14 @@
     # ---------------------------------------------------------------------------
     # Grupos y cuentas
     # ---------------------------------------------------------------------------
-    - name: Crear | Asegurar grupos primarios
+    # También el grupo al que el perfil da sudo (grupo_sudo en vars/perfiles.yml).
+    - name: Crear | Asegurar grupos primarios y grupos de sudo
       ansible.builtin.group:
         name: "{{ item }}"
         state: present
-      loop: "{{ _cu_procesar | map(attribute='grupo') | unique | list }}"
+      loop: >-
+        {{ ((_cu_procesar | map(attribute='grupo') | list)
+            + (_cu_procesar | map(attribute='sudo_grupo') | select | list)) | unique | list }}
 
     - name: Crear | Crear o actualizar cuentas
       ansible.builtin.user:
@@ -81,7 +84,8 @@
         _existia: "{{ item.usuario in _cu_existian }}"
         _grupos: >-
           {{ (item.grupos | select('in', _cu_grupos_existentes) | list)
-             + ([crear_grupo_acceso_ssh] if (_cu_agregar_ssh | bool) else []) }}
+             + ([crear_grupo_acceso_ssh] if (_cu_agregar_ssh | bool) else [])
+             + ([item.sudo_grupo] if (item.sudo_grupo | length > 0 and item.sudo_grupo != item.grupo) else []) }}
 
     - name: Crear | Avisar grupos secundarios inexistentes (no se crean para evitar errores de digitación)
       ansible.builtin.debug:
@@ -203,14 +207,16 @@
     # Perfil (sudo): un archivo por usuario en /etc/sudoers.d, validado con visudo.
     # Los programas de los perfiles limitados se buscan en ESTE servidor; los que no
     # existen se omiten con aviso. Un perfil limitado sin ningún programa disponible
-    # queda sin sudo en este servidor.
+    # queda sin sudo en este servidor. Los 'prohibidos' de un perfil completo se niegan
+    # en todas las rutas donde existan (p. ej. /bin/bash y /usr/bin/bash).
     # ---------------------------------------------------------------------------
     - name: Crear | Programas que usan los perfiles limitados
       ansible.builtin.set_fact:
         _cu_sudo: []
         _cu_programas: >-
-          {{ _cu_procesar | selectattr('sudo', 'eq', 'limitado') | map(attribute='sudo_comandos') | flatten
-             | map('regex_replace', ' .*$', '') | unique | list }}
+          {{ (_cu_procesar | selectattr('sudo', 'eq', 'limitado') | map(attribute='sudo_comandos') | flatten
+              | map('regex_replace', ' .*$', '') | list)
+             + (_cu_procesar | map(attribute='sudo_prohibidos') | flatten | list) | unique | list }}
 
     - name: Crear | Buscar los programas en el servidor
       ansible.builtin.shell: |
@@ -218,7 +224,7 @@
           case "$n" in
             /*) if [ -f "$n" ] && [ -x "$n" ]; then echo "$n $n"; fi ;;
             *)  for d in {{ crear_sudo_rutas_busqueda | map('quote') | join(' ') }}; do
-                  if [ -f "$d/$n" ] && [ -x "$d/$n" ]; then echo "$n $d/$n"; break; fi
+                  if [ -f "$d/$n" ] && [ -x "$d/$n" ]; then echo "$n $d/$n"; fi
                 done ;;
           esac
         done
@@ -227,17 +233,22 @@
       check_mode: false
       when: _cu_programas | length > 0
 
+    # _cu_rutas: la primera ruta de cada programa (comandos permitidos).
+    # _cu_rutas_todas: todas sus rutas (prohibidos).
     - name: Crear | Rutas encontradas
       ansible.builtin.set_fact:
         _cu_rutas: >-
-          {% set r = {} %}{% for l in _cu_busqueda.stdout_lines | default([]) %}
+          {% set r = {} %}{% for l in _cu_busqueda.stdout_lines | default([]) if l.split(' ', 1)[0] not in r %}
           {%- set _ = r.update({l.split(' ', 1)[0]: l.split(' ', 1)[1]}) %}{% endfor %}{{ r }}
+        _cu_rutas_todas: >-
+          {% set r = {} %}{% for l in _cu_busqueda.stdout_lines | default([]) %}{% set p = l.split(' ', 1) %}
+          {%- set _ = r.update({p[0]: r.get(p[0], []) + [p[1]]}) %}{% endfor %}{{ r }}
 
     # Cada comando queda como "<ruta> <argumentos>". Sin argumentos se agrega "" (no admite ninguno).
     # En sudoers los caracteres \ , : = de los argumentos deben escaparse.
     - name: Crear | Regla sudo de cada usuario en este servidor
       ansible.builtin.set_fact:
-        _cu_sudo: "{{ _cu_sudo + [item | combine({'sudo_resueltos': _res, 'sudo_omitidos': _omit, 'sudo_efectivo': _ef})] }}"
+        _cu_sudo: "{{ _cu_sudo + [item | combine({'sudo_resueltos': _res, 'sudo_omitidos': _omit, 'sudo_efectivo': _ef, 'sudo_negados': _neg})] }}"
       loop: "{{ _cu_procesar }}"
       loop_control:
         label: "{{ item.usuario }} -> {{ item.perfil }}"
@@ -252,6 +263,9 @@
           {% set out = [] %}{% for c in item.sudo_comandos if item.sudo == 'limitado' and c.split(' ', 1)[0] not in _cu_rutas %}
           {%- set _ = out.append(c) %}{% endfor %}{{ out }}
         _ef: "{{ 'ninguno' if (item.sudo == 'limitado' and _res | length == 0) else item.sudo }}"
+        _neg: >-
+          {% set out = [] %}{% for n in item.sudo_prohibidos %}{% for r in _cu_rutas_todas.get(n, []) %}
+          {%- set _ = out.append(r) %}{% endfor %}{% endfor %}{{ out }}
 
     - name: Crear | Avisar comandos del perfil que no existen en este servidor
       ansible.builtin.debug:
@@ -287,9 +301,25 @@
         group: root
         mode: "0440"
         validate: "{{ crear_visudo[ansible_system] }} -cf %s"
-      loop: "{{ _cu_sudo | selectattr('sudo_efectivo', 'ne', 'ninguno') | list }}"
+      loop: "{{ _cu_sudo | selectattr('sudo_efectivo', 'ne', 'ninguno') | selectattr('sudo_grupo', 'eq', '') | list }}"
       loop_control:
         label: "{{ item.usuario }} -> {{ item.perfil }}"
+
+    # Perfil con grupo_sudo: una sola regla para el grupo (%grupo), escrita con los datos
+    # del primer usuario de ese perfil (todos comparten perfil, ver la validación de perfiles).
+    - name: Crear | Escribir regla sudo del grupo
+      ansible.builtin.template:
+        src: sudoers_usuario.j2
+        dest: "/etc/sudoers.d/grupo_{{ item.sudo_grupo | regex_replace('[.~]', '_') }}"
+        owner: root
+        group: root
+        mode: "0440"
+        validate: "{{ crear_visudo[ansible_system] }} -cf %s"
+      loop: >-
+        {% set r = [] %}{% set vistos = [] %}{% for i in _cu_sudo if i.sudo_grupo | length > 0 and i.sudo_grupo not in vistos %}
+        {%- set _ = vistos.append(i.sudo_grupo) %}{% set _ = r.append(i) %}{% endfor %}{{ r }}
+      loop_control:
+        label: "%{{ item.sudo_grupo }} -> {{ item.perfil }}"
 
     - name: Crear | Revisar reglas sudo previas gestionadas por este proyecto
       ansible.builtin.command:
@@ -298,11 +328,14 @@
       changed_when: false
       failed_when: false
       check_mode: false
-      loop: "{{ _cu_sudo | selectattr('sudo_efectivo', 'eq', 'ninguno') | list }}"
+      loop: >-
+        {{ (_cu_sudo | selectattr('sudo_efectivo', 'eq', 'ninguno') | list)
+           + (_cu_sudo | selectattr('sudo_grupo', 'ne', '') | list) }}
       loop_control:
         label: "{{ item.usuario }}"
 
-    - name: Crear | Retirar regla sudo gestionada cuando el perfil no da sudo
+    # Sin sudo, o con sudo dado a su grupo: sobra la regla propia que hubiera dejado este proyecto.
+    - name: Crear | Retirar regla sudo propia gestionada cuando el perfil no la usa
       ansible.builtin.file:
         path: "/etc/sudoers.d/{{ item.item.sudo_archivo }}"
         state: absent
@@ -355,7 +388,9 @@
           {%-   endif -%}
           {%-   if u in procesar -%}
           {%-     set _ = t.append('perfil ' ~ it.perfil ~ ' (' ~ sudo_txt.get(sd.sudo_efectivo | default(it.sudo), it.sudo)
-                    ~ (' sin contraseña' if (it.sudo_nopasswd | bool) and (sd.sudo_efectivo | default(it.sudo)) != 'ninguno' else '') ~ ')') -%}
+                    ~ (' sin contraseña' if (it.sudo_nopasswd | bool) and (sd.sudo_efectivo | default(it.sudo)) != 'ninguno' else '')
+                    ~ (', sin ' ~ (it.sudo_prohibidos | join(', ')) if it.sudo_prohibidos | default([]) else '')
+                    ~ (', vía grupo ' ~ it.sudo_grupo if it.sudo_grupo | default('') else '') ~ ')') -%}
           {%-     if sd.sudo_omitidos | default([]) -%}{%- set _ = t.append('comandos del perfil que no existen aquí: ' ~ (sd.sudo_omitidos | join(', '))) -%}{%- endif -%}
           {%-     if it.grupos | reject('in', _cu_grupos_existentes) | list -%}{%- set _ = t.append('grupos inexistentes omitidos: ' ~ (it.grupos | reject('in', _cu_grupos_existentes) | join(', '))) -%}{%- endif -%}
           {%-     if it.llave_publica | length > 0 -%}{%- set _ = t.append('llave instalada') -%}{%- endif -%}

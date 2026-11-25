@@ -47,10 +47,18 @@
       # Primera palabra: programa sin ruta o ruta absoluta. Sin comodines en ningún comando.
       - _cmds | map('regex_replace', ' .*$', '') | reject('match', '^/?[A-Za-z0-9._+/-]+$') | list | length == 0
       - _cmds | select('search', '[*?\\[\\]]') | list | length == 0
+      # prohibidos: solo con sudo completo y solo nombres de programa (sin ruta ni argumentos).
+      - item.value.prohibidos | default([]) | length == 0 or item.value.sudo == 'completo'
+      - item.value.prohibidos | default([]) | reject('match', '^[A-Za-z0-9._+-]+$') | list | length == 0
+      # grupo_sudo: solo con sudo completo, nombre válido, no privilegiado y de un único perfil.
+      - item.value.grupo_sudo is not defined or (item.value.sudo == 'completo'
+          and item.value.grupo_sudo is match(regex_nombre_usuario) and item.value.grupo_sudo not in grupos_prohibidos
+          and (perfiles.values() | selectattr('grupo_sudo', 'defined') | selectattr('grupo_sudo', 'eq', item.value.grupo_sudo) | list | length) == 1)
     fail_msg: >-
       El perfil '{{ item.key }}' de vars/perfiles.yml es inválido: el nombre debe empezar por perfil_,
       sudo = ninguno|completo|limitado, limitado necesita al menos un comando y los comandos no
-      pueden tener comodines (*, ?, [ ]).
+      pueden tener comodines (*, ?, [ ]); 'prohibidos' solo con sudo completo y sin rutas;
+      'grupo_sudo' solo con sudo completo, no privilegiado ({{ grupos_prohibidos | join(', ') }}) y en un solo perfil.
   loop: "{{ perfiles | dict2items }}"
   loop_control:
     label: "{{ item.key }}"
@@ -161,10 +169,15 @@
       perfil: "{{ _perfil }}"
       sudo: "{{ _sudo }}"
       # Con método llave la cuenta no tiene contraseña: sudo con clave sería inutilizable.
-      sudo_nopasswd: "{{ (_p.sudo_nopasswd | default(false) | bool) or (_crear_metodo == 'llave' and _sudo != 'ninguno') }}"
+      # Con grupo_sudo manda el perfil (la regla es de todo el grupo); ver la validación de abajo.
+      sudo_nopasswd: >-
+        {{ (_p.sudo_nopasswd | default(false) | bool)
+           or (_crear_metodo == 'llave' and _sudo != 'ninguno' and _p.grupo_sudo is not defined) }}
+      sudo_grupo: "{{ _p.grupo_sudo | default('') if _sudo == 'completo' else '' }}"
       sudo_comandos: >-
         {{ (_p.comandos | default([]))
            + (_p.servicios | default([]) | product(_p.acciones | default([])) | map('join', ' ') | list) }}
+      sudo_prohibidos: "{{ _p.prohibidos | default([]) if _sudo == 'completo' else [] }}"
       sudo_archivo: "{{ item.usuario | regex_replace('[.~]', '_') }}"
 
 # ---------------------------------------------------------------------------
@@ -192,6 +205,20 @@
   loop: "{{ crear_usuarios_normalizados }}"
   loop_control:
     label: "{{ item.usuario }}"
+
+- name: Preparar | Perfiles con sudo por grupo y método llave
+  ansible.builtin.assert:
+    quiet: true
+    that: _cu_grupo_sin_clave | length == 0
+    fail_msg: >-
+      {{ _cu_grupo_sin_clave | map(attribute='usuario') | join(', ') }}: el perfil da sudo al grupo
+      {{ _cu_grupo_sin_clave | map(attribute='sudo_grupo') | unique | join(', ') }} pidiendo contraseña,
+      y con el método llave la cuenta no tiene contraseña (sudo no le funcionaría). Use la opción 1a
+      (con contraseña) o ponga sudo_nopasswd: true en el perfil (vars/perfiles.yml).
+  vars:
+    _cu_grupo_sin_clave: >-
+      {% set r = [] %}{% for u in crear_usuarios_normalizados if _crear_metodo == 'llave'
+         and u.sudo_grupo | length > 0 and not (u.sudo_nopasswd | bool) %}{% set _ = r.append(u) %}{% endfor %}{{ r }}
 
 - name: Preparar | Validar que no haya usuarios repetidos
   ansible.builtin.assert:
@@ -238,6 +265,8 @@
       | acceso={{ _crear_metodo }} | {{ item.perfil }} (sudo {{ item.sudo }}
       {{- ', sin contraseña' if (item.sudo_nopasswd | bool) else '' }})
       {{- (' [' ~ (item.sudo_comandos | join(', ')) ~ ']') if item.sudo == 'limitado' else '' }}
+      {{- (' [prohibidos: ' ~ (item.sudo_prohibidos | join(', ')) ~ ']') if item.sudo_prohibidos | length > 0 else '' }}
+      {{- (' [regla para el grupo ' ~ item.sudo_grupo ~ ']') if item.sudo_grupo | length > 0 else '' }}
   loop: "{{ crear_usuarios_normalizados }}"
   loop_control:
     label: "{{ item.usuario }}"

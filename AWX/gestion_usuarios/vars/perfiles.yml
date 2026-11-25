@@ -16,6 +16,18 @@
 #                  argumentos no admite argumentos (la regla lleva "").
 #   servicios      (opcional) programas que se combinan con 'acciones':
 #   acciones         servicio + acción  ->  "geopos status", "geopos restart"...
+#   prohibidos     (completo, opcional) programas que NO puede ejecutar con sudo, sin ruta.
+#                  Se buscan en cada servidor (todas las rutas de crear_sudo_rutas_busqueda)
+#                  y la regla queda "ALL, !/ruta/programa, ...". Evita el uso casual de
+#                  sudo -i, sudo -s o sudo su -, pero NO es una barrera de seguridad: con
+#                  sudo completo hay otras formas de llegar a root (editores, intérpretes,
+#                  copiar binarios...). Úselo solo donde eso sea aceptable (p. ej. QA).
+#   grupo_sudo     (completo, opcional) la regla se da al GRUPO (%grupo, archivo
+#                  /etc/sudoers.d/grupo_<grupo>) y no a cada usuario. El grupo se crea si no
+#                  existe y el usuario se agrega a él. ⚠ TODO miembro del grupo en ese servidor
+#                  recibe el sudo del perfil, también los que ya estaban.
+#                  sudo_nopasswd es el del perfil (no depende del método): con
+#                  sudo_nopasswd false el perfil solo se puede usar con contraseña (1a).
 #
 # NO agregue editores, paginadores ni shells (vi, less, more, man, bash, su...) ni
 # comodines (*): permiten llegar a root o tocar archivos no previstos.
@@ -29,6 +41,13 @@ perfiles:
     descripcion: "Administrador global Linux: sudo completo"
     sudo: completo
     sudo_nopasswd: false
+
+  perfil_qa:
+    descripcion: "QA: sudo completo vía grupo soporte, sin su ni shells de root (sudo -i, sudo -s, sudo su -)"
+    sudo: completo
+    sudo_nopasswd: false
+    grupo_sudo: soporte
+    prohibidos: [su, sudo, bash, sh, dash, ksh, zsh, csh, tcsh, visudo, passwd]
 
   perfil_auditor_linux:
     descripcion: "Auditor Linux: solo comandos de consulta"

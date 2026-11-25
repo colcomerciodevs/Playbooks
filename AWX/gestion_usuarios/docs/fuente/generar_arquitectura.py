@@ -404,6 +404,10 @@ def perfiles_tabla():
         if p.get('servicios'):
             cmds.append('%s: %s' % (' | '.join(p['acciones']), ', '.join(p['servicios'])))
         sudo = {'ninguno': 'Sin sudo', 'completo': 'Todo (ALL)', 'limitado': '<br/>'.join(html.escape(c) for c in cmds)}[p['sudo']]
+        if p.get('prohibidos'):
+            sudo += ' excepto: ' + ', '.join(p['prohibidos'])
+        if p.get('grupo_sudo'):
+            sudo += '<br/>Regla para el grupo %%%s (todos sus miembros)' % p['grupo_sudo']
         filas.append([nombre, html.escape(p['descripcion'].split(':')[0]), sudo])
     return KeepTogether([
         P('Perfiles de cuenta', 'h2'),
@@ -411,8 +415,11 @@ def perfiles_tabla():
         Spacer(1, 3),
         nota('<b>Contraseña de sudo.</b> Con contraseña (1a), sudo pide la del propio usuario, también en SUSE. Con llave (1b) no la pide, '
              'porque la cuenta no tiene. Cada programa se busca en el servidor; si no existe, ese comando se omite con aviso, y si no existe '
-             'ninguno, la cuenta queda sin sudo en ese servidor. Un comando sin argumentos no admite ninguno. Los perfiles se cambian en '
-             'vars/perfiles.yml.'),
+             'ninguno, la cuenta queda sin sudo en ese servidor. Un comando sin argumentos no admite ninguno. Los «prohibidos» de un perfil '
+             'completo (perfil_qa) se niegan en todas sus rutas: evitan sudo -i, sudo -s o sudo su - por descuido, pero no son una barrera '
+             'de seguridad (con sudo completo hay otras formas de llegar a root). Con grupo_sudo (perfil_qa: soporte) la regla es del grupo, '
+             'en /etc/sudoers.d/grupo_soporte: la recibe todo miembro del grupo en ese servidor, también los que ya estaban; el usuario se '
+             'agrega al grupo y el grupo se crea si no existe. Los perfiles se cambian en vars/perfiles.yml.'),
     ])
 
 

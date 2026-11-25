@@ -1,6 +1,6 @@
 ---
 - name: Crear usuarios con llave SSH
-  hosts: CRM_FILE
+  hosts: PRUEBA
   gather_facts: true
   become: true
 

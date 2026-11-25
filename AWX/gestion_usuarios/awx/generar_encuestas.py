@@ -81,15 +81,27 @@ C_RENOVAR = q('crear_renovar_llave', '⚠ RENOVAR LLAVE (opción crítica)',
               'Deje NO salvo pérdida o robo de la llave. Si el usuario ya tiene llave, se reutiliza.\n'
               '• SI → crea una llave nueva, archiva la anterior y la reemplaza solo en los servidores de este objetivo.',
               'multiplechoice', True, 'NO', SINO)
-PERFILES = ['perfil_estandar', 'perfil_admin_linux', 'perfil_auditor_linux', 'perfil_soporte_geopos']
-C_PERFIL = q('crear_perfil', 'Perfil de la cuenta',
+PERFILES = ['perfil_estandar', 'perfil_admin_linux', 'perfil_qa', 'perfil_auditor_linux', 'perfil_soporte_geopos']
+PERFILES_AYUDA = {
+    'perfil_estandar': 'sin sudo.',
+    'perfil_admin_linux': 'administrador global Linux: sudo completo.',
+    'perfil_qa': 'QA: sudo completo para TODO el grupo soporte (el usuario se agrega a él), sin su ni shells de root (sudo -i, sudo -s, sudo su -).',
+    'perfil_auditor_linux': 'auditor: solo comandos de consulta (last, ps, ss, journalctl…).',
+    'perfil_soporte_geopos': 'soporte Geopos: status, start, stop y restart de los servicios Geopos.',
+}
+
+
+def pregunta_perfil(perfiles):
+    return q('crear_perfil', 'Perfil de la cuenta',
              'Define el sudo de la cuenta (vars/perfiles.yml).\n'
-             '• perfil_estandar → sin sudo.\n'
-             '• perfil_admin_linux → administrador global Linux: sudo completo.\n'
-             '• perfil_auditor_linux → auditor: solo comandos de consulta (last, ps, ss, journalctl…).\n'
-             '• perfil_soporte_geopos → soporte Geopos: status, start, stop y restart de los servicios Geopos.\n'
-             'sudo pide la contraseña del usuario; en 1b (llave) no la pide porque la cuenta no tiene contraseña.',
-             'multiplechoice', True, 'perfil_estandar', PERFILES)
+             + ''.join('• %s → %s\n' % (p, PERFILES_AYUDA[p]) for p in perfiles)
+             + 'sudo pide la contraseña del usuario; en 1b (llave) no la pide porque la cuenta no tiene contraseña.',
+             'multiplechoice', True, 'perfil_estandar', perfiles)
+
+
+C_PERFIL = pregunta_perfil(PERFILES)
+# 1b (llave): sin perfil_qa, que da sudo al grupo pidiendo contraseña y la cuenta de llave no tiene.
+C_PERFIL_LLAVE = pregunta_perfil([p for p in PERFILES if p != 'perfil_qa'])
 C_ACTUALIZAR = q('crear_actualizar_existentes', 'Actualizar usuarios que ya existen',
                  '• NO → las cuentas que ya existen se omiten.\n'
                  '• SI → se les aplican grupos, llave y perfil (no cambia su contraseña).',
@@ -165,7 +177,7 @@ ENCUESTAS = {
         'name': 'USUARIOS | 1b - Crear con llave',
         'description': 'Alta de usuarios con llave SSH del almacén (se reutiliza o se crea), grupos y perfil.',
         'spec': [OBJETIVO, C_ORIGEN, C_USUARIOS, C_CATALOGO, C_GRUPOS, C_SSH, C_RENOVAR,
-                 C_PERFIL, C_ACTUALIZAR],
+                 C_PERFIL_LLAVE, C_ACTUALIZAR],
     },
     '02a_cambiar_contrasena': {
         'name': 'USUARIOS | 2a - Cambiar contraseña',
