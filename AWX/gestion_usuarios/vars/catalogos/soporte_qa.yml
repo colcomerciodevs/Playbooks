@@ -1,0 +1,40 @@
+---
+# Catálogo: personal de QA (Entelgy, Geocom, Keyrus, SQA, Choucair...).
+# Uso: encuesta de la opción 1a -> Origen = catalogo, Catálogo = soporte_qa
+# Perfil perfil_qa (vars/perfiles.yml): sudo completo para el grupo soporte, sin su ni shells
+# de root. Solo con contraseña (1a): la contraseña inicial se escribe en la encuesta.
+# Los valores de 'catalogo_defaults' aplican a todos los usuarios del archivo;
+# cualquier campo definido en un usuario los reemplaza.
+catalogo_defaults:
+  grupo: soporte
+  perfil: perfil_qa
+
+usuarios:
+  - { usuario: jcuenu,       nombre: "Juan David Cuenu (Entelgy)" }
+  - { usuario: vduarte,      nombre: "Vladimir Mazzon Duarte (GEOCOM)" }
+  - { usuario: dballesteros, nombre: "Deimer De Jesus Ballesteros Padilla" }
+  - { usuario: jmunoz,       nombre: "Johan David Munoz Olarte (KEYRUS)" }
+  - { usuario: scantero,     nombre: "Santiago Cantero (Geocom)" }
+  - { usuario: mpuebla,      nombre: "Manuel Puebla (Geocom)" }
+  - { usuario: rcotto,       nombre: "Rodrigo Cotto Barrios" }
+  - { usuario: jmedero,      nombre: "Joaquín Medero Renard" }
+  - { usuario: bromero,      nombre: "Braian Emanuel Romero Cabrera (Geocom)" }
+  - { usuario: dgiacoia,     nombre: "Diego Giacoia (GEOCOM)" }
+  - { usuario: mdiaz,        nombre: "Miguel Angel Diaz Baquero" }
+  - { usuario: bvargas,      nombre: "Brandon Stiven Vargas Galeano" }
+  - { usuario: dlopez,       nombre: "Diana Marcela Lopez Bernal" }
+  - { usuario: ptorres,      nombre: "Paola Viviana Torres (SQA)" }
+  - { usuario: aorozco,      nombre: "Angelica Stefannia Orozco Pulido (SQA)" }
+  - { usuario: yquintero,    nombre: "Yenny Marcela Quintero (CHOUCAIR)" }
+  - { usuario: ryepes,       nombre: "Ruben Andres Yepes (Choucair)" }
+  - { usuario: ileon,        nombre: "Ingrith Camila Leon Pira (Choucair)" }
+  - { usuario: atamayo,      nombre: "Andreina Tamayo (Choucair)" }
+  - { usuario: amaya,        nombre: "Alejandra Maya (CHOUCAIR)" }
+  - { usuario: rmartinez,    nombre: "Rafael de Jesus Martinez N (Choucair)" }
+  - { usuario: bcespedes,    nombre: "Brayan Cespedes (Choucair)" }
+  - { usuario: jbuitrago,    nombre: "Jeisson Duvan Buitrago Torres" }
+  - { usuario: jramirez,     nombre: "Jhojan Alexander Ramirez (CHOUCAIR)" }
+  - { usuario: ojimenez,     nombre: "Oscar Fernando Jimenez Higuera (SQA)" }
+  - { usuario: cpuerto,      nombre: "Cesar Francisco Puerto (Choucair)" }
+  - { usuario: jfraile,      nombre: "Juan Sebastián Fraile" }
+  - { usuario: wsimarra,     nombre: "Wilmer Simarra" }

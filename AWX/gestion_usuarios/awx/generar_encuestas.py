@@ -40,7 +40,7 @@ def q(var, nombre, desc, tipo='text', req=False, default='', choices=None, mn=0,
     return d
 
 
-CATALOGOS = ['admins_linux', 'cuentas_de_servicio', 'soporte_zona_norte', 'soporte_zona_centro']
+CATALOGOS = ['admins_linux', 'cuentas_de_servicio', 'soporte_zona_norte', 'soporte_zona_centro', 'soporte_qa']
 
 # ---------------------------------------------------------------------------
 # Preguntas (cada una se define una vez y se reutiliza en las encuestas)
@@ -62,7 +62,7 @@ C_USUARIOS = q('crear_usuarios_texto', 'Usuarios (si origen = encuesta)',
                '• Ejemplo: jperez;Juan Pérez;soporte',
                'textarea', mx=20000)
 C_CATALOGO = q('crear_catalogo', 'Catálogo (si origen = catalogo) · el catálogo define perfil y grupos',
-               '⚠ El catálogo manda sobre esta encuesta: admins_linux da perfil_admin_linux (sudo completo).',
+               '⚠ El catálogo manda sobre esta encuesta: admins_linux da perfil_admin_linux (sudo completo); soporte_qa da perfil_qa (solo 1a).',
                'multiplechoice', False, '', CATALOGOS)
 C_GRUPOS = q('crear_grupos_secundarios', 'Grupos secundarios',
              'Separados por coma. Solo se agregan si ya existen en el servidor.\n'

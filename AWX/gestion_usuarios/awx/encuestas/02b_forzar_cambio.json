@@ -55,7 +55,8 @@
         "admins_linux",
         "cuentas_de_servicio",
         "soporte_zona_norte",
-        "soporte_zona_centro"
+        "soporte_zona_centro",
+        "soporte_qa"
       ],
       "new_question": true
     },
