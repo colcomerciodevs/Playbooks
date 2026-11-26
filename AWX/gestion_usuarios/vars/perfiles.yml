@@ -35,8 +35,9 @@
 #                  sudo_nopasswd false el perfil solo se puede usar con contraseña (1a).
 #
 # NO agregue editores, paginadores ni shells (vi, less, more, man, bash, su...) ni
-# comodines (*): permiten llegar a root o tocar archivos no previstos. Única excepción:
-# perfil_integracion_oim, que Oracle exige así para el conector UNIX de OIM (equivale a root).
+# comodines (*): permiten llegar a root o tocar archivos no previstos. Excepciones:
+# perfil_integracion_oim, que Oracle exige así para el conector UNIX de OIM (equivale a root), y
+# perfil_soporte_geopos, que solo admite sh con dos scripts fijos (argumentos exactos).
 # Para cambiar un perfil: edite este archivo y ejecute la opción 1 con
 # "Actualizar usuarios que ya existen = SI" sobre las cuentas que lo tienen.
 # =============================================================================
@@ -82,10 +83,21 @@ perfiles:
       - cat /etc/sudoers
       - ls -l /etc/sudoers.d
 
+  # Solo lo listado: sudo -i, sudo -s, sudo su -, sudo bash, editores y paginadores quedan negados
+  # porque no están en la lista. Los comandos_libres son de consulta y no abren shells; ojo: cat,
+  # tail, grep... con sudo pueden leer cualquier archivo (también /etc/shadow).
+  # sh solo con dos scripts fijos: deben ser de root y nadie más debe poder modificarlos
+  # (si no, quien los edite obtiene root).
+  # Sin sudo ya funcionan: df -h, date, free, uptime, ps, top, ping, systemctl status <servicio>.
   perfil_soporte_geopos:
-    descripcion: "Soporte Geopos: consultar, iniciar, detener y reiniciar servicios Geopos"
+    descripcion: "Soporte Geopos: servicios Geopos, logs, procesos y red, sin escalar a root"
     sudo: limitado
     sudo_nopasswd: false
+    comandos_libres: [tail, head, grep, egrep, zgrep, zcat, cat, wc, ls, du, lsof, ss, netstat, kill]
+    comandos:
+      - sh /geopos2/rifa/demonio.sh       # sudo -b sh /geopos2/rifa/demonio.sh (en segundo plano)
+      - sh /root/demonio-sonido.sh        # sudo -b sh /root/demonio-sonido.sh
+      - tee -a /dev/ttyUSB0               # sudo tee -a /dev/ttyUSB0 < /geopos2/rifa/caja_geo > /dev/null
     servicios:
       - geopos
       - geopromotion

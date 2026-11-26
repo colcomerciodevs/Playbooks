@@ -190,6 +190,8 @@
       sudo_defaults: "{{ _p.defaults | default([]) if _sudo != 'ninguno' else [] }}"
       # Líneas para ~/.profile (solo desde catálogo).
       entorno: "{{ item.entorno | default([]) }}"
+      # Cuenta de servicio (solo desde catálogo): contraseña sin caducidad y sin cambio forzado.
+      sin_caducidad: "{{ item.contrasena_sin_caducidad | default(false) }}"
       sudo_archivo: "{{ item.usuario | regex_replace('[.~]', '_') }}"
 
 # ---------------------------------------------------------------------------
@@ -210,11 +212,13 @@
       - item.perfil in perfiles
       - item.llave_publica == '' or (item.llave_publica is match(regex_llave_publica))
       - item.entorno | select('search', '\n') | list | length == 0
+      - item.sin_caducidad | string | lower in ['true', 'false']
     fail_msg: >-
       Usuario '{{ item.usuario }}' inválido. Verifique: nombre en minúsculas (máx. 32), que no sea
       una cuenta protegida ({{ usuarios_protegidos | join(', ') }}), nombre completo sin ':', grupo válido y
       no privilegiado ({{ grupos_prohibidos | join(', ') }}), UID >= {{ uid_minimo_humano }},
-      perfil existente ({{ perfiles.keys() | list | join(', ') }}), llave pública válida y 'entorno' con una línea por elemento.
+      perfil existente ({{ perfiles.keys() | list | join(', ') }}), llave pública válida, 'entorno' con una línea por elemento y
+      'contrasena_sin_caducidad' true o false.
   loop: "{{ crear_usuarios_normalizados }}"
   loop_control:
     label: "{{ item.usuario }}"
@@ -284,6 +288,7 @@
       {{- (' [con cualquier argumento: ' ~ (item.sudo_libres | join(', ')) ~ ']') if item.sudo_libres | length > 0 else '' }}
       {{- (' [Defaults: ' ~ (item.sudo_defaults | join(', ')) ~ ']') if item.sudo_defaults | length > 0 else '' }}
       {{- (' | shell=' ~ item.shell ~ ' | ~/.profile: ' ~ (item.entorno | length) ~ ' línea(s)') if item.entorno | length > 0 else '' }}
+      {{- ' | contraseña sin caducidad, sin cambio forzado' if (item.sin_caducidad | bool) and _crear_metodo == 'contrasena' else '' }}
   loop: "{{ crear_usuarios_normalizados }}"
   loop_control:
     label: "{{ item.usuario }}"

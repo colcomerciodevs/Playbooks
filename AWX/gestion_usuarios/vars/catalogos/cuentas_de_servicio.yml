@@ -21,6 +21,9 @@ usuarios:
 #   shell_solaris  shell en Solaris 11       (por defecto /usr/bin/bash)
 #   home           directorio home           (por defecto /home/<usuario>)
 #   llave_publica  llave pública SSH en línea (tiene prioridad sobre el almacén de llaves)
-#   perfil         perfil_admin_linux | perfil_auditor_linux | perfil_soporte_geopos | perfil_estandar
-#                  (vars/perfiles.yml). Si se omite, se usa el perfil elegido en la encuesta.
+#   perfil         uno de vars/perfiles.yml (perfil_estandar, perfil_admin_linux, perfil_qa,
+#                  perfil_auditor_linux, perfil_soporte_geopos, perfil_integracion_oim).
+#                  Si se omite, se usa el perfil elegido en la encuesta.
+#   entorno        lista de líneas para un bloque gestionado de ~/.profile (PATH, prompt...)
+#   contrasena_sin_caducidad  true = al crearla (1a) la contraseña no caduca y nunca se fuerza el cambio
 # -----------------------------------------------------------------------------

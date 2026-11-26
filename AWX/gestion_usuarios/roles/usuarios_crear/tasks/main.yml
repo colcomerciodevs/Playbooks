@@ -120,17 +120,36 @@
         - _cu_metodo == 'contrasena'
         - _cu_nuevos | length > 0
 
+    # Cuentas nuevas marcadas en el catálogo con contrasena_sin_caducidad (cuentas de servicio).
+    - name: Crear | Cuentas nuevas con contraseña sin caducidad
+      ansible.builtin.set_fact:
+        _cu_sin_caducidad: >-
+          {%- set r = [] -%}
+          {%- for u in _cu_nuevos if (u.sin_caducidad | bool) -%}{%- set _ = r.append(u.usuario) -%}{%- endfor -%}
+          {{ r }}
+
     - name: Crear | Forzar cambio de contraseña en el primer inicio de sesión
       ansible.builtin.include_role:
         name: usuarios_comun
         tasks_from: politica_caducidad.yml
       vars:
-        comun_usuarios: "{{ _cu_nuevos | map(attribute='usuario') | list }}"
+        comun_usuarios: "{{ _cu_nuevos | map(attribute='usuario') | reject('in', _cu_sin_caducidad) | list }}"
         comun_politica: forzar_cambio
       when:
         - _cu_metodo == 'contrasena'
-        - _cu_nuevos | length > 0
+        - _cu_nuevos | map(attribute='usuario') | reject('in', _cu_sin_caducidad) | list | length > 0
         - (crear_forzar_cambio | string | lower | trim) in valores_si
+
+    - name: Crear | Contraseña sin caducidad (cuentas de servicio del catálogo)
+      ansible.builtin.include_role:
+        name: usuarios_comun
+        tasks_from: politica_caducidad.yml
+      vars:
+        comun_usuarios: "{{ _cu_sin_caducidad }}"
+        comun_politica: nunca
+      when:
+        - _cu_metodo == 'contrasena'
+        - _cu_sin_caducidad | length > 0
 
     # ---------------------------------------------------------------------------
     # Método LLAVE
@@ -407,7 +426,8 @@
           {%-   set t = [] -%}
           {%-   if u not in _cu_existian -%}
           {%-     set _ = t.append(('acceso solo con llave' if _cu_metodo == 'llave' else ('contraseña inicial'
-                    ~ (', debe cambiarla al ingresar' if (crear_forzar_cambio | string | lower | trim) in valores_si else '')))) -%}
+                    ~ (', sin caducidad' if u in _cu_sin_caducidad | default([])
+                       else ', debe cambiarla al ingresar' if (crear_forzar_cambio | string | lower | trim) in valores_si else '')))) -%}
           {%-   endif -%}
           {%-   if u in procesar -%}
           {%-     set _ = t.append('perfil ' ~ it.perfil ~ ' (' ~ sudo_txt.get(sd.sudo_efectivo | default(it.sudo), it.sudo)
